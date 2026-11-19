@@ -17,6 +17,7 @@ export function RootLayout() {
       <header className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-amber-900/50">
         <h1 className="font-bold text-lg mr-auto">{t('app.title')}</h1>
         <nav className="flex gap-1 text-sm">
+          <NavLink to="/local/setup" className={linkClass}>{t('nav.local')}</NavLink>
           <NavLink to="/" end className={linkClass}>{t('nav.sandbox')}</NavLink>
           <NavLink to="/dev/determinism" className={linkClass}>{t('nav.determinism')}</NavLink>
         </nav>

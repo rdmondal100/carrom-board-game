@@ -77,3 +77,19 @@ export const FRAME_BEVEL = 0.18;
 /** Alpha values for overlays. */
 export const GUIDE_ALPHA = 0.9;
 export const PULL_ALPHA = 0.35;
+
+/** Shot clock ring (LOC-5): radius in striker radii, width in board units. */
+export const CLOCK_RING_SCALE = 1.45;
+export const CLOCK_RING_WIDTH = 0.006;
+/** Below this fraction of time left the ring turns to the warning colour. */
+export const CLOCK_LOW_FRACTION = 0.25;
+export const CLOCK_COLOURS = { track: 0x000000, ok: 0x2ecc71, low: 0xff3b30 } as const;
+export const CLOCK_TRACK_ALPHA = 0.25;
+/** A full turn, for the ring arc (radians); the arc starts at 12 o'clock. */
+export const FULL_TURN = 2 * Math.PI;
+export const CLOCK_START_ANGLE = -Math.PI / 2;
+
+/** How long a toast stays up, ms. */
+export const TOAST_MS = 3500;
+/** localStorage key for the "turn the board to the shooter" setting (LOC-3). */
+export const ROTATE_KEY = 'carrom.rotateView';
