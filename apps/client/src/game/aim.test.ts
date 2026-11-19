@@ -30,16 +30,18 @@ describe('aim', () => {
     expect(tiny.power).toBeCloseTo((AIM_CANCEL_RADIUS * PX + 0.5) / full, 12);
   });
 
-  it('BRD-4 aim clamps to ±85°', () => {
-    [{ x: 100, y: 0 }, { x: -100, y: 0 }, { x: 40, y: -100 }, { x: 0, y: -100 }].forEach((d) => {
-      const a = aimFromDrag(d, PX);
-      expect(a.cancelled).toBe(false);
-      expect(a.dirY).toBeGreaterThanOrEqual(config.MIN_AIM_FORWARD);
-      expect(a.dirY).toBeCloseTo(config.MIN_AIM_FORWARD, 6);
-      expect(a.dirX * a.dirX + a.dirY * a.dirY).toBeCloseTo(1, 12);
-    });
-    expect(aimFromDrag({ x: 100, y: 0 }, PX).dirX).toBeLessThan(0);
-    expect(aimFromDrag({ x: -100, y: 0 }, PX).dirX).toBeGreaterThan(0);
+  it('BRD-4 any direction: pulling up (toward the board) aims back at the own frame', () => {
+    expect(config.MIN_AIM_FORWARD).toBe(-1);
+    const back = aimFromDrag({ x: 0, y: -100 }, PX);
+    expect(back.cancelled).toBe(false);
+    expect(back.dirX).toBeCloseTo(0, 12);
+    expect(back.dirY).toBeCloseTo(-1, 12);
+    const side = aimFromDrag({ x: 100, y: 0 }, PX);
+    expect(side.dirX).toBeCloseTo(-1, 12);
+    expect(side.dirY).toBeCloseTo(0, 12);
+    const backRight = aimFromDrag({ x: -60, y: -80 }, PX);
+    expect(backRight.dirX).toBeCloseTo(0.6, 12);
+    expect(backRight.dirY).toBeCloseTo(-0.8, 12);
   });
 
   it('BRD-4 releasing inside AIM_CANCEL_RADIUS cancels', () => {

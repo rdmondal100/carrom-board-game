@@ -7,17 +7,23 @@ export interface Config {
   /** Half the inner board side: frames sit at x, y = ±HALF_L. */
   HALF_L: number;
   COIN_D: number;
-  /** Tunable 1.7–2.0 × COIN_D, never below 1.6 × COIN_D. */
+  /** 2.0 × COIN_D (owner asked for a bigger striker); never below 1.6 × COIN_D. */
   STRIKER_D: number;
   /** Must stay below 2 × COIN_D so two coins can't pass side by side. */
   POCKET_D: number;
   /** Pocket centre distance from each of its two frames. */
   POCKET_INSET: number;
+  /** A coin crossing the rim faster than this bounces back out instead of dropping, L/s. */
+  POCKET_MAX_DROP_SPEED: number;
+  /** Share of the into-the-pocket speed a bounced coin keeps (it comes back out). */
+  POCKET_RESTITUTION: number;
   COIN_MASS: number;
-  /** Tunable 3–4 × COIN_MASS. */
+  /** Heavy next to a coin so coins barely turn it (owner: 5 × COIN_MASS). */
   STRIKER_MASS: number;
-  /** Constant deceleration for every piece, L/s². */
+  /** Constant (sliding) part of every piece's slow-down, L/s². */
   FRICTION_DECEL: number;
+  /** Speed-proportional part of the slow-down, 1/s: fast pieces brake hard, slow ones glide out. */
+  FRICTION_DRAG: number;
   FRAME_RESTITUTION: number;
   PIECE_RESTITUTION: number;
   /** Striker speed at power 1.0, L/s. speed = MAX_SPEED × power. */
@@ -52,12 +58,15 @@ export const config: Config = {
   L,
   HALF_L: L / 2,
   COIN_D,
-  STRIKER_D: 1.8 * COIN_D,
-  POCKET_D: 1.5 * COIN_D,
-  POCKET_INSET: 0.75 * COIN_D,
+  STRIKER_D: 2.0 * COIN_D,
+  POCKET_D: 1.3 * COIN_D,
+  POCKET_INSET: 0.65 * COIN_D,
+  POCKET_MAX_DROP_SPEED: 3.0,
+  POCKET_RESTITUTION: 0.5,
   COIN_MASS: 1,
-  STRIKER_MASS: 3.5,
-  FRICTION_DECEL: 1.6,
+  STRIKER_MASS: 5,
+  FRICTION_DECEL: 0.25,
+  FRICTION_DRAG: 0.45,
   FRAME_RESTITUTION: 0.8,
   PIECE_RESTITUTION: 0.9,
   MAX_SPEED: 4.5,
@@ -67,8 +76,9 @@ export const config: Config = {
   DT: 1 / 240,
   BASELINE_INSET: 0.16,
   BASELINE_HALF: 0.28,
-  MAX_AIM_ANGLE_DEG: 85,
-  MIN_AIM_FORWARD: 0.08715574274765817, // cos 85°, written out: no trig at runtime
+  // Any direction, including back toward the shooter's own frame (owner).
+  MAX_AIM_ANGLE_DEG: 180,
+  MIN_AIM_FORWARD: -1, // cos 180°, written out: no trig at runtime
   MAX_SHOT_MS: 10_000,
   MAX_EVENTS_PER_STEP: 2000,
   PLACE_GAP: 1e-9,

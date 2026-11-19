@@ -33,22 +33,46 @@ export const DETERMINISM_CHUNK = 25;
 
 export const BOARD_COLOURS = {
   frame: 0x5a2e14,
-  frameEdge: 0x3b1d0c,
-  surface: 0xe9cf9b,
+  frameLight: 0x7a4421,
+  frameEdge: 0x2e1608,
+  surface: 0xecd5a4,
+  surfaceGlow: 0xf6e6c2,
+  surfaceEdge: 0xd9b97f,
   line: 0x3a2412,
-  pocket: 0x111111,
-  white: 0xf7f1e3,
-  whiteEdge: 0xb9ab8c,
-  black: 0x2a2a2a,
-  blackEdge: 0x000000,
-  red: 0xc8102e,
-  redEdge: 0x7c0a1c,
-  striker: 0x2f6fd6,
-  strikerEdge: 0x1b3f7a,
+  /** Board markings (baseline end circles, centre ring). Green, so the red queen stands out. */
+  accent: 0x1f6b45,
+  pocket: 0x0b0b0b,
+  pocketRim: 0x3b1d0c,
+  shadow: 0x000000,
   blocked: 0xff2a2a,
   guide: 0xffffff,
   pull: 0x000000,
 } as const;
+
+/** A coin's look: radial shading from `hi` (top-left light) through `base` to `edge`. */
+export interface PieceStyle { hi: number; base: number; edge: number; ring: number; ringLight: number }
+
+export const PIECE_STYLES = {
+  white: { hi: 0xffffff, base: 0xf2e7cf, edge: 0xb8a47c, ring: 0x9c8760, ringLight: 0xffffff },
+  black: { hi: 0x8a8a8a, base: 0x2b2b2b, edge: 0x050505, ring: 0x000000, ringLight: 0x9a9a9a },
+  red: { hi: 0xff8a98, base: 0xd3132f, edge: 0x6e0613, ring: 0x6e0613, ringLight: 0xffb3bd },
+  striker: { hi: 0xbcd6ff, base: 0x2f6fd6, edge: 0x153672, ring: 0x153672, ringLight: 0xd6e6ff },
+} as const satisfies Record<string, PieceStyle>;
+
+/** Piece shading, as fractions of the piece radius. */
+export const PIECE_SHADOW_OFFSET = { x: 0.12, y: 0.18 };
+export const PIECE_SHADOW_ALPHA = 0.3;
+export const PIECE_RING_RADIUS = 0.62;
+export const PIECE_RING_ALPHA = 0.5;
+export const PIECE_SHINE = { x: -0.36, y: -0.42, r: 0.2, alpha: 0.45 };
+
+/** Corner arrows: run along each diagonal between these distances from the centre, in board units. */
+export const ARROW_FROM = 0.36;
+export const ARROW_TO = 0.17;
+/** Arrowhead length, in board units. */
+export const ARROW_HEAD = 0.02;
+/** Frame bevel width, as a fraction of the frame width. */
+export const FRAME_BEVEL = 0.18;
 
 /** Alpha values for overlays. */
 export const GUIDE_ALPHA = 0.9;

@@ -73,15 +73,17 @@ function aimAt(seat: Seat, x: number, target: { x: number; y: number }) {
   return { dirX, dirY };
 }
 
+/** Any legal direction: forward, sideways or back toward the shooter's frame. */
 function randomShot(next: () => number): ShotInput {
   const seat = SEATS[Math.floor(next() * 4)] as Seat;
-  const maxSide = Math.sqrt(1 - config.MIN_AIM_FORWARD * config.MIN_AIM_FORWARD);
-  const dirX = (next() * 2 - 1) * maxSide;
+  const dirX = next() * 2 - 1;
+  const ahead = Math.sqrt(1 - dirX * dirX);
+  const dirY = Math.max(config.MIN_AIM_FORWARD, next() < 0.5 ? -ahead : ahead);
   return {
     seat,
     x: (next() * 2 - 1) * config.BASELINE_HALF,
     dirX,
-    dirY: Math.sqrt(1 - dirX * dirX),
+    dirY,
     power: config.MIN_POWER + next() * (1 - config.MIN_POWER),
   };
 }
@@ -115,18 +117,18 @@ function assertSafe(s: BoardState) {
 }
 
 describe('acceptance', () => {
-  it('PHY-1 glide: power 1.0 straight ahead does 3.25–3.75 crossings, touches 3 frames', () => {
+  it('PHY-1 glide: power 1.0 straight ahead does 4.0–4.6 crossings, touches 4 frames', () => {
     const { crossings, events } = straightShot(1);
-    expect(crossings).toBeGreaterThanOrEqual(3.25);
-    expect(crossings).toBeLessThanOrEqual(3.75);
-    expect(events.filter((e) => e.type === 'frame')).toHaveLength(3);
+    expect(crossings).toBeGreaterThanOrEqual(4.0);
+    expect(crossings).toBeLessThanOrEqual(4.6);
+    expect(events.filter((e) => e.type === 'frame')).toHaveLength(4);
   });
 
-  it('PHY-2 power curve: 1.3–1.7 crossings at 0.5, under 1 at 0.25', () => {
+  it('PHY-2 power curve: 2.2–2.6 crossings at 0.5, under 1.3 at 0.25', () => {
     const half = straightShot(0.5).crossings;
-    expect(half).toBeGreaterThanOrEqual(1.3);
-    expect(half).toBeLessThanOrEqual(1.7);
-    expect(straightShot(0.25).crossings).toBeLessThan(1);
+    expect(half).toBeGreaterThanOrEqual(2.2);
+    expect(half).toBeLessThanOrEqual(2.6);
+    expect(straightShot(0.25).crossings).toBeLessThan(1.3);
   });
 
   it('PHY-3 striker never pockets: 10,000 seeded random shots + shots at each pocket', () => {
@@ -151,7 +153,7 @@ describe('acceptance', () => {
     }
   });
 
-  it('PHY-4 clean pocketing: a lone coin rolled at a pocket at 0.2–6 L/s always drops', () => {
+  it('PHY-4 clean pocketing: a lone coin rolled at a pocket at 0.2 L/s to just under POCKET_MAX_DROP_SPEED always drops', () => {
     const rim = config.POCKET_D / 2;
     for (const pocket of POCKET_IDS) {
       const c = pocketCentre(pocket, config);
@@ -160,7 +162,7 @@ describe('acceptance', () => {
       for (let deg = 0; deg <= 90; deg += 5) {
         const ux = sx * Math.cos((deg * Math.PI) / 180);
         const uy = sy * Math.sin((deg * Math.PI) / 180);
-        for (const speed of [0.2, 0.5, 1, 2, 4, 6]) {
+        for (const speed of [0.2, 0.5, 1, 2, config.POCKET_MAX_DROP_SPEED - 0.05]) {
           const start = rim + 0.01;
           const p = coin('a', c.x + ux * start, c.y + uy * start, -ux * speed, -uy * speed);
           const { events } = run({ pieces: [p] });
@@ -179,7 +181,7 @@ describe('acceptance', () => {
     const u = Math.SQRT1_2;
     const first = config.POCKET_D / 2 + 0.01;
     const second = first + d + 0.002;
-    for (const speed of [0.5, 2, 6]) {
+    for (const speed of [0.5, 1.5, 2.5]) {
       const a = coin('a', c.x - u * first, c.y - u * first, u * speed, u * speed);
       const b = coin('b', c.x - u * second, c.y - u * second, u * speed, u * speed);
       const drops = run({ pieces: [a, b] }).events.filter((e) => e.type === 'pocket');
@@ -187,6 +189,31 @@ describe('acceptance', () => {
         ['a', pocket], ['b', pocket],
       ]);
       expect((drops[0] as ShotEvent).t).toBeLessThan((drops[1] as ShotEvent).t);
+    }
+  });
+
+  it('PHY-9 hard coins bounce out: a coin reaching a pocket above POCKET_MAX_DROP_SPEED comes back out', () => {
+    const rim = config.POCKET_D / 2;
+    for (const pocket of POCKET_IDS) {
+      const c = pocketCentre(pocket, config);
+      const sx = -Math.sign(c.x);
+      const sy = -Math.sign(c.y);
+      for (let deg = 0; deg <= 90; deg += 5) {
+        const ux = sx * Math.cos((deg * Math.PI) / 180);
+        const uy = sy * Math.sin((deg * Math.PI) / 180);
+        for (const speed of [3.2, 4, 6]) {
+          const start = rim + 0.01;
+          const p = coin('a', c.x + ux * start, c.y + uy * start, -ux * speed, -uy * speed);
+          const out = step({ pieces: [p] }, 0);
+          const into = out.events.filter((e) => e.type === 'pocket' || e.type === 'pocketBounce');
+          expect(into).toEqual([expect.objectContaining({ type: 'pocketBounce', id: 'a', pocket })]);
+          const q = out.state.pieces[0] as Piece;
+          expect(q.pocketed).toBe(false);
+          // Moving away from the pocket centre, slower than it came in.
+          expect((q.x - c.x) * q.vx + (q.y - c.y) * q.vy).toBeGreaterThan(0);
+          expect(Math.hypot(q.vx, q.vy)).toBeLessThan(speed);
+        }
+      }
     }
   });
 

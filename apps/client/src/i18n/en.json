@@ -15,6 +15,7 @@
   "event.hit": "{t} ms: {a} ↔ {b}",
   "event.frame": "{t} ms: {id} hit the frame",
   "event.pocket": "{t} ms: {id} into pocket {pocket}",
+  "event.pocketBounce": "{t} ms: {id} too fast, bounced out of pocket {pocket}",
   "event.shot": "Shot: power {power}",
   "det.title": "Browser determinism (PHY-7)",
   "det.run": "Run again",

@@ -13,10 +13,18 @@ describe('simulateShot', () => {
     expect(out.events.length).toBeGreaterThan(0);
   });
 
-  it('rejects aims past MAX_AIM_ANGLE', () => {
+  it('shoots in any direction, including back at its own frame', () => {
     const rack = createRack(0);
-    const tooWide = { seat: 0 as const, x: 0, dirX: 1, dirY: 0.05, power: 0.5 };
-    expect(() => simulateShot(rack, tooWide)).toThrow(RangeError);
+    const back = simulateShot(rack, { seat: 0, x: 0, dirX: 0, dirY: -1, power: 0.5 });
+    const own = back.events.find((e) => e.type === 'frame');
+    expect(own).toMatchObject({ type: 'frame', id: 'striker' });
+    const sideways = simulateShot(rack, { seat: 0, x: 0, dirX: 1, dirY: 0, power: 0.5 });
+    expect(sideways.events.length).toBeGreaterThan(0);
+  });
+
+  it('rejects a zero direction', () => {
+    const rack = createRack(0);
+    expect(() => simulateShot(rack, { seat: 0, x: 0, dirX: 0, dirY: 0, power: 0.5 })).toThrow(RangeError);
   });
 
   it('accepts a non-unit direction by normalising it', () => {
