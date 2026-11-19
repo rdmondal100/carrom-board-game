@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router';
-import { LANGS, setLang, t, useLang } from '@/i18n/t';
+import { Outlet } from 'react-router';
+import { Header } from '@/components/Header';
+import { Toaster } from '@/components/ui/sonner';
+import { t, useLang } from '@/i18n/t';
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `px-2 py-1 rounded ${isActive ? 'bg-amber-900/60' : 'hover:bg-amber-900/30'}`;
-
+/**
+ * UI-5: full-height column. Pages scroll inside <main>; the board page fills
+ * it exactly (flex-1) so it never scrolls. Phone first, centred on desktop.
+ */
 export function RootLayout() {
   const lang = useLang();
   useEffect(() => {
@@ -13,30 +16,14 @@ export function RootLayout() {
   }, [lang]);
 
   return (
-    <div className="min-h-full flex flex-col">
-      <header className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-amber-900/50">
-        <h1 className="font-bold text-lg mr-auto">{t('app.title')}</h1>
-        <nav className="flex gap-1 text-sm">
-          <NavLink to="/local/setup" className={linkClass}>{t('nav.local')}</NavLink>
-          <NavLink to="/" end className={linkClass}>{t('nav.sandbox')}</NavLink>
-          <NavLink to="/dev/determinism" className={linkClass}>{t('nav.determinism')}</NavLink>
-        </nav>
-        <div className="flex gap-1 text-sm">
-          {LANGS.map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLang(l)}
-              className={`px-2 py-1 rounded border border-amber-900/50 ${l === lang ? 'bg-amber-900/60' : ''}`}
-            >
-              {t(`lang.${l}`)}
-            </button>
-          ))}
+    <div className="flex h-dvh flex-col">
+      <Header />
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Outlet />
         </div>
-      </header>
-      <main className="flex-1 w-full max-w-3xl mx-auto p-4">
-        <Outlet />
       </main>
+      <Toaster />
     </div>
   );
 }

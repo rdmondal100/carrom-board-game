@@ -16,10 +16,14 @@ import { screenToWorld, worldToPx, worldToScreen } from './view';
 
 export interface BoardCallbacks {
   onShot?: (input: ShotInput) => void;
-  onEvents?: (events: ShotEvent[]) => void;
+  /** Events of one playback frame, with the board at the end of that frame (UI-7 sound strength). */
+  onEvents?: (events: ShotEvent[], board: BoardState) => void;
   onPlayingChange?: (playing: boolean) => void;
   onPlacedChange?: (ok: boolean) => void;
 }
+
+/** `contain`: fit the host's width and height (UI-5 full-height board page); `width`: the host's width only. */
+export type BoardFit = 'width' | 'contain';
 
 export interface BoardApi {
   /** New rack with `seat` breaking; that seat shoots and sits at the bottom. */
@@ -93,7 +97,7 @@ function newCtrl(seat: Seat): Ctrl {
  * object; React only hears about shots, events and play start/stop.
  */
 export function useBoardCanvas(
-  host: RefObject<HTMLDivElement | null>, initialSeat: Seat, callbacks: BoardCallbacks,
+  host: RefObject<HTMLDivElement | null>, initialSeat: Seat, callbacks: BoardCallbacks, fit: BoardFit = 'width',
 ): RefObject<BoardApi> {
   const cb = useRef(callbacks);
   useEffect(() => { cb.current = callbacks; });
@@ -159,9 +163,10 @@ export function useBoardCanvas(
     const clockG = new Graphics();
     root.addChild(boardG, clockG, pieces.container, aimG);
 
+    const avail = () => (fit === 'contain' ? Math.min(el.clientWidth, el.clientHeight) : el.clientWidth);
     const redraw = () => {
       if (!ready) return;
-      const size = layoutFor(el.clientWidth);
+      const size = layoutFor(avail());
       if (size.canvasPx !== c.layout.canvasPx) app.renderer.resize(size.canvasPx, size.canvasPx);
       c.layout = size;
       root.position.set(size.framePx, size.framePx);
@@ -235,7 +240,7 @@ export function useBoardCanvas(
         const out = c.playback.advance(deltaMs);
         c.board = out.state;
         out.events.forEach((ev) => { if (ev.type === 'pocket') c.pocketedAt.set(ev.id, now); });
-        if (out.events.length > 0) cb.current.onEvents?.(out.events);
+        if (out.events.length > 0) cb.current.onEvents?.(out.events, out.state);
         if (out.done) {
           c.playback = null;
           replace(c);
@@ -287,7 +292,7 @@ export function useBoardCanvas(
       ctrlRef.current = null;
       if (ready) app.destroy(true, { children: true });
     };
-  }, [host, initialSeat]);
+  }, [host, initialSeat, fit]);
 
   return api;
 }

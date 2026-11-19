@@ -1,4 +1,59 @@
 @import "tailwindcss";
 
+/* shadcn/ui tokens: one warm, dark "wooden" theme. */
+:root {
+  --radius: 0.75rem;
+  --background: #1c1410;
+  --foreground: #f5ead8;
+  --card: #2a1c13;
+  --card-foreground: #f5ead8;
+  --popover: #2a1c13;
+  --popover-foreground: #f5ead8;
+  --primary: #b45309;
+  --primary-foreground: #fff7ed;
+  --secondary: #3b2718;
+  --secondary-foreground: #f5ead8;
+  --muted: #33231a;
+  --muted-foreground: #c9b79c;
+  --accent: #4a3020;
+  --accent-foreground: #fde68a;
+  --destructive: #b91c1c;
+  --border: #5a3b24;
+  --input: #4a3426;
+  --ring: #f59e0b;
+}
+
+@theme inline {
+  --font-sans: "Inter", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 html, body, #root { height: 100%; }
-body { margin: 0; background: #1c1410; color: #f5ead8; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}

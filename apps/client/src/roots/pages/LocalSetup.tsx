@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form';
+import { useId, useState } from 'react';
+import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router';
 import { RULES } from '@carrom/rules';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { scoreLine } from '@/game/hud';
 import { newSeed, startLocal } from '@/game/localGame';
 import { clearSave, loadGame, saveGame } from '@/game/save';
@@ -10,6 +13,7 @@ import { t, useLang } from '@/i18n/t';
 import {
   defaultSetup, LENGTHS, localSetupSchema, NAME_MAX, playerCount, toGame, type LocalSetup as Setup,
 } from '@/schemas/localSetup';
+import { useAppSelector } from '@/store/store';
 
 const MS_PER_S = 1000;
 
@@ -17,7 +21,7 @@ function Choice({ reg, value, label }: { reg: UseFormRegisterReturn; value: stri
   return (
     <label className="flex-1">
       <input type="radio" value={value} {...reg} className="peer sr-only" />
-      <span className="block text-center px-3 py-2 rounded border border-amber-900/60 cursor-pointer peer-checked:bg-amber-700 peer-focus-visible:ring-2 peer-focus-visible:ring-amber-400">
+      <span className="block text-center px-3 py-2 rounded border border-border cursor-pointer peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
         {label}
       </span>
     </label>
@@ -37,10 +41,12 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 export function LocalSetup() {
   useLang();
   const navigate = useNavigate();
+  const clockDefault = useAppSelector((s) => s.settings.defaultShotClock);
+  const clockId = useId();
   const [saved, setSaved] = useState(loadGame);
   const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<Setup>({
     resolver: zodResolver(localSetupSchema),
-    defaultValues: defaultSetup(),
+    defaultValues: { ...defaultSetup(), clockOn: clockDefault },
   });
   const [format, preset, length] = useWatch({ control, name: ['format', 'preset', 'length'] });
 
@@ -62,19 +68,15 @@ export function LocalSetup() {
   };
 
   return (
-    <div className="flex flex-col gap-4 max-w-md mx-auto">
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <h2 className="text-xl font-bold">{t('setup.title')}</h2>
 
       {saved && (
-        <div className="rounded-lg border border-amber-700 p-3 flex flex-wrap items-center gap-2">
+        <Card className="flex-row flex-wrap items-center gap-2 p-3">
           <span className="text-sm tabular-nums mr-auto">{scoreLine(saved)}</span>
-          <button type="button" onClick={() => navigate('/local/play')} className="px-3 py-1 rounded bg-amber-700 font-semibold">
-            {t('setup.resume')}
-          </button>
-          <button type="button" onClick={discard} className="px-3 py-1 rounded border border-amber-700">
-            {t('setup.discard')}
-          </button>
-        </div>
+          <Button size="sm" onClick={() => navigate('/local/play')}>{t('setup.resume')}</Button>
+          <Button size="sm" variant="outline" onClick={discard}>{t('setup.discard')}</Button>
+        </Card>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
@@ -110,7 +112,7 @@ export function LocalSetup() {
                 {...register(`names.${i}`)}
                 aria-label={t('setup.playerN', { n: i + 1 })}
                 maxLength={NAME_MAX}
-                className="px-3 py-2 rounded bg-black/30 border border-amber-900/60"
+                className="px-3 py-2 rounded bg-input/40 border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               {errors.names?.[i]?.message && (
                 <p className="text-sm text-red-400">{t(errors.names[i]?.message ?? '')}</p>
@@ -120,14 +122,18 @@ export function LocalSetup() {
           {format === '2v2' && <p className="text-xs opacity-70">{t('setup.teamNote')}</p>}
         </Group>
 
-        <label className="flex items-center gap-2">
-          <input type="checkbox" {...register('clockOn')} className="size-4" />
-          {t('setup.clock', { s: RULES.SHOT_CLOCK_MS / MS_PER_S })}
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor={clockId}>{t('setup.clock', { s: RULES.SHOT_CLOCK_MS / MS_PER_S })}</label>
+          <Controller
+            control={control}
+            name="clockOn"
+            render={({ field }) => (
+              <Switch id={clockId} checked={field.value} onCheckedChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+        </div>
 
-        <button type="submit" className="px-4 py-2 rounded bg-amber-700 font-semibold text-lg">
-          {t('setup.start')}
-        </button>
+        <Button type="submit" size="lg">{t('setup.start')}</Button>
       </form>
     </div>
   );

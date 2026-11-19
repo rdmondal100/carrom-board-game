@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { teamOf, type Team } from '@carrom/rules';
 import { coinsDown, redStatus, scoreLine, sideColour, teamLabel } from '@/game/hud';
 import { seatName, type LocalGame } from '@/game/localGame';
+import { Button } from '@/components/ui/button';
 import { t } from '@/i18n/t';
 
 /** Swatch per side: the coin colour in the colour game, a team tint in the point game. */
@@ -19,7 +20,7 @@ function Swatch({ g, team }: { g: LocalGame; team: Team }) {
 function Side({ g, team, active }: { g: LocalGame; team: Team; active: boolean }) {
   const colour = sideColour(g.state, team);
   return (
-    <div className={`flex items-center gap-2 rounded px-2 py-1 ${active ? 'bg-amber-900/50' : ''}`}>
+    <div className={`flex items-center gap-2 rounded px-2 py-1 ${active ? 'bg-accent' : ''}`}>
       <Swatch g={g} team={team} />
       <span className="truncate font-medium">{teamLabel(g, team)}</span>
       {colour && <span className="text-xs opacity-70">{t(`hud.${colour}`)}</span>}
@@ -44,9 +45,9 @@ export function Hud({ game, clock, onPause, canPause }: Props) {
           {t('hud.turn', { name: seatName(game, state.turnSeat) })}
         </span>
         <span className="ml-auto">{clock}</span>
-        <button type="button" onClick={onPause} disabled={!canPause} className="px-3 py-1 rounded bg-amber-800 disabled:opacity-50">
+        <Button size="sm" variant="secondary" onClick={onPause} disabled={!canPause}>
           {t('hud.pause')}
-        </button>
+        </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
         <Side g={game} team="A" active={shooterTeam === 'A'} />

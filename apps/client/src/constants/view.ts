@@ -91,5 +91,3 @@ export const CLOCK_START_ANGLE = -Math.PI / 2;
 
 /** How long a toast stays up, ms. */
 export const TOAST_MS = 3500;
-/** localStorage key for the "turn the board to the shooter" setting (LOC-3). */
-export const ROTATE_KEY = 'carrom.rotateView';

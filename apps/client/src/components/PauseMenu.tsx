@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { t } from '@/i18n/t';
+import { setViewRotation } from '@/store/settingsSlice';
+import { useAppDispatch, useAppSelector } from '@/store/store';
 
 interface Props {
-  rotate: boolean;
-  onRotate: (on: boolean) => void;
   onResume: () => void;
   onRestart: () => void;
   onQuit: () => void;
@@ -11,35 +14,38 @@ interface Props {
 
 type Confirm = null | 'restart' | 'quit';
 
-const btn = 'w-full px-4 py-2 rounded font-semibold';
-
-/** LOC-8: resume, restart (confirm), quit (confirm). Also the LOC-3 rotation switch. */
-export function PauseMenu({ rotate, onRotate, onResume, onRestart, onQuit }: Props) {
+/** LOC-8: resume, restart (confirm), quit (confirm). Also the LOC-3 rotation switch (a setting, UI-2). */
+export function PauseMenu({ onResume, onRestart, onQuit }: Props) {
   const [confirm, setConfirm] = useState<Confirm>(null);
+  const rotate = useAppSelector((s) => s.settings.viewRotation);
+  const dispatch = useAppDispatch();
+  const rotateId = useId();
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
-      <div role="dialog" aria-modal="true" className="w-full max-w-xs rounded-xl bg-amber-950 p-5 flex flex-col gap-3 shadow-xl">
-        <h2 className="text-lg font-bold text-center">{t('pause.title')}</h2>
+    <Dialog open onOpenChange={(open) => { if (!open) onResume(); }}>
+      <DialogContent className="max-w-xs" aria-describedby={undefined}>
+        <DialogTitle className="text-center">{t('pause.title')}</DialogTitle>
         {confirm === null ? (
           <>
-            <button type="button" autoFocus onClick={onResume} className={`${btn} bg-amber-700`}>{t('pause.resume')}</button>
-            <button type="button" onClick={() => setConfirm('restart')} className={`${btn} border border-amber-700`}>{t('pause.restart')}</button>
-            <button type="button" onClick={() => setConfirm('quit')} className={`${btn} border border-amber-700`}>{t('pause.quit')}</button>
-            <label className="flex items-center gap-2 text-sm mt-1">
-              <input type="checkbox" checked={rotate} onChange={(e) => onRotate(e.target.checked)} className="size-4" />
-              {t('pause.rotate')}
-            </label>
+            <Button autoFocus onClick={onResume}>{t('pause.resume')}</Button>
+            <Button variant="outline" onClick={() => setConfirm('restart')}>{t('pause.restart')}</Button>
+            <Button variant="outline" onClick={() => setConfirm('quit')}>{t('pause.quit')}</Button>
+            <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+              <label htmlFor={rotateId}>{t('pause.rotate')}</label>
+              <Switch id={rotateId} checked={rotate} onCheckedChange={(v) => dispatch(setViewRotation(v))} />
+            </div>
           </>
         ) : (
           <>
-            <p className="text-center">{t(confirm === 'restart' ? 'pause.confirmRestart' : 'pause.confirmQuit')}</p>
+            <DialogDescription className="text-center text-base text-foreground">
+              {t(confirm === 'restart' ? 'pause.confirmRestart' : 'pause.confirmQuit')}
+            </DialogDescription>
             <div className="flex gap-2">
-              <button type="button" onClick={confirm === 'restart' ? onRestart : onQuit} className={`${btn} bg-red-700`}>{t('confirm.yes')}</button>
-              <button type="button" autoFocus onClick={() => setConfirm(null)} className={`${btn} border border-amber-700`}>{t('confirm.no')}</button>
+              <Button variant="destructive" className="flex-1" onClick={confirm === 'restart' ? onRestart : onQuit}>{t('confirm.yes')}</Button>
+              <Button variant="outline" className="flex-1" autoFocus onClick={() => setConfirm(null)}>{t('confirm.no')}</Button>
             </div>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
