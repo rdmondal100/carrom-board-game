@@ -5,5 +5,6 @@ export type {
 export { createRack, placeStriker } from './rack';
 export { baselinePoint, seatForward, seatOutward, seatRight, seatToWorld } from './seats';
 export { pocketCentre } from './pockets';
+export { placeCoin } from './place';
 export { cloneState, isAtRest, step } from './step';
 export { simulateShot, stateHash } from './shot';
