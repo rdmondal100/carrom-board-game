@@ -5,19 +5,30 @@ import { matchMaker, Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { loadEnv, type Env } from './env.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
+import { authRateLimit } from './middleware/rateLimit.middleware.js';
 import { PingRoom } from './rooms/ping.room.js';
+import { authRouter } from './routes/auth.route.js';
 import { healthRouter } from './routes/health.route.js';
 
-export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV'>;
+export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV' | 'JWT_SECRET' | 'GOOGLE_CLIENT_IDS'>;
+
+export interface AppOptions {
+  /** AUTH-7 requests per minute per IP on /auth/* (tests raise it). */
+  authRateLimit?: number;
+}
 
 /** Express app with every route and middleware; no listening (supertest uses it directly). */
-export function createApp(env: AppEnv = loadEnv()): express.Express {
+export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): express.Express {
   const app = express();
   app.disable('x-powered-by');
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '32kb' }));
 
   app.use('/health', healthRouter);
+  app.use('/auth', authRouter(
+    { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
+    authRateLimit(opts.authRateLimit),
+  ));
 
   app.use(notFound);
   app.use(errorHandler(env.NODE_ENV === 'production'));

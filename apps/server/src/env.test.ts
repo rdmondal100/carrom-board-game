@@ -47,3 +47,11 @@ describe('env', () => {
     expect(problems({ ...good, CORS_ORIGIN: ' , ' })[0]).toMatch(/^CORS_ORIGIN/);
   });
 });
+
+describe('env google', () => {
+  it('AUTH-5 GOOGLE_CLIENT_IDS is an optional comma list', () => {
+    expect(loadEnv(good).GOOGLE_CLIENT_IDS).toEqual([]);
+    expect(loadEnv({ ...good, GOOGLE_CLIENT_IDS: ' web.apps , android.apps,' }).GOOGLE_CLIENT_IDS)
+      .toEqual(['web.apps', 'android.apps']);
+  });
+});

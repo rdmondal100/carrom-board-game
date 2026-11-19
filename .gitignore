@@ -3,6 +3,7 @@ dist/
 coverage/
 .env
 .env.*
+!.env.example
 
 # Local planning docs (not pushed)
 specs/

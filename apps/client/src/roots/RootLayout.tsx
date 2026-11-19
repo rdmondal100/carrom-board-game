@@ -3,6 +3,9 @@ import { Outlet } from 'react-router';
 import { Header } from '@/components/Header';
 import { Toaster } from '@/components/ui/sonner';
 import { t, useLang } from '@/i18n/t';
+import { getToken } from '@/lib/auth';
+import { loadMe } from '@/store/authSlice';
+import { useAppDispatch } from '@/store/store';
 
 /**
  * UI-5: full-height column. Pages scroll inside <main>; the board page fills
@@ -10,6 +13,11 @@ import { t, useLang } from '@/i18n/t';
  */
 export function RootLayout() {
   const lang = useLang();
+  const dispatch = useAppDispatch();
+  // AUTH-9: a saved token → load who it belongs to.
+  useEffect(() => {
+    if (getToken() !== null) void dispatch(loadMe());
+  }, [dispatch]);
   useEffect(() => {
     document.documentElement.lang = lang;
     document.title = t('app.title');

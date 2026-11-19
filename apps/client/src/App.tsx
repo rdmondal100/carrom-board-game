@@ -5,7 +5,10 @@ import { Home } from './roots/pages/Home';
 import { HowToPlay } from './roots/pages/HowToPlay';
 import { LocalGame } from './roots/pages/LocalGame';
 import { LocalSetup } from './roots/pages/LocalSetup';
+import { Login } from './roots/pages/Login';
 import { PlayMenu } from './roots/pages/PlayMenu';
+import { Profile } from './roots/pages/Profile';
+import { Register } from './roots/pages/Register';
 import { Sandbox } from './roots/pages/Sandbox';
 import { Settings } from './roots/pages/Settings';
 
@@ -21,6 +24,9 @@ export const routes: RouteObject[] = [
       { path: 'local/play', element: <LocalGame /> },
       { path: 'settings', element: <Settings /> },
       { path: 'how-to-play', element: <HowToPlay /> },
+      { path: 'login', element: <Login /> },
+      { path: 'register', element: <Register /> },
+      { path: 'profile', element: <Profile /> },
       { path: 'dev/sandbox', element: <Sandbox /> },
       { path: 'dev/determinism', element: <DevDeterminism /> },
       { path: '*', element: <Navigate to="/" replace /> },

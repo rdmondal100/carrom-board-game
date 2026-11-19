@@ -18,11 +18,16 @@ const origins = z.string().transform((s, ctx) => {
   return list;
 });
 
+/** Comma list; empty or missing = Google sign-in off (POST /auth/google answers 503). */
+const clientIds = z.string().default('').transform((s) =>
+  s.split(',').map((id) => id.trim()).filter((id) => id.length > 0));
+
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
   MONGODB_URL: z.string().regex(/^mongodb(\+srv)?:\/\//, 'must start with mongodb:// or mongodb+srv://'),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN, `must be at least ${JWT_SECRET_MIN} characters`),
   CORS_ORIGIN: origins,
+  GOOGLE_CLIENT_IDS: clientIds,
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

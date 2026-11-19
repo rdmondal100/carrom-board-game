@@ -5,8 +5,9 @@ import { connectDb, disconnectDb } from './connectDb.js';
 import { VERSION } from './utils/version.js';
 
 const ORIGINS = ['http://localhost:5173', 'capacitor://localhost', 'https://localhost'];
-const devEnv: AppEnv = { CORS_ORIGIN: ORIGINS, NODE_ENV: 'development' };
-const prodEnv: AppEnv = { CORS_ORIGIN: ORIGINS, NODE_ENV: 'production' };
+const base = { CORS_ORIGIN: ORIGINS, JWT_SECRET: 'x'.repeat(32), GOOGLE_CLIENT_IDS: [] };
+const devEnv: AppEnv = { ...base, NODE_ENV: 'development' };
+const prodEnv: AppEnv = { ...base, NODE_ENV: 'production' };
 
 /** An app with one extra route that throws, mounted before the 404 handler. */
 function appWithThrow(env: AppEnv) {

@@ -8,7 +8,7 @@ describe('colyseus', () => {
   let colyseus: ColyseusTestServer;
 
   beforeAll(async () => {
-    const { gameServer } = createServer({ CORS_ORIGIN: ORIGINS, NODE_ENV: 'test' });
+    const { gameServer } = createServer({ CORS_ORIGIN: ORIGINS, NODE_ENV: 'test', JWT_SECRET: 'x'.repeat(32), GOOGLE_CLIENT_IDS: [] });
     colyseus = await boot(gameServer);
   });
 

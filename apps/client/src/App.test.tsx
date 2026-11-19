@@ -103,3 +103,34 @@ describe('routes', () => {
     setLang('en');
   });
 });
+
+describe('auth routes', () => {
+  beforeAll(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+  });
+  beforeEach(() => {
+    localStorage.clear();
+    setLang('en');
+  });
+  afterEach(cleanup);
+
+  it('AUTH-9 /login renders the form and the guest button; the header links to it', async () => {
+    show('/login');
+    expect(await heading(en['auth.login.title'])).toBeTruthy();
+    expect(screen.getByLabelText(en['auth.email'])).toBeTruthy();
+    expect(screen.getByRole('button', { name: en['auth.guest'] })).toBeTruthy();
+    expect(screen.getByTestId('nav-account').getAttribute('href')).toBe('/login');
+  });
+
+  it('AUTH-9 /register renders the form', async () => {
+    show('/register');
+    expect(await heading(en['auth.register.title'])).toBeTruthy();
+    expect(screen.getByLabelText(en['auth.confirm'])).toBeTruthy();
+  });
+
+  it('AUTH-9 /profile when signed out goes to /login', async () => {
+    const router = show('/profile');
+    expect(await heading(en['auth.login.title'])).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/login');
+  });
+});
