@@ -1,4 +1,4 @@
-import type { LocalGame } from './localGame';
+import { SEATINGS, type LocalGame } from './localGame';
 
 export const SAVE_KEY = 'carrom.localGame';
 const SAVE_VERSION = 1;
@@ -23,9 +23,24 @@ export function clearSave(): void {
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
+/**
+ * Saves from before spec 06 have no `players` / `takeover`: everyone is a
+ * person. Bad values there make the save unreadable like any other field.
+ */
+function withSeating(g: Record<string, unknown>): boolean {
+  const names = g.names as string[];
+  if (g.players === undefined) g.players = names.map(() => 'human');
+  if (g.takeover === undefined) g.takeover = [];
+  const players = g.players;
+  return Array.isArray(players) && players.length === names.length
+    && players.every((p) => (SEATINGS as readonly unknown[]).includes(p))
+    && Array.isArray(g.takeover) && g.takeover.every(isNum);
+}
+
 function looksLikeGame(g: unknown): g is LocalGame {
   if (!isObj(g) || typeof g.clockOn !== 'boolean') return false;
   if (!Array.isArray(g.names) || !g.names.every((n) => typeof n === 'string')) return false;
+  if (!withSeating(g)) return false;
   const s = g.state;
   if (!isObj(s) || !isObj(s.config) || !isObj(s.board) || !Array.isArray(s.board.pieces)) return false;
   if (!isObj(s.scores) || !isObj(s.pocketed) || !isObj(s.teamColour)) return false;

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { simulateShot, type Seat, type ShotInput } from '@carrom/engine';
 import { applyShot, applyTimeout, newGame, type GameConfig } from '@carrom/rules';
-import { seatName, shootLocal, startLocal, timeoutLocal } from './localGame';
+import {
+  botLevelAt, seatName, shootLocal, startLocal, takeBack, takeOver, TAKEOVER_LEVEL, timeoutLocal,
+} from './localGame';
 
 const CFG: GameConfig = { format: '2v2', preset: 'point', length: { kind: 'points', target: 300 }, seed: 7 };
 const NAMES = ['Asha', 'Bilu', 'Chandni', 'Dipu'];
@@ -51,5 +53,35 @@ describe('localGame', () => {
     expect(seatName(two, 1)).toBe('');
     const four = startLocal(CFG, NAMES, false);
     expect([0, 1, 2, 3].map((s) => seatName(four, s))).toEqual(NAMES);
+  });
+
+  it('BOT-6 botLevelAt follows the seating chosen in setup', () => {
+    const g = startLocal({ ...CFG, format: '1v1' }, ['Asha', 'Bot'], false, ['human', 'hard']);
+    expect(botLevelAt(g, 0)).toBeNull();
+    expect(botLevelAt(g, 2)).toBe('hard');
+    // Older callers pass no seating: everyone is a person.
+    expect(startLocal(CFG, NAMES, false).players).toEqual(['human', 'human', 'human', 'human']);
+  });
+
+  it('BOT-7 two timeouts in a row hand the seat to a medium bot until take back', () => {
+    let g = startLocal({ ...CFG, format: '1v1' }, ['Asha', 'Bilu'], true);
+    const seat = g.state.turnSeat;
+    const other = seat === 0 ? 2 : 0;
+    g = timeoutLocal(g).game; // seat times out
+    g = timeoutLocal(g).game; // other seat times out
+    expect(g.takeover).toEqual([]);
+    const out = timeoutLocal(g); // seat's second timeout in a row
+    expect(out.ruleEvents.some((e) => e.type === 'botTakeover' && e.seat === seat)).toBe(true);
+    expect(botLevelAt(out.game, seat)).toBe(TAKEOVER_LEVEL);
+    expect(botLevelAt(out.game, other)).toBeNull();
+    const back = takeBack(out.game, seat);
+    expect(botLevelAt(back, seat)).toBeNull();
+    expect(back.takeover).toEqual([]);
+  });
+
+  it('BOT-7 a bot seat is never taken over a second time', () => {
+    const g = startLocal({ ...CFG, format: '1v1' }, ['Bot', 'Bilu'], true, ['easy', 'human']);
+    expect(takeOver(g, 0)).toBe(g);
+    expect(botLevelAt(takeOver(g, 2), 2)).toBe(TAKEOVER_LEVEL);
   });
 });

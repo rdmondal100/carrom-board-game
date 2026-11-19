@@ -1,17 +1,14 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { Application, Container, Graphics } from 'pixi.js';
 import {
-  baselinePoint, config, createRack, placeStriker, seatForward, seatRight, seatToWorld,
+  baselinePoint, config, placeStriker, seatForward, seatRight,
   type BoardState, type Seat, type ShotEvent, type ShotInput, type Vec,
 } from '@carrom/engine';
-import {
-  BASELINE_TOUCH_STRIKERS, CLOCK_COLOURS, CLOCK_LOW_FRACTION, CLOCK_RING_SCALE, CLOCK_RING_WIDTH,
-  CLOCK_START_ANGLE, CLOCK_TRACK_ALPHA, FULL_TURN, STRIKER_TOUCH_SCALE,
-} from '@/constants/view';
-import { aimFromDrag, type Aim } from './aim';
-import { drawBoard, layoutFor, type BoardLayout } from './drawBoard';
+import { BASELINE_TOUCH_STRIKERS, STRIKER_TOUCH_SCALE } from '@/constants/view';
+import { aimFor, botPreviewAt, drawClock, newCtrl, pullFor, type Ctrl } from './boardCtrl';
+import { drawBoard, layoutFor } from './drawBoard';
 import { createPieceLayer, drawAim, syncPieces } from './drawPieces';
-import { createPlayback, type Playback } from './playback';
+import { createPlayback } from './playback';
 import { screenToWorld, worldToPx, worldToScreen } from './view';
 
 export interface BoardCallbacks {
@@ -36,60 +33,10 @@ export interface BoardApi {
   setLocked(locked: boolean): void;
   /** Shot clock ring around the striker: fraction of time left, or null to hide. */
   setClock(fraction: number | null): void;
-}
-
-type Drag =
-  | { kind: 'place'; pointerId: number }
-  | { kind: 'aim'; pointerId: number; start: Vec; pull: Vec; aim: Aim };
-
-interface Ctrl {
-  board: BoardState;
-  /** Shooting seat. */
-  seat: Seat;
-  /** Seat drawn at the bottom of the screen. */
-  view: Seat;
-  locked: boolean;
-  clock: number | null;
-  along: number;
-  placed: { ok: boolean; x: number };
-  drag: Drag | null;
-  playback: Playback | null;
-  pocketedAt: Map<string, number>;
-  layout: BoardLayout;
-}
-
-/** aimFromDrag reads the drag from the view seat; turn it into the shooter's own frame. */
-function aimFor(c: Ctrl, pull: Vec): Aim {
-  const a = aimFromDrag(pull, c.layout.boardPx);
-  if (c.view === c.seat || a.cancelled) return a;
-  const w = seatToWorld(c.view, a.dirX, a.dirY);
-  const r = seatRight(c.seat);
-  const f = seatForward(c.seat);
-  return { ...a, dirX: w.x * r.x + w.y * r.y, dirY: w.x * f.x + w.y * f.y };
-}
-
-/** LOC-5: a ring around the waiting striker that empties as the clock runs. */
-function drawClock(g: Graphics, fraction: number | null, at: Vec, view: Seat, boardPx: number): void {
-  g.clear();
-  if (fraction === null) return;
-  const s = worldToScreen(at, view, boardPx);
-  const r = worldToPx((config.STRIKER_D / 2) * CLOCK_RING_SCALE, boardPx);
-  const width = worldToPx(CLOCK_RING_WIDTH, boardPx);
-  const left = Math.max(0, Math.min(1, fraction));
-  g.circle(s.x, s.y, r).stroke({ width, color: CLOCK_COLOURS.track, alpha: CLOCK_TRACK_ALPHA });
-  if (left <= 0) return;
-  const colour = left < CLOCK_LOW_FRACTION ? CLOCK_COLOURS.low : CLOCK_COLOURS.ok;
-  g.moveTo(s.x + r * Math.cos(CLOCK_START_ANGLE), s.y + r * Math.sin(CLOCK_START_ANGLE))
-    .arc(s.x, s.y, r, CLOCK_START_ANGLE, CLOCK_START_ANGLE + FULL_TURN * left)
-    .stroke({ width, color: colour, cap: 'round' });
-}
-
-function newCtrl(seat: Seat): Ctrl {
-  const board = createRack(seat);
-  return {
-    board, seat, view: seat, locked: false, clock: null, along: 0, placed: placeStriker(board, seat, 0),
-    drag: null, playback: null, pocketedAt: new Map(), layout: layoutFor(0),
-  };
+  /** BOT-6: slide the striker to the bot's spot, show its aim, then shoot (onShot fires as for a person). */
+  playBot(input: ShotInput): void;
+  /** Stop a bot preview that hasn't shot yet. */
+  cancelBot(): void;
 }
 
 /**
@@ -130,7 +77,7 @@ export function useBoardCanvas(
     load(board, shooter, viewSeat) {
       const c = ctrlRef.current;
       if (!c || c.playback) return;
-      Object.assign(c, { board, seat: shooter, view: viewSeat, along: 0, drag: null });
+      Object.assign(c, { board, seat: shooter, view: viewSeat, along: 0, drag: null, bot: null });
       replace(c);
       redrawRef.current();
     },
@@ -144,7 +91,26 @@ export function useBoardCanvas(
       const c = ctrlRef.current;
       if (c) c.clock = fraction;
     },
+    playBot(input) {
+      const c = ctrlRef.current;
+      if (!c || c.playback || input.seat !== c.seat) return;
+      c.drag = null;
+      c.bot = { from: c.placed.x, input, elapsed: 0 };
+    },
+    cancelBot() {
+      const c = ctrlRef.current;
+      if (!c || !c.bot) return;
+      c.bot = null;
+      replace(c);
+    },
   });
+
+  /** Start playing a shot from the current board (a person's release or a bot's preview end). */
+  const shoot = (c: Ctrl, input: ShotInput) => {
+    c.playback = createPlayback(c.board, input);
+    cb.current.onShot?.(input);
+    cb.current.onPlayingChange?.(true);
+  };
 
   useEffect(() => {
     const el = host.current;
@@ -190,7 +156,7 @@ export function useBoardCanvas(
     };
 
     const onDown = (e: PointerEvent) => {
-      if (c.playback || c.drag || c.locked) return;
+      if (c.playback || c.drag || c.locked || c.bot) return;
       const p = local(e);
       const spot = worldToScreen(baselinePoint(c.seat, c.placed.x), c.view, c.layout.boardPx);
       const reach = worldToPx(config.STRIKER_D / 2, c.layout.boardPx) * STRIKER_TOUCH_SCALE;
@@ -225,10 +191,7 @@ export function useBoardCanvas(
       if (!d || d.pointerId !== e.pointerId) return;
       c.drag = null;
       if (d.kind !== 'aim' || d.aim.cancelled || !c.placed.ok || c.locked) return;
-      const input: ShotInput = { seat: c.seat, x: c.placed.x, dirX: d.aim.dirX, dirY: d.aim.dirY, power: d.aim.power };
-      c.playback = createPlayback(c.board, input);
-      cb.current.onShot?.(input);
-      cb.current.onPlayingChange?.(true);
+      shoot(c, { seat: c.seat, x: c.placed.x, dirX: d.aim.dirX, dirY: d.aim.dirY, power: d.aim.power });
     };
     const onCancel = (e: PointerEvent) => {
       if (c.drag?.pointerId === e.pointerId) c.drag = null;
@@ -247,16 +210,30 @@ export function useBoardCanvas(
           cb.current.onPlayingChange?.(false);
         }
       }
+      // BOT-6: the bot's striker slides into place, its aim grows, then it shoots.
+      const preview = c.bot ? botPreviewAt(c.bot) : null;
+      if (c.bot && preview) {
+        c.bot.elapsed += deltaMs;
+        if (preview.done) {
+          const { input } = c.bot;
+          c.bot = null;
+          c.placed = { ok: true, x: input.x };
+          shoot(c, input);
+        }
+      }
       const waiting = !c.playback;
-      const spot = baselinePoint(c.seat, c.placed.ok ? c.placed.x : c.along);
+      const along = preview && c.bot ? preview.along : c.placed.ok ? c.placed.x : c.along;
+      const spot = baselinePoint(c.seat, along);
       syncPieces(pieces, {
         state: c.board, viewSeat: c.view, boardPx: c.layout.boardPx, nowMs: now,
-        pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok } : null,
+        pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
       });
       const d = c.drag;
-      drawAim(aimG, spot, d?.kind === 'aim' ? d.aim : null, d?.kind === 'aim' ? d.pull : null,
-        c.seat, c.view, c.layout.boardPx);
-      drawClock(clockG, waiting && !c.locked ? c.clock : null, spot, c.view, c.layout.boardPx);
+      const botAim = c.bot ? preview?.aim ?? null : null;
+      const aim = d?.kind === 'aim' ? d.aim : botAim;
+      const pull = d?.kind === 'aim' ? d.pull : botAim ? pullFor(botAim, c.seat, c.view, c.layout.boardPx, spot) : null;
+      drawAim(aimG, spot, aim, pull, c.seat, c.view, c.layout.boardPx);
+      drawClock(clockG, waiting && !c.locked && !c.bot ? c.clock : null, spot, c.view, c.layout.boardPx);
     };
 
     app.init({

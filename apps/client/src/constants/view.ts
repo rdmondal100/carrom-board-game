@@ -91,3 +91,8 @@ export const CLOCK_START_ANGLE = -Math.PI / 2;
 
 /** How long a toast stays up, ms. */
 export const TOAST_MS = 3500;
+
+/** BOT-6: after thinking, the bot's striker slides into place and its aim grows, ms. */
+export const BOT_PREVIEW_MS = 900;
+/** Share of the preview spent sliding the striker; the rest shows the aim. */
+export const BOT_SLIDE_SHARE = 0.45;

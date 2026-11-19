@@ -1,21 +1,36 @@
 import { useId, useState } from 'react';
 import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { RULES } from '@carrom/rules';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { scoreLine } from '@/game/hud';
-import { newSeed, startLocal } from '@/game/localGame';
+import { newSeed, SEATINGS, startLocal, type Seating } from '@/game/localGame';
 import { clearSave, loadGame, saveGame } from '@/game/save';
 import { t, useLang } from '@/i18n/t';
 import {
-  defaultSetup, LENGTHS, localSetupSchema, NAME_MAX, playerCount, toGame, type LocalSetup as Setup,
+  defaultNames, defaultSetup, LENGTHS, localSetupSchema, NAME_MAX, playerCount, toGame, type LocalSetup as Setup,
 } from '@/schemas/localSetup';
 import { useAppSelector } from '@/store/store';
 
 const MS_PER_S = 1000;
+
+/** A bot's default name, e.g. "Bot (Medium)". */
+const botName = (s: Seating) => t('setup.botName', { level: t(`setup.level.${s}`) });
+
+/** Names the form filled in itself (not typed), so a seat change may replace them. */
+function isAutoName(name: string, i: number): boolean {
+  return name === defaultNames()[i] || SEATINGS.some((s) => s !== 'human' && name === botName(s));
+}
+
+/** BOT-6: the form's starting values; vs bot seats medium bots on the other side. */
+function startValues(vsBot: boolean, clockOn: boolean): Setup {
+  const v = defaultSetup(vsBot);
+  return { ...v, names: v.names.map((n, i) => (v.players[i] === 'human' ? n : botName(v.players[i] as Seating))), clockOn };
+}
 
 function Choice({ reg, value, label }: { reg: UseFormRegisterReturn; value: string; label: string }) {
   return (
@@ -37,17 +52,26 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-/** LOC-1: format, preset, length, names, shot clock. LOC-9: offer a saved game. */
+/** LOC-1: format, preset, length, names, shot clock. BOT-6: a person or a bot per seat. LOC-9: offer a saved game. */
 export function LocalSetup() {
   useLang();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const vsBot = params.get('vs') === 'bot';
   const clockDefault = useAppSelector((s) => s.settings.defaultShotClock);
   const clockId = useId();
   const [saved, setSaved] = useState(loadGame);
-  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<Setup>({
+  const { register, handleSubmit, control, setValue, getValues, formState: { errors } } = useForm<Setup>({
     resolver: zodResolver(localSetupSchema),
-    defaultValues: { ...defaultSetup(), clockOn: clockDefault },
+    defaultValues: startValues(vsBot, clockDefault),
   });
+
+  /** A new seat type renames a seat only if the form picked its name. */
+  const onSeating = (i: number, s: Seating) => {
+    setValue(`players.${i}`, s);
+    const name = getValues(`names.${i}`) ?? '';
+    if (isAutoName(name, i)) setValue(`names.${i}`, s === 'human' ? (defaultNames()[i] ?? '') : botName(s));
+  };
   const [format, preset, length] = useWatch({ control, name: ['format', 'preset', 'length'] });
 
   const presetReg = register('preset', {
@@ -58,8 +82,8 @@ export function LocalSetup() {
   });
 
   const onSubmit = (v: Setup) => {
-    const { cfg, names } = toGame(v, newSeed());
-    saveGame(startLocal(cfg, names, v.clockOn));
+    const { cfg, names, players } = toGame(v, newSeed());
+    saveGame(startLocal(cfg, names, v.clockOn, players));
     navigate('/local/play');
   };
   const discard = () => {
@@ -69,7 +93,7 @@ export function LocalSetup() {
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h2 className="text-xl font-bold">{t('setup.title')}</h2>
+      <h2 className="text-xl font-bold">{t(vsBot ? 'setup.titleBot' : 'setup.title')}</h2>
 
       {saved && (
         <Card className="flex-row flex-wrap items-center gap-2 p-3">
@@ -108,12 +132,28 @@ export function LocalSetup() {
         <Group title={t('setup.names')}>
           {Array.from({ length: playerCount(format) }, (_, i) => (
             <div key={i} className="flex flex-col">
-              <input
-                {...register(`names.${i}`)}
-                aria-label={t('setup.playerN', { n: i + 1 })}
-                maxLength={NAME_MAX}
-                className="px-3 py-2 rounded bg-input/40 border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+              <div className="flex gap-2">
+                <input
+                  {...register(`names.${i}`)}
+                  aria-label={t('setup.playerN', { n: i + 1 })}
+                  maxLength={NAME_MAX}
+                  className="min-w-0 flex-1 px-3 py-2 rounded bg-input/40 border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <Controller
+                  control={control}
+                  name={`players.${i}`}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={(v) => onSeating(i, v as Seating)}>
+                      <SelectTrigger className="w-32" aria-label={t('setup.seatN', { n: i + 1 })} data-testid={`seat-${i}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEATINGS.map((s) => <SelectItem key={s} value={s}>{t(`setup.seat.${s}`)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
               {errors.names?.[i]?.message && (
                 <p className="text-sm text-red-400">{t(errors.names[i]?.message ?? '')}</p>
               )}

@@ -12,7 +12,7 @@ import { store } from './store/store';
 // Pixi needs WebGL, which jsdom lacks; the board page's chrome is what UI-1 checks.
 vi.mock('./game/useBoardCanvas', () => ({
   useBoardCanvas: () => ({
-    current: { reset() {}, setSeat() {}, load() {}, setLocked() {}, setClock() {} },
+    current: { reset() {}, setSeat() {}, load() {}, setLocked() {}, setClock() {}, playBot() {}, cancelBot() {} },
   }),
 }));
 
@@ -40,13 +40,20 @@ describe('routes', () => {
     expect(await screen.findByText(en['home.tagline'])).toBeTruthy();
   });
 
-  it('UI-1 /play renders the play menu; bot and online are disabled', async () => {
+  it('UI-1 BOT-6 /play renders the play menu; vs bot works, online is disabled', async () => {
     show('/play');
     expect(await heading(en['play.title'])).toBeTruthy();
     expect(screen.getByTestId('mode-local').getAttribute('href')).toBe('/local/setup');
-    expect(screen.getByTestId('mode-bot').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByTestId('mode-bot').getAttribute('href')).toBe('/local/setup?vs=bot');
     expect(screen.getByTestId('mode-online').getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getAllByText(en['play.soon'])).toHaveLength(2);
+    expect(screen.getAllByText(en['play.soon'])).toHaveLength(1);
+  });
+
+  it('BOT-6 vs bot setup seats a medium bot as player 2', async () => {
+    show('/local/setup?vs=bot');
+    expect(await heading(en['setup.titleBot'])).toBeTruthy();
+    expect(screen.getByTestId('seat-0').textContent).toContain(en['setup.seat.human']);
+    expect(screen.getByTestId('seat-1').textContent).toContain(en['setup.seat.medium']);
   });
 
   it('UI-1 /local/setup renders setup', async () => {
