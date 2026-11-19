@@ -41,6 +41,8 @@ export interface Config {
   MAX_EVENTS_PER_STEP: number;
   /** Gap used when placing a piece next to another, so they don't overlap. */
   PLACE_GAP: number;
+  /** Grid spacing used to search for the nearest free spot for a returned coin. */
+  PLACE_GRID_STEP: number;
 }
 
 const L = 1.0;
@@ -70,4 +72,5 @@ export const config: Config = {
   MAX_SHOT_MS: 10_000,
   MAX_EVENTS_PER_STEP: 2000,
   PLACE_GAP: 1e-9,
+  PLACE_GRID_STEP: COIN_D / 8,
 };
