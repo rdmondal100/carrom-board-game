@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+
+# Local planning docs (not pushed)
+specs/
+CLAUDE.md
+.claude
