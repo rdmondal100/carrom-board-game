@@ -5,6 +5,7 @@ import {
   type BoardState, type Seat, type ShotEvent, type ShotInput, type Vec,
 } from '@carrom/engine';
 import { BASELINE_TOUCH_STRIKERS, STRIKER_TOUCH_SCALE } from '@/constants/view';
+import { createBoardApi, type BoardApi, type RemoteAim } from './boardApi';
 import { aimFor, botPreviewAt, drawClock, newCtrl, pullFor, type Ctrl } from './boardCtrl';
 import { drawBoard, layoutFor } from './drawBoard';
 import { createPieceLayer, drawAim, syncPieces } from './drawPieces';
@@ -17,27 +18,13 @@ export interface BoardCallbacks {
   onEvents?: (events: ShotEvent[], board: BoardState) => void;
   onPlayingChange?: (playing: boolean) => void;
   onPlacedChange?: (ok: boolean) => void;
+  /** ROOM-6: the aim while this screen's player drags (striker spot + aim). */
+  onAim?: (aim: RemoteAim) => void;
 }
 
 /** `contain`: fit the host's width and height (UI-5 full-height board page); `width`: the host's width only. */
 export type BoardFit = 'width' | 'contain';
-
-export interface BoardApi {
-  /** New rack with `seat` breaking; that seat shoots and sits at the bottom. */
-  reset(seat: Seat): void;
-  /** Change the shooting (and viewing) seat without touching the coins. */
-  setSeat(seat: Seat): void;
-  /** Show this board with `shooter` to play, seen from `viewSeat` (at the bottom). */
-  load(board: BoardState, shooter: Seat, viewSeat: Seat): void;
-  /** While locked, touches are ignored. */
-  setLocked(locked: boolean): void;
-  /** Shot clock ring around the striker: fraction of time left, or null to hide. */
-  setClock(fraction: number | null): void;
-  /** BOT-6: slide the striker to the bot's spot, show its aim, then shoot (onShot fires as for a person). */
-  playBot(input: ShotInput): void;
-  /** Stop a bot preview that hasn't shot yet. */
-  cancelBot(): void;
-}
+export type { BoardApi, RemoteAim };
 
 /**
  * Mounts a Pixi board in `host`. Board, aim and playback live in a plain
@@ -55,62 +42,19 @@ export function useBoardCanvas(
     c.placed = placeStriker(c.board, c.seat, c.along);
     cb.current.onPlacedChange?.(c.placed.ok);
   };
-  const api = useRef<BoardApi>({
-    reset(seat) {
-      const c = ctrlRef.current;
-      if (!c || c.playback) return;
-      const fresh = newCtrl(seat);
-      Object.assign(c, { ...fresh, layout: c.layout });
-      replace(c);
-      redrawRef.current();
-    },
-    setSeat(seat) {
-      const c = ctrlRef.current;
-      if (!c || c.playback) return;
-      c.seat = seat;
-      c.view = seat;
-      c.along = 0;
-      c.drag = null;
-      replace(c);
-      redrawRef.current();
-    },
-    load(board, shooter, viewSeat) {
-      const c = ctrlRef.current;
-      if (!c || c.playback) return;
-      Object.assign(c, { board, seat: shooter, view: viewSeat, along: 0, drag: null, bot: null });
-      replace(c);
-      redrawRef.current();
-    },
-    setLocked(locked) {
-      const c = ctrlRef.current;
-      if (!c) return;
-      c.locked = locked;
-      if (locked) c.drag = null;
-    },
-    setClock(fraction) {
-      const c = ctrlRef.current;
-      if (c) c.clock = fraction;
-    },
-    playBot(input) {
-      const c = ctrlRef.current;
-      if (!c || c.playback || input.seat !== c.seat) return;
-      c.drag = null;
-      c.bot = { from: c.placed.x, input, elapsed: 0 };
-    },
-    cancelBot() {
-      const c = ctrlRef.current;
-      if (!c || !c.bot) return;
-      c.bot = null;
-      replace(c);
-    },
-  });
-
-  /** Start playing a shot from the current board (a person's release or a bot's preview end). */
-  const shoot = (c: Ctrl, input: ShotInput) => {
+  /** Start playing a shot from the current board (a release, a bot preview's end, or a replay). */
+  const shoot = (c: Ctrl, input: ShotInput, own: boolean) => {
     c.playback = createPlayback(c.board, input);
-    cb.current.onShot?.(input);
+    if (own) cb.current.onShot?.(input);
     cb.current.onPlayingChange?.(true);
   };
+  // The API object is stable; its methods reach the board once it is mounted (until then there is none).
+  const api = useRef<BoardApi>(createBoardApi({ ctrl: () => null, redraw: () => {}, replace: () => {}, shoot: () => {} }));
+  useEffect(() => {
+    Object.assign(api.current, createBoardApi({
+      ctrl: () => ctrlRef.current, redraw: () => redrawRef.current(), replace, shoot,
+    }));
+  });
 
   useEffect(() => {
     const el = host.current;
@@ -184,6 +128,7 @@ export function useBoardCanvas(
       } else {
         d.pull = { x: p.x - d.start.x, y: p.y - d.start.y };
         d.aim = aimFor(c, d.pull);
+        if (!d.aim.cancelled) cb.current.onAim?.({ x: c.placed.x, dirX: d.aim.dirX, dirY: d.aim.dirY, power: d.aim.power });
       }
     };
     const onUp = (e: PointerEvent) => {
@@ -191,7 +136,7 @@ export function useBoardCanvas(
       if (!d || d.pointerId !== e.pointerId) return;
       c.drag = null;
       if (d.kind !== 'aim' || d.aim.cancelled || !c.placed.ok || c.locked) return;
-      shoot(c, { seat: c.seat, x: c.placed.x, dirX: d.aim.dirX, dirY: d.aim.dirY, power: d.aim.power });
+      shoot(c, { seat: c.seat, x: c.placed.x, dirX: d.aim.dirX, dirY: d.aim.dirY, power: d.aim.power }, true);
     };
     const onCancel = (e: PointerEvent) => {
       if (c.drag?.pointerId === e.pointerId) c.drag = null;
@@ -218,20 +163,22 @@ export function useBoardCanvas(
           const { input } = c.bot;
           c.bot = null;
           c.placed = { ok: true, x: input.x };
-          shoot(c, input);
+          shoot(c, input, true);
         }
       }
       const waiting = !c.playback;
-      const along = preview && c.bot ? preview.along : c.placed.ok ? c.placed.x : c.along;
+      const remote = waiting && !c.drag && !c.bot ? c.remote : null;
+      const along = preview && c.bot ? preview.along : remote ? remote.x : c.placed.ok ? c.placed.x : c.along;
       const spot = baselinePoint(c.seat, along);
       syncPieces(pieces, {
         state: c.board, viewSeat: c.view, boardPx: c.layout.boardPx, nowMs: now,
         pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
       });
       const d = c.drag;
-      const botAim = c.bot ? preview?.aim ?? null : null;
-      const aim = d?.kind === 'aim' ? d.aim : botAim;
-      const pull = d?.kind === 'aim' ? d.pull : botAim ? pullFor(botAim, c.seat, c.view, c.layout.boardPx, spot) : null;
+      // A bot's preview or ROOM-6 another player's aim is drawn like a drag.
+      const shown = c.bot ? preview?.aim ?? null : remote ? { ...remote, cancelled: false } : null;
+      const aim = d?.kind === 'aim' ? d.aim : shown;
+      const pull = d?.kind === 'aim' ? d.pull : shown ? pullFor(shown, c.seat, c.view, c.layout.boardPx, spot) : null;
       drawAim(aimG, spot, aim, pull, c.seat, c.view, c.layout.boardPx);
       drawClock(clockG, waiting && !c.locked && !c.bot ? c.clock : null, spot, c.view, c.layout.boardPx);
     };

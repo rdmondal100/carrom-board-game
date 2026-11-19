@@ -9,6 +9,8 @@ interface Props {
   /** Fraction of time left, every frame (drawn as the ring on the board). */
   onTick: (fraction: number | null) => void;
   onExpire: () => void;
+  /** ROOM-7 time left at the start (a rejoin sees less than a full clock). */
+  startMs?: number;
 }
 
 const MS_PER_S = 1000;
@@ -18,9 +20,10 @@ const MS_PER_S = 1000;
  * board every frame; React only re-renders once a second for the label.
  * Give it a new `key` for each shot so it starts again from full.
  */
-export function ShotClock({ running, onTick, onExpire }: Props) {
-  const left = useRef<number>(RULES.SHOT_CLOCK_MS);
-  const [seconds, setSeconds] = useState(Math.ceil(RULES.SHOT_CLOCK_MS / MS_PER_S));
+export function ShotClock({ running, onTick, onExpire, startMs = RULES.SHOT_CLOCK_MS }: Props) {
+  const full = Math.min(startMs, RULES.SHOT_CLOCK_MS);
+  const left = useRef<number>(full);
+  const [seconds, setSeconds] = useState(Math.ceil(full / MS_PER_S));
   const cb = useRef({ onTick, onExpire });
   useEffect(() => { cb.current = { onTick, onExpire }; });
 

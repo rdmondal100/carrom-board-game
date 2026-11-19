@@ -10,6 +10,7 @@ import {
 } from '@/constants/view';
 import { aimFromDrag, type Aim } from './aim';
 import { layoutFor, type BoardLayout } from './drawBoard';
+import type { RemoteAim } from './boardApi';
 import type { Playback } from './playback';
 import { worldToPx, worldToScreen } from './view';
 
@@ -32,6 +33,8 @@ export interface Ctrl {
   placed: { ok: boolean; x: number };
   drag: Drag | null;
   bot: BotPreview | null;
+  /** ROOM-6: aim another player is showing for this shooter. */
+  remote: RemoteAim | null;
   playback: Playback | null;
   pocketedAt: Map<string, number>;
   layout: BoardLayout;
@@ -41,7 +44,7 @@ export function newCtrl(seat: Seat): Ctrl {
   const board = createRack(seat);
   return {
     board, seat, view: seat, locked: false, clock: null, along: 0, placed: placeStriker(board, seat, 0),
-    drag: null, bot: null, playback: null, pocketedAt: new Map(), layout: layoutFor(0),
+    drag: null, bot: null, remote: null, playback: null, pocketedAt: new Map(), layout: layoutFor(0),
   };
 }
 

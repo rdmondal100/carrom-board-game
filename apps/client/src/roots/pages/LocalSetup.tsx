@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
-import { Controller, useForm, useWatch, type UseFormRegisterReturn } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useSearchParams } from 'react-router';
 import { RULES } from '@carrom/rules';
+import { Choice, Group } from '@/components/Choice';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,26 +31,6 @@ function isAutoName(name: string, i: number): boolean {
 function startValues(vsBot: boolean, clockOn: boolean): Setup {
   const v = defaultSetup(vsBot);
   return { ...v, names: v.names.map((n, i) => (v.players[i] === 'human' ? n : botName(v.players[i] as Seating))), clockOn };
-}
-
-function Choice({ reg, value, label }: { reg: UseFormRegisterReturn; value: string; label: string }) {
-  return (
-    <label className="flex-1">
-      <input type="radio" value={value} {...reg} className="peer sr-only" />
-      <span className="block text-center px-3 py-2 rounded border border-border cursor-pointer peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-        {label}
-      </span>
-    </label>
-  );
-}
-
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <fieldset className="flex flex-col gap-1">
-      <legend className="text-sm font-semibold mb-1">{title}</legend>
-      {children}
-    </fieldset>
-  );
 }
 
 /** LOC-1: format, preset, length, names, shot clock. BOT-6: a person or a bot per seat. LOC-9: offer a saved game. */

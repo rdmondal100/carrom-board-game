@@ -30,10 +30,14 @@ function Side({ g, team, active }: { g: LocalGame; team: Team; active: boolean }
   );
 }
 
-interface Props { game: LocalGame; clock: ReactNode; onPause: () => void; canPause: boolean }
+interface Props {
+  game: LocalGame; clock: ReactNode; onPause: () => void; canPause: boolean;
+  /** Online games have no pause: the button leaves instead. */
+  pauseLabel?: string;
+}
 
 /** LOC-4: shooter, scores, board number, coins down per side and red status. */
-export function Hud({ game, clock, onPause, canPause }: Props) {
+export function Hud({ game, clock, onPause, canPause, pauseLabel }: Props) {
   const { state } = game;
   const shooterTeam = teamOf(state.turnSeat, state.config.format);
   const red = redStatus(game);
@@ -46,7 +50,7 @@ export function Hud({ game, clock, onPause, canPause }: Props) {
         </span>
         <span className="ml-auto">{clock}</span>
         <Button size="sm" variant="secondary" onClick={onPause} disabled={!canPause}>
-          {t('hud.pause')}
+          {pauseLabel ?? t('hud.pause')}
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">

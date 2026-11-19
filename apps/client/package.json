@@ -16,6 +16,7 @@
     "@carrom/engine": "workspace:*",
     "@carrom/protocol": "workspace:*",
     "@carrom/rules": "workspace:*",
+    "@colyseus/sdk": "^0.18.10",
     "@hookform/resolvers": "^7.0.7",
     "@react-oauth/google": "^0.13.5",
     "@reduxjs/toolkit": "^2.15.0",

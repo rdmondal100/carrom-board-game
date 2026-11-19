@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils';
 
 interface Mode { id: string; Icon: LucideIcon; to: string | null }
 
-/** UI-1 / BOT-6: same device and vs bot work; online (spec 09) comes later. */
+/** UI-1 / BOT-6 / ROOM-11: same device, vs bot, and online private rooms. A null `to` shows "coming soon". */
 const MODES: readonly Mode[] = [
   { id: 'local', Icon: Users, to: '/local/setup' },
   { id: 'bot', Icon: Bot, to: '/local/setup?vs=bot' },
-  { id: 'online', Icon: Globe, to: null },
+  { id: 'online', Icon: Globe, to: '/online' },
 ];
 
 function ModeCard({ mode }: { mode: Mode }) {

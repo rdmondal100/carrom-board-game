@@ -1,6 +1,4 @@
-import { readFileSync } from 'node:fs';
+import pkg from '../../package.json' with { type: 'json' };
 
-/** The server's package.json version; works from src/ (dev, tests) and dist/ (start). */
-export const VERSION: string = (
-  JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
-).version;
+/** The server's package.json version (inlined into the bundle by the build). */
+export const VERSION: string = pkg.version;

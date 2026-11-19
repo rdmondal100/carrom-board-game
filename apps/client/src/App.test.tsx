@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from './App';
@@ -12,7 +12,9 @@ import { store } from './store/store';
 // Pixi needs WebGL, which jsdom lacks; the board page's chrome is what UI-1 checks.
 vi.mock('./game/useBoardCanvas', () => ({
   useBoardCanvas: () => ({
-    current: { reset() {}, setSeat() {}, load() {}, setLocked() {}, setClock() {}, playBot() {}, cancelBot() {} },
+    current: {
+      reset() {}, setSeat() {}, load() {}, setLocked() {}, setClock() {}, playBot() {}, cancelBot() {}, replay() {}, showAim() {},
+    },
   }),
 }));
 
@@ -40,13 +42,13 @@ describe('routes', () => {
     expect(await screen.findByText(en['home.tagline'])).toBeTruthy();
   });
 
-  it('UI-1 BOT-6 /play renders the play menu; vs bot works, online is disabled', async () => {
+  it('UI-1 BOT-6 ROOM-11 /play renders the play menu; every mode is enabled', async () => {
     show('/play');
     expect(await heading(en['play.title'])).toBeTruthy();
     expect(screen.getByTestId('mode-local').getAttribute('href')).toBe('/local/setup');
     expect(screen.getByTestId('mode-bot').getAttribute('href')).toBe('/local/setup?vs=bot');
-    expect(screen.getByTestId('mode-online').getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getAllByText(en['play.soon'])).toHaveLength(1);
+    expect(screen.getByTestId('mode-online').getAttribute('href')).toBe('/online');
+    expect(screen.queryAllByText(en['play.soon'])).toHaveLength(0);
   });
 
   it('BOT-6 vs bot setup seats a medium bot as player 2', async () => {
@@ -72,6 +74,26 @@ describe('routes', () => {
     show('/local/play');
     expect(await screen.findByTestId('board-host')).toBeTruthy();
     expect(screen.getByRole('button', { name: en['hud.pause'] })).toBeTruthy();
+  });
+
+  it('ROOM-11 ROOM-2 /online asks a signed-out player to sign in first', async () => {
+    show('/online');
+    expect(await heading(en['online.title'])).toBeTruthy();
+    const link = within(screen.getByRole('main')).getByRole('link', { name: en['online.signIn'] });
+    expect(link.getAttribute('href')).toBe('/login?next=%2Fonline');
+  });
+
+  it('ROOM-1 /join/:code keeps the code through sign-in', async () => {
+    show('/join/abc234');
+    expect(await heading('Room ABC234')).toBeTruthy();
+    const link = within(screen.getByRole('main')).getByRole('link', { name: en['online.signIn'] });
+    expect(link.getAttribute('href')).toBe('/login?next=%2Fjoin%2FABC234');
+  });
+
+  it('ROOM-8 /online/lobby with no room to rejoin goes to the online menu', async () => {
+    const router = show('/online/lobby');
+    expect(await heading(en['online.title'])).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/online');
   });
 
   it('UI-1 /settings renders settings', async () => {

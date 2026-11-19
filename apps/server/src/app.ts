@@ -3,18 +3,24 @@ import cors from 'cors';
 import express from 'express';
 import { matchMaker, Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
+import { GAME_ROOM } from '@carrom/protocol';
 import { loadEnv, type Env } from './env.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { authRateLimit } from './middleware/rateLimit.middleware.js';
+import { gameRoomFor } from './rooms/game.room.js';
 import { PingRoom } from './rooms/ping.room.js';
+import type { RoomTiming } from './rooms/roomTiming.js';
 import { authRouter } from './routes/auth.route.js';
 import { healthRouter } from './routes/health.route.js';
+import { roomRouter } from './routes/room.route.js';
 
 export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV' | 'JWT_SECRET' | 'GOOGLE_CLIENT_IDS'>;
 
 export interface AppOptions {
   /** AUTH-7 requests per minute per IP on /auth/* (tests raise it). */
   authRateLimit?: number;
+  /** Game room waits (tests shorten them). */
+  roomTiming?: RoomTiming;
 }
 
 /** Express app with every route and middleware; no listening (supertest uses it directly). */
@@ -25,6 +31,7 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
   app.use(express.json({ limit: '32kb' }));
 
   app.use('/health', healthRouter);
+  app.use('/rooms', roomRouter);
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),
@@ -40,8 +47,10 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
  * routes and WebSocket upgrades, everything else goes to the Express app.
  * Call `gameServer.listen(port)` to start.
  */
-export function createServer(env: AppEnv = loadEnv()): { httpServer: http.Server; gameServer: Server } {
-  const app = createApp(env);
+export function createServer(
+  env: AppEnv = loadEnv(), opts: AppOptions = {},
+): { httpServer: http.Server; gameServer: Server } {
+  const app = createApp(env, opts);
   const httpServer = http.createServer(app);
   restrictColyseusCors(env.CORS_ORIGIN);
   const gameServer = new Server({
@@ -50,6 +59,7 @@ export function createServer(env: AppEnv = loadEnv()): { httpServer: http.Server
     gracefullyShutdown: false,
   });
   gameServer.define('ping', PingRoom);
+  gameServer.define(GAME_ROOM, gameRoomFor(env.JWT_SECRET, opts.roomTiming));
   return { httpServer, gameServer };
 }
 
