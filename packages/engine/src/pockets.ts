@@ -51,6 +51,42 @@ export function insidePocket(p: Piece, cfg: Config): PocketId | null {
   return null;
 }
 
+/** True when a coin is going too fast to drop: it bounces back out. */
+export function bouncesOut(p: Piece, cfg: Config): boolean {
+  const max = cfg.POCKET_MAX_DROP_SPEED;
+  return p.vx * p.vx + p.vy * p.vy > max * max;
+}
+
+/**
+ * A too-fast coin hits the back of the pocket and comes out: the speed
+ * component into the pocket reverses, scaled by POCKET_RESTITUTION; the
+ * sideways component is kept. The coin is set just outside the rim.
+ */
+export function bounceOffPocket(p: Piece, pocket: PocketId, cfg: Config): void {
+  const c = pocketCentre(pocket, cfg);
+  let nx = p.x - c.x;
+  let ny = p.y - c.y;
+  const len = Math.sqrt(nx * nx + ny * ny);
+  if (len === 0) {
+    // Dead centre (cannot happen from a swept crossing): send it straight back.
+    const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    nx = -p.vx / sp;
+    ny = -p.vy / sp;
+  } else {
+    nx /= len;
+    ny /= len;
+  }
+  const vn = p.vx * nx + p.vy * ny;
+  if (vn < 0) {
+    const k = (1 + cfg.POCKET_RESTITUTION) * vn;
+    p.vx -= k * nx;
+    p.vy -= k * ny;
+  }
+  const out = cfg.POCKET_D / 2 + cfg.PLACE_GAP;
+  p.x = c.x + nx * out;
+  p.y = c.y + ny * out;
+}
+
 /** Take a coin off the board into a pocket. Drops are instant: no closed window. */
 export function dropInPocket(p: Piece, pocket: PocketId, cfg: Config): void {
   const c = pocketCentre(pocket, cfg);

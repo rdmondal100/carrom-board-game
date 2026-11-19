@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { config } from './config';
-import { POCKET_IDS, dropInPocket, insidePocket, pocketCentre, timeToPocket } from './pockets';
+import {
+  POCKET_IDS, bounceOffPocket, bouncesOut, dropInPocket, insidePocket, pocketCentre, timeToPocket,
+} from './pockets';
 import type { Piece } from './types';
 
 const piece = (kind: Piece['kind'], x: number, y: number, vx = 0, vy = 0): Piece => ({
@@ -45,6 +47,23 @@ describe('pockets', () => {
     const s = piece('striker', c.x - 0.1, c.y, 1, 0);
     expect(timeToPocket(s, 1, config).t).toBe(Infinity);
     expect(insidePocket({ ...s, x: c.x, y: c.y }, config)).toBeNull();
+  });
+
+  it('a coin above POCKET_MAX_DROP_SPEED bounces out; at or below it drops', () => {
+    const v = config.POCKET_MAX_DROP_SPEED;
+    expect(bouncesOut(piece('white', 0, 0, v, 0), config)).toBe(false);
+    expect(bouncesOut(piece('white', 0, 0, v + 0.01, 0), config)).toBe(true);
+  });
+
+  it('a head-on bounce comes straight back at POCKET_RESTITUTION of the speed, outside the rim', () => {
+    const c = pocketCentre(3, config);
+    const rim = config.POCKET_D / 2;
+    const p = piece('white', c.x - rim, c.y, 5, 0);
+    bounceOffPocket(p, 3, config);
+    expect(p.vx).toBeCloseTo(-5 * config.POCKET_RESTITUTION, 12);
+    expect(p.vy).toBeCloseTo(0, 12);
+    expect(Math.hypot(p.x - c.x, p.y - c.y)).toBeGreaterThan(rim);
+    expect(insidePocket(p, config)).toBeNull();
   });
 
   it('drop takes the coin off the board and stops it', () => {

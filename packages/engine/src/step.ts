@@ -2,7 +2,7 @@ import { config, type Config } from './config';
 import {
   resolveFrameHit, resolvePieceHit, timeToFrameHit, timeToPieceHit, type FrameAxis,
 } from './collide';
-import { dropInPocket, insidePocket, timeToPocket } from './pockets';
+import { bounceOffPocket, bouncesOut, dropInPocket, insidePocket, timeToPocket } from './pockets';
 import type { BoardState, Piece, PocketId, ShotEvent } from './types';
 
 // Only + - * / and Math.sqrt in this file. No randomness, trig or clocks.
@@ -59,10 +59,11 @@ function moveAll(pieces: Piece[], t: number): void {
 
 function applyFriction(pieces: Piece[], cfg: Config): void {
   const drop = cfg.FRICTION_DECEL * cfg.DT;
+  const keep = 1 - cfg.FRICTION_DRAG * cfg.DT;
   for (const p of pieces) {
     if (!isMoving(p)) continue;
     const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-    const slower = speed - drop;
+    const slower = speed * keep - drop;
     if (slower < cfg.REST_SPEED) {
       p.vx = 0;
       p.vy = 0;
@@ -106,6 +107,9 @@ export function advanceInPlace(
     } else if (next.kind === 'frame') {
       resolveFrameHit(next.p, next.axis, cfg);
       events.push({ t: at, type: 'frame', id: next.p.id });
+    } else if (bouncesOut(next.p, cfg)) {
+      bounceOffPocket(next.p, next.pocket, cfg);
+      events.push({ t: at, type: 'pocketBounce', id: next.p.id, pocket: next.pocket });
     } else {
       dropInPocket(next.p, next.pocket, cfg);
       events.push({ t: at, type: 'pocket', id: next.p.id, pocket: next.pocket });

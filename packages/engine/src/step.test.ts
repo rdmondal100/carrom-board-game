@@ -18,11 +18,17 @@ describe('step', () => {
     expect(out.state.pieces[0]?.x).toBeGreaterThan(0);
   });
 
-  it('moves and slows a piece by FRICTION_DECEL', () => {
+  it('moves and slows a piece by FRICTION_DRAG and FRICTION_DECEL', () => {
     const { state } = step({ pieces: [coin('a', 0, 0, 1, 0)] }, 0);
     const p = state.pieces[0] as Piece;
     expect(p.x).toBeCloseTo(config.DT, 12);
-    expect(p.vx).toBeCloseTo(1 - config.FRICTION_DECEL * config.DT, 12);
+    expect(p.vx).toBeCloseTo(1 - (config.FRICTION_DRAG + config.FRICTION_DECEL) * config.DT, 12);
+  });
+
+  it('a slow piece glides out: it slows by less per step than a fast one', () => {
+    const fast = step({ pieces: [coin('a', 0, 0, 2, 0)] }, 0).state.pieces[0] as Piece;
+    const slow = step({ pieces: [coin('a', 0, 0, 0.2, 0)] }, 0).state.pieces[0] as Piece;
+    expect(2 - fast.vx).toBeGreaterThan(0.2 - slow.vx);
   });
 
   it('stops a piece below REST_SPEED', () => {

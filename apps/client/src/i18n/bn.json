@@ -15,6 +15,7 @@
   "event.hit": "{t} ms: {a} ↔ {b}",
   "event.frame": "{t} ms: {id} ফ্রেমে লাগল",
   "event.pocket": "{t} ms: {id} পকেট {pocket}-এ পড়ল",
+  "event.pocketBounce": "{t} ms: {id} বেশি জোরে, পকেট {pocket} থেকে ফিরে এলো",
   "event.shot": "শট: পাওয়ার {power}",
   "det.title": "ব্রাউজার ডিটারমিনিজম (PHY-7)",
   "det.run": "আবার চালাও",

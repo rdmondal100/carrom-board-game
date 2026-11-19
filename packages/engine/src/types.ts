@@ -36,7 +36,9 @@ export interface ShotInput {
 export type ShotEvent =
   | { t: number; type: 'hit'; a: string; b: string }
   | { t: number; type: 'frame'; id: string }
-  | { t: number; type: 'pocket'; id: string; pocket: PocketId };
+  | { t: number; type: 'pocket'; id: string; pocket: PocketId }
+  /** A coin reached a pocket too fast and bounced back out. */
+  | { t: number; type: 'pocketBounce'; id: string; pocket: PocketId };
 
 export interface Vec {
   x: number;

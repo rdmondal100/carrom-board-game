@@ -16,8 +16,9 @@ export function aimFromDrag(dragPx: Vec, boardPx: number): Aim {
   // Screen y points down (toward the shooter), so pulling down aims ahead.
   let dirX = -dragPx.x / len;
   let dirY = dragPx.y / len;
+  // Only clamp when the engine has an aim limit (MIN_AIM_FORWARD -1 = any direction).
   const minY = config.MIN_AIM_FORWARD + AIM_EDGE_EPS;
-  if (dirY < minY) {
+  if (config.MIN_AIM_FORWARD > -1 && dirY < minY) {
     dirY = minY;
     dirX = (dirX < 0 ? -1 : 1) * Math.sqrt(1 - minY * minY);
   }

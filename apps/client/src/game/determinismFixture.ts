@@ -5,7 +5,7 @@ export const PHY7_BREAKING_SEAT = 2;
 export const PHY7_INPUT: ShotInput = { seat: 2, x: 0.07, dirX: 0.05, dirY: 0.99875, power: 1 };
 
 /** stateHash of the PHY-7 shot's final board, recorded in Node. */
-export const EXPECTED_HASH = '0ba3326964def407';
+export const EXPECTED_HASH = '2400dfde4a26d384';
 
 export const DETERMINISM_RUNS = 1000;
 
