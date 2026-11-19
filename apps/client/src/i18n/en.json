@@ -66,7 +66,6 @@
   "reason.unknown": "rule",
   "toast.returned": "{coin} back on the board: {reason}",
   "toast.timeout": "{name} ran out of time",
-  "toast.turnSkipped": "{name} timed out twice — turn skipped",
   "clock.label": "{s} s left",
   "boardEnd.title": "Board {n} over",
   "boardEnd.winner": "{name} wins the board",
@@ -128,5 +127,18 @@
   "howto.lastCoin.title": "The last coin",
   "howto.lastCoin.body": "While the queen is still on the board, a side may not pocket its last coin. In the point game, nobody may pocket the last white or the last black coin.\nIf it happens, that coin goes back to the centre and the turn passes.\nIn the colour game, pocketing the opponent's last coin wins the board for them — unless the queen is still on the board, in which case the coin comes back.",
   "howto.turns.title": "Turns, teams and the clock",
-  "howto.turns.body": "Turns pass to the player on the right. In 2 v 2, partners sit opposite each other.\nWith the shot clock on, you have {clock} seconds per shot. When time runs out the turn passes; after {timeouts} in a row, that player's turn is skipped.\nA returned coin goes on the centre spot, or the nearest free place."
+  "howto.turns.body": "Turns pass to the player on the right. In 2 v 2, partners sit opposite each other.\nWith the shot clock on, you have {clock} seconds per shot. When time runs out the turn passes; after {timeouts} in a row, a bot plays for that player until they tap \"Take back control\".\nA returned coin goes on the centre spot, or the nearest free place.",
+  "setup.titleBot": "Vs bot",
+  "setup.seatN": "Who plays as player {n}",
+  "setup.seat.human": "Person",
+  "setup.seat.easy": "Easy bot",
+  "setup.seat.medium": "Medium bot",
+  "setup.seat.hard": "Hard bot",
+  "setup.level.easy": "Easy",
+  "setup.level.medium": "Medium",
+  "setup.level.hard": "Hard",
+  "setup.botName": "Bot ({level})",
+  "hud.botThinking": "{name} is thinking…",
+  "toast.botTakeover": "{name} timed out twice — a bot plays for them now",
+  "game.takeBack": "Take back control: {name}"
 }

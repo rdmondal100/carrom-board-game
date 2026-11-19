@@ -18,6 +18,20 @@ describe('save', () => {
     expect(loadGame()).toEqual(plain(next));
   });
 
+  it('BOT-6 a save from before bots loads with every seat a person', () => {
+    const old = JSON.parse(JSON.stringify(game()));
+    delete old.players;
+    delete old.takeover;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, game: old }));
+    const loaded = loadGame();
+    expect(loaded?.players).toEqual(['human', 'human']);
+    expect(loaded?.takeover).toEqual([]);
+
+    const bad = { ...old, players: ['robot', 'human'] };
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, game: bad }));
+    expect(loadGame()).toBeNull();
+  });
+
   it('LOC-9 missing save gives null', () => {
     expect(loadGame()).toBeNull();
   });

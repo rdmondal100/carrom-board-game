@@ -30,11 +30,23 @@ describe('localSetup schema', () => {
   });
 
   it('LOC-1 toGame builds the config and trims seated names', () => {
-    const v: LocalSetup = { format: '1v1', preset: 'colour', length: '29', names: [' Asha ', 'Bilu', 'x', 'y'], clockOn: true };
+    const v: LocalSetup = {
+      format: '1v1', preset: 'colour', length: '29', names: [' Asha ', 'Bilu', 'x', 'y'],
+      players: ['human', 'hard', 'easy', 'easy'], clockOn: true,
+    };
     expect(toGame(v, 5)).toEqual({
       cfg: { format: '1v1', preset: 'colour', length: { kind: 'points', target: 29 }, seed: 5 },
       names: ['Asha', 'Bilu'],
+      players: ['human', 'hard'],
     });
     expect(toGame({ ...v, preset: 'point', length: 'board' }, 1).cfg.length).toEqual({ kind: 'board' });
+  });
+
+  it('BOT-6 every seat can be a person or a bot level; vs bot seats bots on the other side', () => {
+    expect(defaultSetup().players).toEqual(['human', 'human', 'human', 'human']);
+    expect(defaultSetup(true).players).toEqual(['human', 'medium', 'human', 'medium']);
+    expect(ok({ ...defaultSetup(), players: ['hard', 'easy', 'medium', 'human'] })).toBe(true);
+    expect(ok({ ...defaultSetup(), players: ['robot', 'human', 'human', 'human'] as never })).toBe(false);
+    expect(ok({ ...defaultSetup(), players: ['human', 'human'] })).toBe(false);
   });
 });

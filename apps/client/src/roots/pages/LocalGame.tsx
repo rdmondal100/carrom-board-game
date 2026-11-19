@@ -8,10 +8,13 @@ import { GameEndScreen } from '@/components/GameEndScreen';
 import { Hud } from '@/components/Hud';
 import { PauseMenu } from '@/components/PauseMenu';
 import { ShotClock } from '@/components/ShotClock';
+import { Button } from '@/components/ui/button';
+import { requestBotShot } from '@/game/botClient';
 import { soundsForEvents } from '@/game/eventSounds';
 import { coinKey, reasonKey } from '@/game/hud';
 import {
-  newSeed, seatName, shooterSeat, shootLocal, startLocal, timeoutLocal, type LocalGame as Game,
+  botLevelAt, newSeed, seatName, shooterSeat, shootLocal, startLocal, takeBack, timeoutLocal,
+  type LocalGame as Game,
 } from '@/game/localGame';
 import { clearSave, loadGame, saveGame } from '@/game/save';
 import { useBoardCanvas } from '@/game/useBoardCanvas';
@@ -56,7 +59,7 @@ function Play({ initial }: { initial: Game }) {
   const announce = useCallback((g: Game, events: RuleEvent[]) => {
     for (const e of events) {
       if (e.type === 'returned') toast(t('toast.returned', { coin: t(coinKey(e.id)), reason: t(reasonKey(e.reason)) }));
-      if (e.type === 'botTakeover') toast(t('toast.turnSkipped', { name: seatName(g, e.seat) }));
+      if (e.type === 'botTakeover') toast(t('toast.botTakeover', { name: seatName(g, e.seat) }));
     }
   }, []);
 
@@ -107,8 +110,32 @@ function Play({ initial }: { initial: Game }) {
   }, [board, game, rotate]);
 
   const overlay = paused || boardEnd !== null || gameEnd !== null;
-  useEffect(() => { board.current.setLocked(overlay); }, [board, overlay]);
-  useEffect(() => { if (!game.clockOn) board.current.setClock(null); }, [board, game.clockOn]);
+  const botLevel = game.state.winner === null ? botLevelAt(game, game.state.turnSeat) : null;
+  const botTurn = botLevel !== null;
+  useEffect(() => { board.current.setLocked(overlay || botTurn); }, [board, overlay, botTurn]);
+  useEffect(() => { if (!game.clockOn || botTurn) board.current.setClock(null); }, [board, game.clockOn, botTurn]);
+
+  // BOT-6 / BOT-7: on a bot's turn, search in the worker, then show and play the shot.
+  // Pausing, a new game or "take back control" drops a search still running.
+  useEffect(() => {
+    if (botLevel === null || playing || overlay) return;
+    const api = board.current;
+    let live = true;
+    requestBotShot(game.state, botLevel, newSeed())
+      .then((input) => { if (live) api.playBot(input); })
+      .catch((err: unknown) => console.error('bot failed', err));
+    return () => {
+      live = false;
+      api.cancelBot();
+    };
+  }, [board, game, botLevel, playing, overlay]);
+
+  /** BOT-7: the person at `seat` plays again. */
+  const reclaim = (seat: number) => {
+    const next = takeBack(game, seat);
+    saveGame(next);
+    setGame(next);
+  };
 
   const onExpire = () => {
     if (playing || overlay) return;
@@ -121,7 +148,7 @@ function Play({ initial }: { initial: Game }) {
   };
 
   const restart = () => {
-    const fresh = startLocal({ ...game.state.config, seed: newSeed() }, game.names, game.clockOn);
+    const fresh = startLocal({ ...game.state.config, seed: newSeed() }, game.names, game.clockOn, game.players);
     saveGame(fresh);
     setGame(fresh);
     setBoardEnd(null);
@@ -140,7 +167,7 @@ function Play({ initial }: { initial: Game }) {
     setTurnNo((n) => n + 1);
   };
 
-  const clock = game.clockOn ? (
+  const clock = game.clockOn && !botTurn ? (
     <ShotClock
       key={turnNo}
       running={!playing && !overlay}
@@ -155,8 +182,19 @@ function Play({ initial }: { initial: Game }) {
       <Hud game={game} clock={clock} onPause={() => setPaused(true)} canPause={!playing} />
       <div ref={host} data-testid="board-host" className="flex min-h-0 flex-1 items-center justify-center overflow-hidden select-none" />
       <p className="min-h-5 text-center text-sm text-muted-foreground">
-        {playing ? t('hud.playing') : placedOk ? t('hud.hint') : t('hud.blocked')}
+        {playing ? t('hud.playing')
+          : botTurn ? t('hud.botThinking', { name: seatName(game, game.state.turnSeat) })
+            : placedOk ? t('hud.hint') : t('hud.blocked')}
       </p>
+      {game.takeover.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {game.takeover.map((seat) => (
+            <Button key={seat} size="sm" variant="outline" onClick={() => reclaim(seat)}>
+              {t('game.takeBack', { name: seatName(game, seat) })}
+            </Button>
+          ))}
+        </div>
+      )}
       {paused && <PauseMenu onResume={() => setPaused(false)} onRestart={restart} onQuit={quit} />}
       {boardEnd && (
         <BoardEndDialog game={boardEnd.next} boardNo={boardEnd.boardNo} winner={boardEnd.winner} points={boardEnd.points} onNext={nextBoard} />
