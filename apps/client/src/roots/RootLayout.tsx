@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
+import { usePurchaseRecovery } from '@/components/CoinPacks';
 import { Header } from '@/components/Header';
 import { OfflineNotice } from '@/components/OfflineNotice';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,8 @@ export function RootLayout() {
   useEffect(() => { void initAds(); }, []);
   // AD-5: the optional menu banner never shows on a match screen.
   useEffect(() => { void setMenuBanner(!inMatch); }, [inMatch]);
+  // IAP-4: purchases Play still holds (pending, or never verified) are sent again once signed in.
+  usePurchaseRecovery();
 
   // APP-2: immersive + screen awake only while a match screen is open.
   useEffect(() => {

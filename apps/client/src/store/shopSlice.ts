@@ -1,13 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type {
-  AdStatusResponse, BotRewardRequest, BuyRequest, EquipRequest, MeResponse, PublicUser, RewardResponse,
+  AdStatusResponse, BotRewardRequest, BuyRequest, EquipRequest, IapVerifyRequest, IapVerifyResponse, MeResponse,
+  PublicUser, RewardResponse,
 } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { getAuthHeaders } from '@/lib/auth';
 import { userUpdated } from './authSlice';
 
-export type ShopAction = 'buy' | 'equip' | 'dailyBonus' | 'botReward' | 'adStatus';
+export type ShopAction = 'buy' | 'equip' | 'dailyBonus' | 'botReward' | 'adStatus' | 'iap';
 
 /** A failed call: HTTP status (0 = no answer) and the server's `error`. */
 export interface ShopFailure { action: ShopAction; status: number; error: string }
@@ -88,6 +89,22 @@ export const fetchAdStatus = createAsyncThunk<AdStatusResponse, void, Cfg>('shop
   }
 });
 
+/**
+ * IAP-2/4: send a Play purchase to the server, which verifies it with Google
+ * and credits it once. `status: 'pending'` = payment not complete yet.
+ */
+export const verifyPurchase = createAsyncThunk<IapVerifyResponse, IapVerifyRequest, Cfg>(
+  'shop/iap', async (body, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await axios.post<IapVerifyResponse>(`${API_BASE}/iap/verify`, body, { headers: getAuthHeaders() });
+      dispatch(userUpdated(res.data.user));
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(failure('iap', err));
+    }
+  },
+);
+
 const shopSlice = createSlice({
   name: 'shop',
   initialState: initialShopState,
@@ -120,6 +137,9 @@ export const shopReducer = shopSlice.reducer;
 export function shopErrorKey(f: ShopFailure): string | null {
   if (f.status === 0) return 'auth.err.network';
   if (f.status === 401) return 'shop.err.signIn';
+  if (f.action === 'iap' && f.status === 400) return 'iap.err.invalid';
+  if (f.action === 'iap' && (f.status === 403 || f.status === 409)) return 'iap.err.otherAccount';
+  if (f.action === 'iap' && f.status === 503) return 'iap.err.off';
   if (f.action === 'buy' && f.status === 400) return 'shop.err.coins';
   if (f.action === 'buy' && f.status === 409) return 'shop.err.owned';
   if (f.status === 403) return 'shop.err.notOwned';

@@ -90,3 +90,21 @@ export interface RewardResponse { reward: number; user: PublicUser }
 
 /** AD-3 GET /ads/status: rewarded ads that still pay today, and coins per ad. */
 export interface AdStatusResponse { rewardedLeft: number; rewardedCoins: number }
+
+// ---- in-app purchases (spec 14) -------------------------------------------
+
+/** IAP-1 coin packs (Play Console consumable product ids) and the coins each gives. Prices come from the store. */
+export const IAP_PACKS = [
+  { productId: 'coins_500', coins: 500 },
+  { productId: 'coins_1200', coins: 1200 },
+  { productId: 'coins_2600', coins: 2600 },
+] as const;
+export type IapProductId = (typeof IAP_PACKS)[number]['productId'];
+
+/** IAP-2 POST /iap/verify: a Play Billing purchase to check and credit. */
+export interface IapVerifyRequest { productId: string; purchaseToken: string }
+/**
+ * IAP-3/4: `credited` = coins given by this call (0 on a replay or while
+ * pending). 200 credited, 202 pending (retry later).
+ */
+export interface IapVerifyResponse { status: 'credited' | 'pending'; credited: number; user: PublicUser }

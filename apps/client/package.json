@@ -24,6 +24,7 @@
     "@capacitor/core": "^8.6.2",
     "@capacitor/haptics": "^8.0.2",
     "@capgo/capacitor-social-login": "^8.7.13",
+    "@capgo/native-purchases": "8.9.6",
     "@carrom/bot": "workspace:*",
     "@carrom/engine": "workspace:*",
     "@carrom/protocol": "workspace:*",

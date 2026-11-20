@@ -65,3 +65,25 @@ describe('env google', () => {
       .toEqual(['web.apps', 'android.apps']);
   });
 });
+
+describe('env play billing', () => {
+  const account = JSON.stringify({ type: 'service_account', client_email: 'iap@proj.iam.gserviceaccount.com', private_key: 'KEY' });
+
+  it('IAP-3 PLAY_ keys are optional and parse the service account', () => {
+    expect(loadEnv(good).PLAY_PACKAGE_NAME).toBeUndefined();
+    const env = loadEnv({ ...good, PLAY_PACKAGE_NAME: 'com.carromadda.app', PLAY_SERVICE_ACCOUNT_JSON: account });
+    expect(env.PLAY_PACKAGE_NAME).toBe('com.carromadda.app');
+    expect(env.PLAY_SERVICE_ACCOUNT_JSON).toEqual({ clientEmail: 'iap@proj.iam.gserviceaccount.com', privateKey: 'KEY' });
+  });
+
+  it('IAP-3 bad service account JSON or a lone PLAY_ key fails fast', () => {
+    const pkg = { PLAY_PACKAGE_NAME: 'com.carromadda.app' };
+    expect(problems({ ...good, ...pkg, PLAY_SERVICE_ACCOUNT_JSON: '{nope' })[0]).toMatch(/^PLAY_SERVICE_ACCOUNT_JSON must be/);
+    expect(problems({ ...good, ...pkg, PLAY_SERVICE_ACCOUNT_JSON: '{"client_email":"x"}' })[0])
+      .toMatch(/^PLAY_SERVICE_ACCOUNT_JSON needs client_email/);
+    expect(problems({ ...good, ...pkg })).toEqual(['PLAY_SERVICE_ACCOUNT_JSON is required']);
+    expect(problems({ ...good, PLAY_SERVICE_ACCOUNT_JSON: account })).toEqual(['PLAY_PACKAGE_NAME is required']);
+    expect(problems({ ...good, PLAY_PACKAGE_NAME: 'carrom', PLAY_SERVICE_ACCOUNT_JSON: account })[0])
+      .toMatch(/^PLAY_PACKAGE_NAME must be an Android package/);
+  });
+});

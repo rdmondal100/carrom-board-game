@@ -50,6 +50,9 @@ importers:
       '@capgo/capacitor-social-login':
         specifier: ^8.7.13
         version: 8.7.13(@capacitor/core@8.6.2)
+      '@capgo/native-purchases':
+        specifier: 8.9.6
+        version: 8.9.6(@capacitor/core@8.6.2)
       '@carrom/bot':
         specifier: workspace:*
         version: link:../../packages/bot
@@ -438,6 +441,11 @@ packages:
 
   '@capgo/capacitor-social-login@8.7.13':
     resolution: {integrity: sha512-0feJa4ceCeJVkUOj6/ke3bfjeqyrg/eV6NrJd6foGO7kF6sV2q/M3yQPUoJZB1roK7rD+zrVIgey2qYHQp85hQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capgo/native-purchases@8.9.6':
+    resolution: {integrity: sha512-HOK8C9FKVN8FOdZHmF32Uss1IDqB71ADYiWcJ5a4Gqvnho6Jtc8RtIr1Yg8I86YMm4W/nj7TZ54q7Z72Hlau3Q==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -4903,6 +4911,10 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.6.2
       tslib: 2.9.1
+
+  '@capgo/native-purchases@8.9.6(@capacitor/core@8.6.2)':
+    dependencies:
+      '@capacitor/core': 8.6.2
 
   '@colyseus/auth@0.18.4(@colyseus/core@0.18.29)(express@5.3.0)(zod@4.6.7)':
     dependencies:

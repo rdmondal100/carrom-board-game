@@ -145,3 +145,39 @@ clicking them is safe.
 - [ ] Closing the rewarded ad early gives no coins.
 - [ ] Finish 3 games: leaving the 3rd end screen shows one interstitial; the next one comes only
       after 3 more games *and* 3 minutes. No ad on app start or during a match.
+
+## 8. Coin packs (Google Play Billing, spec 14)
+
+Android only; the web Shop says packs are "available in the Android app". The app never credits
+coins itself: it sends the purchase token to `POST /iap/verify`, the server checks it with the
+Play Developer API, credits the pack once, then consumes it.
+
+**Play Console (once):**
+1. The app (`com.carromadda.app`) must be uploaded to a track (internal testing is enough) before
+   products can be created.
+2. *Monetize → Products → In-app products*: create `coins_500`, `coins_1200`, `coins_2600`
+   (one-time, consumable use). Set prices in BDT; the app shows Play's localized price.
+3. *Google Cloud*: create a service account, make a JSON key, enable the
+   **Google Play Android Developer API** for that project.
+4. *Play Console → Users and permissions*: invite the service account's email and grant it
+   **View financial data** and **Manage orders and subscriptions** for this app.
+   New permissions can take up to a day to start working.
+5. *Settings → License testing*: add the tester Google accounts (they pay with test cards).
+
+**Server env** (`apps/server/.env`): `PLAY_PACKAGE_NAME=com.carromadda.app` and
+`PLAY_SERVICE_ACCOUNT_JSON=` the key file's JSON on **one line**. Leave both empty to keep
+purchases off (`/iap/verify` → 503). Never commit the key.
+
+**Pending payments:** a slow payment method leaves the purchase pending; the server answers 202 and
+credits nothing. On every app start (once signed in) the app sends Play's unfinished purchases again,
+so the pack is credited after the payment completes. A purchase made while signed in to one account
+can't be claimed by another (Play's account id = user id).
+
+**Manual check (spec 14), on the internal testing track with a license tester:**
+- [ ] Shop shows three packs with Play's prices (৳).
+- [ ] Buying `coins_500` with the "always approves" test card adds 500 coins; the same pack can be
+      bought again right away (it was consumed).
+- [ ] "Slow test card, approves after a few minutes": the toast says pending; after it approves,
+      closing and reopening the app credits the coins once.
+- [ ] Closing the purchase sheet gives nothing and shows "Purchase not completed".
+- [ ] The web Shop shows the Android-only message.

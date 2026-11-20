@@ -22,6 +22,25 @@ const origins = z.string().transform((s, ctx) => {
 const clientIds = z.string().default('').transform((s) =>
   s.split(',').map((id) => id.trim()).filter((id) => id.length > 0));
 
+/** IAP-3 the Play Developer API service account: only the two fields the JWT needs. */
+export interface ServiceAccount { clientEmail: string; privateKey: string }
+
+const serviceAccount = z.string().transform((s, ctx): ServiceAccount => {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(s);
+  } catch {
+    ctx.addIssue({ code: 'custom', message: 'must be the service account key JSON' });
+    return z.NEVER;
+  }
+  const r = z.object({ client_email: z.string().min(1), private_key: z.string().min(1) }).safeParse(raw);
+  if (!r.success) {
+    ctx.addIssue({ code: 'custom', message: 'needs client_email and private_key' });
+    return z.NEVER;
+  }
+  return { clientEmail: r.data.client_email, privateKey: r.data.private_key };
+});
+
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
   MONGODB_URL: z.string().regex(/^mongodb(\+srv)?:\/\//, 'must start with mongodb:// or mongodb+srv://'),
@@ -30,7 +49,15 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(JWT_SECRET_MIN, `must be at least ${JWT_SECRET_MIN} characters`),
   CORS_ORIGIN: origins,
   GOOGLE_CLIENT_IDS: clientIds,
+  /** IAP-3 Play Billing. Both or neither; neither = in-app purchases off (POST /iap/verify answers 503). */
+  PLAY_PACKAGE_NAME: z.string().regex(/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/, 'must be an Android package name').optional(),
+  PLAY_SERVICE_ACCOUNT_JSON: serviceAccount.optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+}).superRefine((e, ctx) => {
+  if ((e.PLAY_PACKAGE_NAME === undefined) !== (e.PLAY_SERVICE_ACCOUNT_JSON === undefined)) {
+    const missing = e.PLAY_PACKAGE_NAME === undefined ? 'PLAY_PACKAGE_NAME' : 'PLAY_SERVICE_ACCOUNT_JSON';
+    ctx.addIssue({ code: 'custom', path: [missing], message: 'must be set together with the other PLAY_ key' });
+  }
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -92,3 +92,25 @@ describe('COS-7 shop page', () => {
     expect(await screen.findAllByText(en['shop.equipped'])).not.toHaveLength(0);
   });
 });
+
+describe('IAP-6 coin packs on the web', () => {
+  beforeAll(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  });
+  beforeEach(() => {
+    localStorage.clear();
+    setLang('en');
+    vi.clearAllMocks();
+    post.mockImplementation(async () => ({ data: { reward: 0, user: user() } }));
+  });
+  afterEach(cleanup);
+
+  it('IAP-6 web shows the Android-only message', async () => {
+    show(user());
+    expect((await screen.findByTestId('iap-android-only')).textContent).toContain(en['iap.androidOnly']);
+    expect(screen.getByTestId('coin-packs').textContent).toContain('2600');
+    expect(screen.queryByTestId('iap-coins_500')).toBeNull();
+    expect(post).not.toHaveBeenCalledWith(expect.stringContaining('/iap/'), expect.anything(), expect.anything());
+  });
+});

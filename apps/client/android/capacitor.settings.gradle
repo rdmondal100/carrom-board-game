@@ -16,3 +16,6 @@ project(':capacitor-haptics').projectDir = new File('../../../node_modules/.pnpm
 
 include ':capgo-capacitor-social-login'
 project(':capgo-capacitor-social-login').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-social-login@8.7.13_@capacitor+core@8.6.2/node_modules/@capgo/capacitor-social-login/android')
+
+include ':capgo-native-purchases'
+project(':capgo-native-purchases').projectDir = new File('../../../node_modules/.pnpm/@capgo+native-purchases@8.9.6_@capacitor+core@8.6.2/node_modules/@capgo/native-purchases/android')
