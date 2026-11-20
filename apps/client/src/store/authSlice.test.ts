@@ -18,7 +18,7 @@ const get = vi.mocked(axios.get);
 
 const user = (over: Partial<PublicUser> = {}): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false,
-  avatar: 0, rating: 1000, coins: 0,
+  avatar: 0, rating: 1000, ratings: {}, coins: 0,
   cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: ['classic-striker', 'classic-coins', 'classic-board'] },
   createdAt: '2026-11-20T00:00:00.000Z',
   ...over,

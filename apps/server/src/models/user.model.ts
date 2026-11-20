@@ -1,7 +1,8 @@
 import { randomInt } from 'node:crypto';
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
 import { ownedItems, resolveEquipped } from '@carrom/protocol';
-import type { PublicUser } from '@carrom/protocol/api';
+import type { GameRating, PublicUser } from '@carrom/protocol/api';
+import { GAME_IDS } from '@hub/game-kit';
 
 // Copies of the protocol constants (the server can't load workspace packages
 // at runtime yet); user.model.test.ts checks they match.
@@ -16,6 +17,19 @@ export const BCRYPT_COST = 12;
 
 const onlyStrings = { $type: 'string' } as const;
 
+/** HUB-7 games that keep a rating (one leaderboard index each). */
+export const RATED_GAMES = GAME_IDS;
+
+/** HUB-7 one game's rating and ranked games played. */
+const gameRatingSchema = new Schema(
+  {
+    rating: { type: Number, required: true, default: START_RATING },
+    /** RANK-6 ranked games finished; only players with at least one are on that game's leaderboard. */
+    games: { type: Number, required: true, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, minlength: NAME_MIN, maxlength: NAME_MAX },
@@ -24,9 +38,8 @@ const userSchema = new Schema(
     googleId: { type: String },
     isGuest: { type: Boolean, required: true, default: true },
     avatar: { type: Number, required: true, default: 0, min: 0, max: AVATAR_COUNT - 1 },
-    rating: { type: Number, required: true, default: START_RATING },
-    /** RANK-6 ranked games finished; only players with at least one are on the leaderboard. */
-    rankedGames: { type: Number, required: true, default: 0, min: 0 },
+    /** HUB-7 rating per game id; a missing game reads as START_RATING with 0 games. */
+    ratings: { type: Map, of: gameRatingSchema, default: () => new Map() },
     coins: { type: Number, required: true, default: 0, min: 0 },
     /** COS-4 equipped item ids (one per slot); COS-3 bought ids (defaults are not stored, COS-5). */
     cosmetics: {
@@ -48,13 +61,24 @@ const userSchema = new Schema(
 // Unique only among users that have the field (guests have neither).
 userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: onlyStrings } });
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: onlyStrings } });
-// RANK-6 leaderboard order: rating, then the older account first.
-userSchema.index({ rating: -1, createdAt: 1, _id: 1 }, { partialFilterExpression: { rankedGames: { $gt: 0 } } });
+// RANK-6 / HUB-7 each game's leaderboard order: rating, then the older account first.
+for (const g of RATED_GAMES) {
+  userSchema.index(
+    { [`ratings.${g}.rating`]: -1, createdAt: 1, _id: 1 },
+    { partialFilterExpression: { [`ratings.${g}.games`]: { $gt: 0 } } },
+  );
+}
 
 export type UserFields = InferSchemaType<typeof userSchema>;
 export type UserDoc = HydratedDocument<UserFields>;
 
 export const User = mongoose.model('User', userSchema);
+
+/** HUB-7 a user's rating in one game (defaults when they never played it ranked). */
+export function ratingOf(u: Pick<UserDoc, 'ratings'>, gameId: string): GameRating {
+  const r = u.ratings?.get(gameId);
+  return { rating: r?.rating ?? START_RATING, games: r?.games ?? 0 };
+}
 
 /** "Player-1234": the default guest name. */
 export function guestName(): string {
@@ -71,7 +95,8 @@ export function toPublicUser(u: UserDoc): PublicUser {
     hasPassword: typeof u.passwordHash === 'string',
     hasGoogle: typeof u.googleId === 'string',
     avatar: u.avatar,
-    rating: u.rating,
+    rating: ratingOf(u, 'carrom').rating,
+    ratings: Object.fromEntries([...(u.ratings ?? new Map()).keys()].map((g) => [g, ratingOf(u, g)])),
     coins: u.coins,
     cosmetics: {
       equipped: resolveEquipped(u.cosmetics?.equipped ?? []),

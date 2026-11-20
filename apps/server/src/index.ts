@@ -2,6 +2,7 @@ import { createServer } from './app.js';
 import { connectDb, disconnectDb } from './connectDb.js';
 import { EnvError, loadEnv, type Env } from './env.js';
 import { logger } from './utils/logger.js';
+import { runMigrations } from './utils/migrations.js';
 import { connectRedis } from './utils/redis.js';
 
 function readEnv(): Env {
@@ -19,6 +20,8 @@ function readEnv(): Env {
 async function main(): Promise<void> {
   const env = readEnv();
   await connectDb(env.MONGODB_URL);
+  // HUB-8: move pre-hub data (idempotent).
+  await runMigrations();
   const redis = connectRedis(env.REDIS_URL);
   const { gameServer } = createServer(env, { redis });
   await gameServer.listen(env.PORT);

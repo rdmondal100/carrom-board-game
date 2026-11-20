@@ -1,6 +1,6 @@
 import type { Redis } from '../utils/redis.js';
 import {
-  QUEUE_KEY, QUEUE_SINCE_KEY, WINDOW_MAX, WINDOW_START, WINDOW_STEP, WINDOW_STEP_MS,
+  queueKey, queueSinceKey, WINDOW_MAX, WINDOW_START, WINDOW_STEP, WINDOW_STEP_MS,
 } from '../utils/rankedConfig.js';
 
 /** One player waiting for a ranked game. `since` is Date.now() ms at queue time. */
@@ -41,27 +41,27 @@ export function pairUp(entries: readonly QueueEntry[], now: number): [QueueEntry
   return pairs;
 }
 
-// ---- the queue in Redis: a sorted set by rating + a hash of queue times ----
+// ---- the queue in Redis: per game (HUB-6), a sorted set by rating + a hash of queue times ----
 
-export async function queueAdd(redis: Redis, e: QueueEntry): Promise<void> {
-  await redis.multi().zadd(QUEUE_KEY, e.rating, e.userId).hset(QUEUE_SINCE_KEY, e.userId, String(e.since)).exec();
+export async function queueAdd(redis: Redis, game: string, e: QueueEntry): Promise<void> {
+  await redis.multi().zadd(queueKey(game), e.rating, e.userId).hset(queueSinceKey(game), e.userId, String(e.since)).exec();
 }
 
 /** RANK-2 cancel. True when the player was in the queue. */
-export async function queueRemove(redis: Redis, userId: string): Promise<boolean> {
-  const res = await redis.multi().zrem(QUEUE_KEY, userId).hdel(QUEUE_SINCE_KEY, userId).exec();
+export async function queueRemove(redis: Redis, game: string, userId: string): Promise<boolean> {
+  const res = await redis.multi().zrem(queueKey(game), userId).hdel(queueSinceKey(game), userId).exec();
   return res?.[0]?.[1] === 1;
 }
 
-export async function queueHas(redis: Redis, userId: string): Promise<boolean> {
-  return (await redis.zscore(QUEUE_KEY, userId)) !== null;
+export async function queueHas(redis: Redis, game: string, userId: string): Promise<boolean> {
+  return (await redis.zscore(queueKey(game), userId)) !== null;
 }
 
 /** Everyone in the queue, lowest rating first. */
-export async function queueEntries(redis: Redis): Promise<QueueEntry[]> {
+export async function queueEntries(redis: Redis, game: string): Promise<QueueEntry[]> {
   const [flat, since] = await Promise.all([
-    redis.zrange(QUEUE_KEY, 0, -1, 'WITHSCORES'),
-    redis.hgetall(QUEUE_SINCE_KEY),
+    redis.zrange(queueKey(game), 0, -1, 'WITHSCORES'),
+    redis.hgetall(queueSinceKey(game)),
   ]);
   const out: QueueEntry[] = [];
   for (let i = 0; i + 1 < flat.length; i += 2) {
@@ -75,15 +75,15 @@ export async function queueEntries(redis: Redis): Promise<QueueEntry[]> {
  * Take a matched pair out of the queue. If one of them already left (cancel
  * raced the match), the other goes back in unchanged and this returns false.
  */
-export async function queueTake(redis: Redis, a: QueueEntry, b: QueueEntry): Promise<boolean> {
-  const [ra, rb] = await Promise.all([queueRemove(redis, a.userId), queueRemove(redis, b.userId)]);
+export async function queueTake(redis: Redis, game: string, a: QueueEntry, b: QueueEntry): Promise<boolean> {
+  const [ra, rb] = await Promise.all([queueRemove(redis, game, a.userId), queueRemove(redis, game, b.userId)]);
   if (ra && rb) return true;
-  if (ra) await queueAdd(redis, a);
-  if (rb) await queueAdd(redis, b);
+  if (ra) await queueAdd(redis, game, a);
+  if (rb) await queueAdd(redis, game, b);
   return false;
 }
 
 /** Empty the queue (a fresh queue room: nobody from before is still connected). */
-export async function queueClear(redis: Redis): Promise<void> {
-  await redis.del(QUEUE_KEY, QUEUE_SINCE_KEY);
+export async function queueClear(redis: Redis, game: string): Promise<void> {
+  await redis.del(queueKey(game), queueSinceKey(game));
 }

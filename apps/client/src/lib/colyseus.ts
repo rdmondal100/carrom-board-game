@@ -13,7 +13,7 @@ export const RECONNECT_KEY = 'carrom.room';
 type Listener<T> = (v: T) => void;
 
 let room: Room | null = null;
-/** Game messages since (and including) the last `game` message. Aim, emote and error are not kept. */
+/** Game messages since (and including) the last `game` message. Hints (aim), emotes and errors are not kept. */
 let log: ServerMessage[] = [];
 const messageListeners = new Set<Listener<ServerMessage>>();
 const lobbyListeners = new Set<Listener<LobbyView | null>>();
@@ -45,7 +45,7 @@ function attach(r: Room): Room {
     const m = parseServerMessage(raw);
     if (!m) return;
     if (m.type === 'game') log = [];
-    if (m.type !== 'aim' && m.type !== 'emote' && m.type !== 'error') log.push(m);
+    if (m.type !== 'hint' && m.type !== 'emote' && m.type !== 'error') log.push(m);
     messageListeners.forEach((l) => l(m));
   });
   r.onStateChange((s: { toJSON(): unknown }) => emitLobby(s.toJSON() as LobbyView));
@@ -116,10 +116,10 @@ export function onLobbyChange(l: Listener<LobbyView | null>): () => void {
 
 let queueRoom: Room | null = null;
 
-/** RANK-2: join the shared ranked queue; `onMessage` gets status, bot offer and the match. */
-export async function joinQueue(onMessage: Listener<QueueMessage>, onClosed: () => void): Promise<void> {
+/** RANK-2 / HUB-6: join one game's ranked queue; `onMessage` gets status, bot offer and the match. */
+export async function joinQueue(onMessage: Listener<QueueMessage>, onClosed: () => void, gameId = 'carrom'): Promise<void> {
   await leaveQueue();
-  const r = await sdk().joinOrCreate(QUEUE_ROOM);
+  const r = await sdk().joinOrCreate(QUEUE_ROOM, { gameId });
   r.reconnection.enabled = false;
   queueRoom = r;
   r.onMessage(MSG, (raw: unknown) => {

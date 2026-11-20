@@ -13,9 +13,9 @@ const app = createApp(env);
 const bearer = (id: string) => ({ Authorization: `Bearer ${signToken(id, SECRET)}` });
 
 /** A ranked player; `age` = days since the account was made (older = bigger). */
-async function player(name: string, rating: number, age: number, rankedGames = 1) {
+async function player(name: string, rating: number, age: number, rankedGames = 1, game = 'carrom') {
   const createdAt = new Date(Date.UTC(2026, 0, 1) - age * 86_400_000);
-  const u = await User.create({ name, rating, rankedGames, createdAt });
+  const u = await User.create({ name, ratings: { [game]: { rating, games: rankedGames } }, createdAt });
   return u.id as string;
 }
 
@@ -70,9 +70,9 @@ describe('leaderboard and history routes', () => {
     const b = await player('Bina', 1000, 1, 0);
     const c = await player('Chayan', 1000, 1, 0);
     // m1: a 1016, b 984. m2: b beats c from 984 → c 983. m3: a (1016) beats c (983) → +14.48 → 1030.
-    const game = (id: string, x: string, y: string) => recordMatch({
-      matchId: id, ranked: true, format: '1v1', winner: 'A', boards: 1, abandoned: false,
-      players: [{ userId: x, name: 'X', seat: 0 }, { userId: y, name: 'Y', seat: 2 }],
+    const game = (id: string, x: string, y: string, g = 'carrom') => recordMatch({
+      matchId: id, game: g, ranked: true, winner: 'A', boards: 1, abandoned: false,
+      players: [{ userId: x, name: 'X', seat: 0, team: 'A' }, { userId: y, name: 'Y', seat: 2, team: 'B' }],
     });
     await game('m1', a, b);
     await game('m2', b, c);
@@ -86,5 +86,19 @@ describe('leaderboard and history routes', () => {
     expect(newest.players.map((p: { userId: string }) => p.userId)).toEqual([a, c]);
     expect(newest.players[0]).toMatchObject({ seat: 0, team: 'A', ratingBefore: 1016, ratingAfter: 1030 });
     expect((await request(app).get('/matches/me?limit=1').set(bearer(a))).body.matches).toHaveLength(1);
+    expect(newest.game).toBe('carrom');
+  });
+
+  it('HUB-9 ?game= picks the game; missing = carrom; unknown → 400', async () => {
+    await player('CarromOnly', 1300, 1);
+    await player('LudoOnly', 1500, 2, 1, 'ludo');
+    const carrom = await request(app).get('/leaderboard?game=carrom');
+    expect(carrom.body.players.map((p: { name: string }) => p.name)).toEqual(['CarromOnly']);
+    expect((await request(app).get('/leaderboard')).body).toEqual(carrom.body);
+    expect((await request(app).get('/leaderboard?game=nope')).status).toBe(400);
+    expect((await request(app).get('/leaderboard?game=ludo')).status).toBe(400); // ludo isn't registered yet
+    const me = await player('Mine', 1000, 3, 0);
+    expect((await request(app).get('/matches/me?game=nope').set(bearer(me))).status).toBe(400);
+    expect((await request(app).get('/matches/me?game=carrom').set(bearer(me))).body.matches).toEqual([]);
   });
 });

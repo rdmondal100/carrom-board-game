@@ -14,10 +14,18 @@ export const GAME_ROOM = 'game';
 /** Every protocol message travels on this one Colyseus message type. */
 export const MSG = 'msg';
 
-/** ROOM-1: what a client asks for when it creates a room. */
-export interface CreateRoomOptions { format: Format; preset: Preset; length: Length }
+/** HUB-5 ROOM-1: what a client asks for when it creates a room: the game and its settings (checked by the game module). */
+export interface CreateRoomOptions<C = unknown> { gameId: string; config: C }
 
 export const CreateRoomOptionsSchema: z.ZodType<CreateRoomOptions> = z.object({
+  gameId: z.string().min(1).max(32),
+  config: z.custom<unknown>((v) => v !== undefined),
+});
+
+/** Carrom's room settings (the carrom module's config). */
+export interface CarromRoomConfig { format: Format; preset: Preset; length: Length }
+
+export const CarromRoomConfigSchema: z.ZodType<CarromRoomConfig> = z.object({
   format: z.enum(['1v1', '2v2']),
   preset: z.enum(['colour', 'point']),
   length: z.union([
@@ -53,12 +61,10 @@ export interface PlayerView {
 export interface LobbyView {
   code: string;
   phase: RoomPhase;
-  format: Format;
-  preset: Preset;
-  /** 'board' or 'points'. */
-  lengthKind: string;
-  /** Points target; 0 for a one-board game. */
-  target: number;
+  /** HUB-4 which game this room plays. */
+  gameId: string;
+  /** The game's settings as JSON (parse with that game's config schema). */
+  config: string;
   hostId: string;
   /** RANK-2 a ranked game: no host, no invite, no rematch; starts when both players are in. */
   ranked: boolean;
@@ -68,9 +74,11 @@ export interface LobbyView {
 /** GET /rooms/:code */
 export interface RoomLookupResponse { roomId: string }
 
-/** The Length a lobby view describes. */
-export function lengthOf(v: Pick<LobbyView, 'lengthKind' | 'target'>): Length {
-  return v.lengthKind === 'points' && (v.target === 19 || v.target === 29 || v.target === 300)
-    ? { kind: 'points', target: v.target }
-    : { kind: 'board' };
+/** A lobby's game settings, parsed (null when the JSON is broken). */
+export function lobbyConfig(v: Pick<LobbyView, 'config'>): unknown {
+  try {
+    return JSON.parse(v.config) as unknown;
+  } catch {
+    return null;
+  }
 }

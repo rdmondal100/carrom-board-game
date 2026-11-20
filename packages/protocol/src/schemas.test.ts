@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  makeShotInputSchema, parseClientMessage, ServerMessageSchema, ShotInputSchema,
+  AimHintSchema, makeShotInputSchema, parseClientMessage, ServerMessageSchema, ShotInputSchema,
 } from './schemas';
 
 /** cos 85° and sin 85°, written out. */
@@ -48,20 +48,27 @@ describe('ShotInputSchema', () => {
 
 describe('client messages', () => {
   it('SRV-6 parses each valid message type', () => {
-    expect(parseClientMessage({ type: 'shot', turnId: 3, input: valid })).not.toBeNull();
-    expect(parseClientMessage({ type: 'aim', x: 0, dirX: 0, dirY: 1, power: 0.5 })).not.toBeNull();
+    expect(parseClientMessage({ type: 'move', turnId: 3, move: valid })).not.toBeNull();
+    expect(parseClientMessage({ type: 'hint', data: { x: 0, dirX: 0, dirY: 1, power: 0.5 } })).not.toBeNull();
     expect(parseClientMessage({ type: 'emote', id: 'wow' })).not.toBeNull();
     expect(parseClientMessage({ type: 'rematch' })).toEqual({ type: 'rematch' });
   });
 
   it('SRV-6 rejects bad messages', () => {
-    expect(parseClientMessage({ type: 'shot', turnId: -1, input: valid })).toBeNull();
-    expect(parseClientMessage({ type: 'shot', turnId: 1, input: { ...valid, power: 2 } })).toBeNull();
-    expect(parseClientMessage({ type: 'aim', x: 0, dirX: 0, dirY: 2, power: 0.5 })).toBeNull();
+    expect(parseClientMessage({ type: 'move', turnId: -1, move: valid })).toBeNull();
+    expect(parseClientMessage({ type: 'move', turnId: 1 })).toBeNull();
+    expect(parseClientMessage({ type: 'hint' })).toBeNull();
+    // HUB-5 the game payload is checked by the game module, not the envelope.
+    expect(parseClientMessage({ type: 'move', turnId: 1, move: { ...valid, power: 2 } })).not.toBeNull();
     expect(parseClientMessage({ type: 'emote', id: '' })).toBeNull();
     expect(parseClientMessage({ type: 'emote', id: 'x'.repeat(33) })).toBeNull();
     expect(parseClientMessage({ type: 'nope' })).toBeNull();
     expect(parseClientMessage(null)).toBeNull();
+  });
+
+  it('ROOM-6 carrom aim hint: unit direction, legal power', () => {
+    expect(AimHintSchema.safeParse({ x: 0, dirX: 0, dirY: 1, power: 0.5 }).success).toBe(true);
+    expect(AimHintSchema.safeParse({ x: 0, dirX: 0, dirY: 2, power: 0.5 }).success).toBe(false);
   });
 
   it('SRV-6 server error message parses', () => {

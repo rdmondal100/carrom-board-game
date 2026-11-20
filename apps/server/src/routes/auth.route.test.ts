@@ -78,11 +78,12 @@ describe('auth routes', () => {
 
     it('AUTH-3 upgrade guest keeps id, rating, coins', async () => {
       const g = await newGuest();
-      await User.updateOne({ _id: g.user.id }, { rating: 1234, coins: 50 });
+      await User.updateOne({ _id: g.user.id }, { 'ratings.carrom': { rating: 1234, games: 2 }, coins: 50 });
       const res = await request(app).post('/auth/register').set(bearer(g.token))
         .send({ name: 'Rina', email: 'rina@example.com', password: 'correct horse' });
       expect(res.status).toBe(200);
       expect(res.body.user).toMatchObject({ id: g.user.id, rating: 1234, coins: 50, isGuest: false, name: 'Rina' });
+      expect(res.body.user.ratings).toEqual({ carrom: { rating: 1234, games: 2 } });
       expect(await User.countDocuments({})).toBe(1);
     });
 
@@ -182,7 +183,7 @@ describe('auth routes', () => {
 
     it('AUTH-5 upgrades the calling guest', async () => {
       const g = await newGuest('Tuhin');
-      await User.updateOne({ _id: g.user.id }, { rating: 1100, coins: 7 });
+      await User.updateOne({ _id: g.user.id }, { 'ratings.carrom': { rating: 1100, games: 0 }, coins: 7 });
       verifyMock.mockResolvedValue(googleId());
       const res = await post('good', g.token);
       expect(res.status).toBe(200);

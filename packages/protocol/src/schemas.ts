@@ -1,5 +1,4 @@
 import { config, type Seat, type ShotInput } from '@carrom/engine';
-import type { GameState, RuleEvent } from '@carrom/rules';
 import { z } from 'zod';
 import type { ClientMessage, ServerMessage } from './messages';
 import { EMOTES } from './room';
@@ -12,9 +11,10 @@ const seat = z.number().int().min(0).max(3);
 /** ROOM-10: only the fixed emote ids. */
 const emoteId = z.enum(EMOTES);
 const turnId = z.number().int().min(0);
-const isObject = (v: unknown): boolean => typeof v === 'object' && v !== null;
-const gameState = z.custom<GameState>(isObject);
-const ruleEvents = z.array(z.custom<RuleEvent>(isObject));
+/** HUB-5 game payloads: the envelope only checks they are there; the game module checks the rest. */
+const payload = z.custom<unknown>((v) => v !== undefined);
+
+// ---- carrom payloads (used by the carrom game module and client) ----------
 
 /**
  * Aim fields: finite numbers, x on the baseline, power in range, and a unit
@@ -47,38 +47,44 @@ export function makeShotInputSchema(minForward: number = config.MIN_AIM_FORWARD)
 /** Uses the engine's aim limit (config.MIN_AIM_FORWARD). */
 export const ShotInputSchema = makeShotInputSchema();
 
-const aimMessage = aimFields(config.MIN_AIM_FORWARD);
+/** ROOM-6 carrom's live aim preview (the `hint` payload). */
+export interface AimHint { x: number; dirX: number; dirY: number; power: number }
+export const AimHintSchema: z.ZodType<AimHint> = aimFields(config.MIN_AIM_FORWARD);
+
+// ---- the envelope ----------------------------------------------------------
 
 export const ClientMessageSchema: z.ZodType<ClientMessage> = z.union([
-  z.object({ type: z.literal('shot'), turnId, input: ShotInputSchema }),
-  z.object({ type: z.literal('aim') }).and(aimMessage),
+  z.object({ type: z.literal('move'), turnId, move: payload }),
+  z.object({ type: z.literal('hint'), data: payload }),
   z.object({ type: z.literal('emote'), id: emoteId }),
   z.object({ type: z.literal('rematch') }),
   z.object({ type: z.literal('start') }),
   z.object({ type: z.literal('swap'), a: seat, b: seat }),
 ]);
 
-/** Server messages come from our own server: the envelope is checked, game state is not. */
+const events = z.array(z.unknown());
+
+/** Server messages come from our own server: the envelope is checked, game payloads are not. */
 export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
   z.object({
-    type: z.literal('shotResult'),
+    type: z.literal('moveResult'),
     turnId,
     seat,
-    input: ShotInputSchema,
-    ruleEvents,
-    stateHash: z.string(),
-    state: gameState,
+    move: payload,
+    events,
+    hash: z.string(),
+    view: payload,
     durationMs: z.number().min(0),
   }),
-  z.object({ type: z.literal('aim'), seat }).and(aimMessage),
+  z.object({ type: z.literal('hint'), seat, data: payload }),
   z.object({ type: z.literal('error'), code: z.string(), message: z.string() }),
   z.object({ type: z.literal('emote'), seat, id: emoteId }),
-  z.object({ type: z.literal('game'), state: gameState, turnId }),
-  z.object({ type: z.literal('timeout'), turnId, seat, ruleEvents, state: gameState }),
+  z.object({ type: z.literal('game'), view: payload, turnId }),
+  z.object({ type: z.literal('timeout'), turnId, seat, events, view: payload }),
   z.object({ type: z.literal('clock'), turnId, ms: z.number().min(0) }),
   z.object({
     type: z.literal('rankedResult'),
-    winner: z.enum(['A', 'B']),
+    winner: z.string(),
     abandoned: z.boolean(),
     players: z.array(z.object({
       seat, userId: z.string(), ratingBefore: z.number().int(), ratingAfter: z.number().int(),

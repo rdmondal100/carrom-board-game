@@ -27,11 +27,17 @@ export interface PublicUser {
   hasPassword: boolean;
   hasGoogle: boolean;
   avatar: number;
+  /** @deprecated HUB-7 the carrom rating; use `ratings.carrom` (kept one release for old clients). */
   rating: number;
+  /** HUB-7 rating per game id; a game not listed reads as START_RATING with 0 games. */
+  ratings: Record<string, GameRating>;
   coins: number;
   cosmetics: Cosmetics;
   createdAt: string;
 }
+
+/** HUB-7 one game's Elo rating and the ranked games played. */
+export interface GameRating { rating: number; games: number }
 
 export interface GuestRequest { name?: string }
 export interface RegisterRequest { name: string; email: string; password: string }
@@ -54,17 +60,20 @@ export interface LeaderboardEntry { rank: number; id: string; name: string; avat
 /** GET /leaderboard: top players, plus the caller's row when signed in and ranked. */
 export interface LeaderboardResponse { players: LeaderboardEntry[]; me: LeaderboardEntry | null }
 
-/** RANK-5: one player of a finished match. `team` is 'A' or 'B'. */
+/** RANK-5: one player of a finished match. `team` is the game's team id (carrom: 'A' or 'B'). */
 export interface MatchPlayerView {
-  userId: string; name: string; seat: number; team: 'A' | 'B'; ratingBefore: number; ratingAfter: number;
+  userId: string; name: string; seat: number; team: string; ratingBefore: number; ratingAfter: number;
 }
 
 /** RANK-5: a finished online game. */
 export interface MatchView {
   id: string;
+  /** HUB-9 the game played. */
+  game: string;
   ranked: boolean;
-  winner: 'A' | 'B';
-  /** Boards played. */
+  /** The winning team id (carrom: 'A' or 'B'). */
+  winner: string;
+  /** Boards (rounds) played. */
   boards: number;
   /** The loser left and did not come back (RANK-4). */
   abandoned: boolean;

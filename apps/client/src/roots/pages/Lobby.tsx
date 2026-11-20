@@ -3,12 +3,12 @@ import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Copy, Crown, Share2 } from 'lucide-react';
 import type { LobbyView } from '@carrom/protocol';
-import { seatsFor, teamOf, type Format } from '@carrom/rules';
+import { seatsFor, teamOf } from '@carrom/rules';
 import { Avatar } from '@/components/Avatar';
 import { useOnlineRoom } from '@/components/OnlineParts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { playerAt } from '@/game/onlineGame';
+import { carromConfigOf, playerAt } from '@/game/onlineGame';
 import { t, useLang } from '@/i18n/t';
 import { sendToRoom } from '@/lib/colyseus';
 import { cn } from '@/lib/utils';
@@ -37,14 +37,15 @@ async function share(code: string): Promise<void> {
 }
 
 function lengthLabel(l: LobbyView): string {
-  return t(`setup.length.${l.lengthKind === 'points' ? String(l.target) : 'board'}`);
+  const { length } = carromConfigOf(l);
+  return t(`setup.length.${length.kind === 'points' ? String(length.target) : 'board'}`);
 }
 
 interface SeatProps { lobby: LobbyView; seat: number; me: string | null; picked: boolean; onPick: (() => void) | null }
 
 function SeatCard({ lobby, seat, me, picked, onPick }: SeatProps) {
   const p = playerAt(lobby, seat);
-  const format = lobby.format as Format;
+  const { format } = carromConfigOf(lobby);
   const body = (
     <Card className={cn('flex-row items-center gap-3 p-3', picked && 'ring-2 ring-amber-400', onPick && 'cursor-pointer hover:bg-accent')}>
       {p ? <Avatar index={p.avatar} name={p.name} /> : <span className="size-10 rounded-full border border-dashed border-border" />}
@@ -74,7 +75,7 @@ export function Lobby() {
   if (!lobby) return <p className="text-center text-muted-foreground">{t('online.connecting')}</p>;
   if (lobby.phase !== 'lobby' || lobby.ranked) return <Navigate to="/online/game" replace />;
 
-  const format = lobby.format as Format;
+  const { format, preset } = carromConfigOf(lobby);
   const seats = seatsFor(format);
   const isHost = lobby.hostId === sessionId;
   const full = seats.every((s) => playerAt(lobby, s));
@@ -94,7 +95,7 @@ export function Lobby() {
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <h2 className="text-xl font-bold">{t('lobby.title', { code: lobby.code })}</h2>
       <p className="text-sm text-muted-foreground">
-        {t(`setup.format.${format}`)} · {t(`setup.preset.${lobby.preset}`)} · {lengthLabel(lobby)}
+        {t(`setup.format.${format}`)} · {t(`setup.preset.${preset}`)} · {lengthLabel(lobby)}
       </p>
 
       <Card className="gap-2 p-4">

@@ -6,9 +6,9 @@ import { connectDb, disconnectDb } from '../connectDb.js';
 import { User } from '../models/user.model.js';
 import { ECONOMY } from '../utils/economyConfig.js';
 import { signToken } from '../utils/jwt.js';
-import { fastTiming, join, SECRET, seatOf, serverRoom, until, type TestClient } from './roomTestkit.js';
+import { carromRoom, fastTiming, join, SECRET, seatOf, serverRoom, until, type TestClient } from './roomTestkit.js';
 
-const opts1v1 = { format: '1v1', preset: 'colour', length: { kind: 'board' } };
+const opts1v1 = carromRoom();
 
 describe('online rewards and skins', () => {
   let colyseus: ColyseusTestServer;

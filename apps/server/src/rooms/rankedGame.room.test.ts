@@ -4,20 +4,21 @@ import RedisMock from 'ioredis-mock';
 import { chooseShot } from '@carrom/bot';
 import {
   GAME_ROOM, MSG, parseQueueMessage, QUEUE_ROOM, RANKED_ROOM, type QueueMessage, type SeatReservation,
-  type ServerMessage,
 } from '@carrom/protocol';
 import type { GameState } from '@carrom/rules';
 import { afterAll, afterEach, beforeAll, describe, expect, inject, it } from 'vitest';
 import { createServer } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
 import { Match } from '../models/match.model.js';
-import { User } from '../models/user.model.js';
+import { ratingOf, User } from '../models/user.model.js';
 import { signToken } from '../utils/jwt.js';
 import type { RankedTiming } from '../utils/rankedConfig.js';
 import type { Redis } from '../utils/redis.js';
 import { queueEntries } from './matchmaking.js';
 import type { RankedGameRoom } from './rankedGame.room.js';
-import { fastTiming, SECRET, sleep, until, wrap, type TestClient } from './roomTestkit.js';
+import {
+  carromMatchOf, carromRoom, fastTiming, SECRET, sleep, until, wrap, type ServerMessage, type TestClient,
+} from './roomTestkit.js';
 
 const rankedTiming: RankedTiming = { tickMs: 30, botOfferMs: 400, joinWaitMs: 3000 };
 
@@ -26,13 +27,13 @@ interface Queued { room: SdkRoom; inbox: QueueMessage[]; userId: string; token: 
 /** Each client plays its own turns with the medium bot. */
 function autoPlay(c: TestClient, seat: number, seed: number): void {
   const next = (m: ServerMessage): { state: GameState; turnId: number } | null =>
-    m.type === 'game' ? { state: m.state, turnId: m.turnId }
-      : m.type === 'shotResult' || m.type === 'timeout' ? { state: m.state, turnId: m.turnId + 1 } : null;
+    m.type === 'game' ? { state: m.view, turnId: m.turnId }
+      : m.type === 'moveResult' || m.type === 'timeout' ? { state: m.view, turnId: m.turnId + 1 } : null;
   let s = seed;
   const act = (m: ServerMessage) => {
     const n = next(m);
     if (n && n.state.winner === null && n.state.turnSeat === seat) {
-      c.send({ type: 'shot', turnId: n.turnId, input: chooseShot(n.state, 'medium', s++) });
+      c.send({ type: 'move', turnId: n.turnId, move: chooseShot(n.state, 'medium', s++) });
     }
   };
   c.room.onMessage(MSG, act);
@@ -68,14 +69,14 @@ describe('ranked queue and rooms', () => {
   });
 
   async function user(name: string, rating = 1000): Promise<{ userId: string; token: string }> {
-    const u = await User.create({ name, rating });
+    const u = await User.create({ name, ratings: { carrom: { rating, games: 0 } } });
     return { userId: u.id as string, token: signToken(u.id as string, SECRET) };
   }
 
   async function queue(name: string, rating = 1000): Promise<Queued> {
     const u = await user(name, rating);
     colyseus.sdk.auth.token = u.token;
-    const room = await colyseus.sdk.joinOrCreate(QUEUE_ROOM);
+    const room = await colyseus.sdk.joinOrCreate(QUEUE_ROOM, { gameId: 'carrom' });
     room.reconnection.enabled = false;
     open.push(room);
     const inbox: QueueMessage[] = [];
@@ -114,7 +115,7 @@ describe('ranked queue and rooms', () => {
     return { a, b, ca, cb, room };
   }
 
-  const rating = async (id: string) => (await User.findById(id))!.rating;
+  const rating = async (id: string) => ratingOf((await User.findById(id))!, 'carrom').rating;
 
   it('RANK-2 two players within the window are matched into one ranked 1v1 room', async () => {
     const { a, b, room } = await matchedPair(1000, 1090);
@@ -122,8 +123,8 @@ describe('ranked queue and rooms', () => {
     expect(room.state.phase).toBe('playing');
     const seats = Object.fromEntries([...room.state.players.values()].map((p) => [p.userId, p.seat]));
     expect(seats).toEqual({ [a.userId]: 0, [b.userId]: 2 });
-    expect(room.match?.state.config).toMatchObject({ format: '1v1', preset: 'colour', length: { kind: 'board' } });
-    expect(await queueEntries(redis)).toEqual([]);
+    expect(carromMatchOf(room).state.config).toMatchObject({ format: '1v1', preset: 'colour', length: { kind: 'board' } });
+    expect(await queueEntries(redis, 'carrom')).toEqual([]);
   });
 
   it('RANK-2 far ratings wait; queue status shows the window; cancel leaves the queue', async () => {
@@ -133,17 +134,19 @@ describe('ranked queue and rooms', () => {
     const status = a.inbox.find((m) => m.type === 'queue');
     expect(status).toMatchObject({ type: 'queue', window: 100, rating: 1000 });
     expect(a.inbox.some((m) => m.type === 'matched')).toBe(false);
-    expect((await queueEntries(redis)).map((e) => e.userId).sort()).toEqual([a.userId, b.userId].sort());
+    expect((await queueEntries(redis, 'carrom')).map((e) => e.userId).sort()).toEqual([a.userId, b.userId].sort());
     await b.room.leave();
     await until(() => !colyseus.getRoomById(a.room.roomId)?.clients.some((c) => c.sessionId === b.room.sessionId));
     await sleep(50);
-    expect((await queueEntries(redis)).map((e) => e.userId)).toEqual([a.userId]);
+    expect((await queueEntries(redis, 'carrom')).map((e) => e.userId)).toEqual([a.userId]);
   });
 
   it('RANK-2 one queue entry per user', async () => {
     const a = await queue('Anik');
     colyseus.sdk.auth.token = a.token;
-    await expect(colyseus.sdk.joinOrCreate(QUEUE_ROOM)).rejects.toBeDefined();
+    await expect(colyseus.sdk.joinOrCreate(QUEUE_ROOM, { gameId: 'carrom' })).rejects.toBeDefined();
+    // HUB-6 no queue for an unknown game.
+    await expect(colyseus.sdk.joinOrCreate(QUEUE_ROOM, { gameId: 'chess' })).rejects.toBeDefined();
   });
 
   it('RANK-3 an unmatched player is offered a bot game after the wait, once', async () => {
@@ -158,7 +161,7 @@ describe('ranked queue and rooms', () => {
   it('RANK-3 an unranked (private room) game changes no rating and writes no Match', async () => {
     const x = await user('Xena');
     const y = await user('Yusuf');
-    const created = await colyseus.createRoom(GAME_ROOM, { format: '1v1', preset: 'colour', length: { kind: 'board' } });
+    const created = await colyseus.createRoom(GAME_ROOM, carromRoom());
     colyseus.sdk.auth.token = x.token;
     const cx = wrap(await colyseus.sdk.joinById(created.roomId));
     colyseus.sdk.auth.token = y.token;
@@ -167,22 +170,22 @@ describe('ranked queue and rooms', () => {
     autoPlay(cx, 0, 1);
     autoPlay(cy, 2, 1000);
     cx.send({ type: 'start' });
-    const over = (m: Extract<ServerMessage, { type: 'shotResult' }>) => m.state.winner !== null;
-    await cx.waitFor('shotResult', over, 60_000);
+    const over = (m: Extract<ServerMessage, { type: 'moveResult' }>) => m.view.winner !== null;
+    await cx.waitFor('moveResult', over, 60_000);
     await sleep(200);
     expect([await rating(x.userId), await rating(y.userId)]).toEqual([1000, 1000]);
     expect(await Match.countDocuments()).toBe(0);
     expect(cx.inbox.some((m) => m.type === 'rankedResult')).toBe(false);
   }, 70_000);
 
-  it('RANK-4 a finished ranked game sends rankedResult and applies ratings exactly once', async () => {
+  it('RANK-4 HUB-7 a finished ranked game sends rankedResult and applies carrom ratings exactly once', async () => {
     const { a, b, ca, cb, room } = await matchedPair();
     autoPlay(ca, 0, 7);
     autoPlay(cb, 2, 7000);
     const [ra, rb] = await Promise.all([ca.waitFor('rankedResult', undefined, 60_000), cb.waitFor('rankedResult', undefined, 60_000)]);
     expect(ra).toEqual(rb);
     expect(ra.abandoned).toBe(false);
-    expect(ra.winner).toBe(room.match?.state.winner);
+    expect(ra.winner).toBe(carromMatchOf(room).state.winner);
     const winnerId = ra.winner === 'A' ? a.userId : b.userId;
     const loserId = ra.winner === 'A' ? b.userId : a.userId;
     expect([await rating(winnerId), await rating(loserId)]).toEqual([1016, 984]);
@@ -190,7 +193,11 @@ describe('ranked queue and rooms', () => {
     (room as unknown as { onGameEnd(w: string): void }).onGameEnd(ra.winner);
     await room.pendingResult;
     expect([await rating(winnerId), await rating(loserId)]).toEqual([1016, 984]);
-    expect(await Match.countDocuments({ matchId: room.roomId, ranked: true })).toBe(1);
+    expect(await Match.countDocuments({ matchId: room.roomId, ranked: true, game: 'carrom' })).toBe(1);
+    // HUB-7 only the carrom rating moved, and one ranked carrom game counted.
+    const w = (await User.findById(winnerId))!;
+    expect(ratingOf(w, 'carrom').games).toBe(1);
+    expect([...w.ratings.keys()]).toEqual(['carrom']);
   }, 70_000);
 
   it('RANK-4 leaving a ranked game and not coming back is a loss', async () => {
@@ -217,7 +224,7 @@ describe('ranked queue and rooms', () => {
   it('RANK-2 only the matchmaker makes ranked rooms; strangers cannot take a reserved seat', async () => {
     const x = await user('Xena');
     colyseus.sdk.auth.token = x.token;
-    await expect(colyseus.sdk.create(RANKED_ROOM, { key: 'guess', players: [x.userId, x.userId] })).rejects.toBeDefined();
+    await expect(colyseus.sdk.create(RANKED_ROOM, { key: 'guess', gameId: 'carrom', players: [x.userId, x.userId] })).rejects.toBeDefined();
     const { room } = await matchedPair();
     colyseus.sdk.auth.token = x.token;
     await expect(colyseus.sdk.joinById(room.roomId)).rejects.toBeDefined();

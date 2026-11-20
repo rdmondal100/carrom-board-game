@@ -2,7 +2,7 @@ import RedisMock from 'ioredis-mock';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Redis } from '../utils/redis.js';
 import {
-  canPair, pairUp, queueAdd, queueEntries, queueHas, queueRemove, queueTake, windowFor, type QueueEntry,
+  canPair, pairUp, queueAdd, queueClear, queueEntries, queueHas, queueRemove, queueTake, windowFor, type QueueEntry,
 } from './matchmaking.js';
 
 const e = (userId: string, rating: number, since = 0): QueueEntry => ({ userId, rating, since });
@@ -57,25 +57,36 @@ describe('matchmaking', () => {
     });
 
     it('RANK-2 join adds to the sorted set; cancel removes', async () => {
-      await queueAdd(redis, e('a', 1200, 5));
-      await queueAdd(redis, e('b', 900, 7));
-      expect(await queueEntries(redis)).toEqual([e('b', 900, 7), e('a', 1200, 5)]);
-      expect(await queueHas(redis, 'a')).toBe(true);
-      expect(await queueRemove(redis, 'a')).toBe(true);
-      expect(await queueRemove(redis, 'a')).toBe(false);
-      expect(await queueHas(redis, 'a')).toBe(false);
-      expect(await queueEntries(redis)).toEqual([e('b', 900, 7)]);
+      await queueAdd(redis, 'carrom', e('a', 1200, 5));
+      await queueAdd(redis, 'carrom', e('b', 900, 7));
+      expect(await queueEntries(redis, 'carrom')).toEqual([e('b', 900, 7), e('a', 1200, 5)]);
+      expect(await queueHas(redis, 'carrom', 'a')).toBe(true);
+      expect(await queueRemove(redis, 'carrom', 'a')).toBe(true);
+      expect(await queueRemove(redis, 'carrom', 'a')).toBe(false);
+      expect(await queueHas(redis, 'carrom', 'a')).toBe(false);
+      expect(await queueEntries(redis, 'carrom')).toEqual([e('b', 900, 7)]);
     });
 
     it('RANK-2 taking a pair removes both; a cancelled one puts the other back', async () => {
-      await queueAdd(redis, e('a', 1000, 1));
-      await queueAdd(redis, e('b', 1000, 2));
-      expect(await queueTake(redis, e('a', 1000, 1), e('b', 1000, 2))).toBe(true);
-      expect(await queueEntries(redis)).toEqual([]);
+      await queueAdd(redis, 'carrom', e('a', 1000, 1));
+      await queueAdd(redis, 'carrom', e('b', 1000, 2));
+      expect(await queueTake(redis, 'carrom', e('a', 1000, 1), e('b', 1000, 2))).toBe(true);
+      expect(await queueEntries(redis, 'carrom')).toEqual([]);
 
-      await queueAdd(redis, e('a', 1000, 1));
-      expect(await queueTake(redis, e('a', 1000, 1), e('gone', 1000, 2))).toBe(false);
-      expect(await queueEntries(redis)).toEqual([e('a', 1000, 1)]);
+      await queueAdd(redis, 'carrom', e('a', 1000, 1));
+      expect(await queueTake(redis, 'carrom', e('a', 1000, 1), e('gone', 1000, 2))).toBe(false);
+      expect(await queueEntries(redis, 'carrom')).toEqual([e('a', 1000, 1)]);
+    });
+
+    it('HUB-6 each game has its own queue; clearing one leaves the other', async () => {
+      await queueAdd(redis, 'carrom', e('a', 1000, 1));
+      await queueAdd(redis, 'ludo', e('b', 1000, 2));
+      expect(await queueEntries(redis, 'carrom')).toEqual([e('a', 1000, 1)]);
+      expect(await queueEntries(redis, 'ludo')).toEqual([e('b', 1000, 2)]);
+      expect(await queueHas(redis, 'ludo', 'a')).toBe(false);
+      await queueClear(redis, 'carrom');
+      expect(await queueEntries(redis, 'carrom')).toEqual([]);
+      expect(await queueEntries(redis, 'ludo')).toEqual([e('b', 1000, 2)]);
     });
   });
 });

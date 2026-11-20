@@ -16,7 +16,7 @@ vi.mock('axios', async (orig) => {
 const get = vi.mocked(axios.get);
 
 const match = (over: Partial<MatchView> = {}): MatchView => ({
-  id: 'm1', ranked: true, winner: 'A', boards: 1, abandoned: false, createdAt: '2026-11-20T10:00:00.000Z',
+  id: 'm1', game: 'carrom', ranked: true, winner: 'A', boards: 1, abandoned: false, createdAt: '2026-11-20T10:00:00.000Z',
   players: [
     { userId: 'me', name: 'Rina', seat: 0, team: 'A', ratingBefore: 1000, ratingAfter: 1016 },
     { userId: 'op', name: 'Sami', seat: 2, team: 'B', ratingBefore: 1000, ratingAfter: 984 },

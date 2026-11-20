@@ -1,4 +1,4 @@
-// Bundle the server: workspace packages (@carrom/*, shipped as .ts) are inlined,
+// Bundle the server: workspace packages (@carrom/*, @hub/*, shipped as .ts) are inlined,
 // npm packages stay external and load from node_modules at run time.
 import { rmSync } from 'node:fs';
 import { build } from 'esbuild';
@@ -7,7 +7,7 @@ const externalNpm = {
   name: 'external-npm',
   setup(b) {
     b.onResolve({ filter: /^[^./]/ }, (args) =>
-      args.path.startsWith('@carrom/') ? undefined : { path: args.path, external: true });
+      args.path.startsWith('@carrom/') || args.path.startsWith('@hub/') ? undefined : { path: args.path, external: true });
   },
 };
 

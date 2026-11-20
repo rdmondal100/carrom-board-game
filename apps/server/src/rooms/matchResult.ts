@@ -1,17 +1,20 @@
 import type { RatingChange } from '@carrom/protocol';
-import { teamOf, type Format, type Team } from '@carrom/rules';
 import { Match, type MatchDoc } from '../models/match.model.js';
-import { isDuplicateKey, User } from '../models/user.model.js';
+import { isDuplicateKey, ratingOf, START_RATING, User } from '../models/user.model.js';
 import { eloUpdate } from '../utils/elo.js';
 
-export interface ResultPlayer { userId: string; name: string; seat: number }
+/** One player of a finished game; `team` comes from the game module. */
+export interface ResultPlayer { userId: string; name: string; seat: number; team: string }
 
 export interface MatchResult {
   /** Unique per game (room id + game number): the same id is written once. */
   matchId: string;
+  /** HUB-9 the game played; ratings change in this game only (HUB-7). */
+  game: string;
   ranked: boolean;
-  format: Format;
-  winner: Team;
+  /** The winning team id. */
+  winner: string;
+  /** Boards (rounds) played. */
   boards: number;
   /** RANK-4 the loser left and did not come back. */
   abandoned: boolean;
@@ -22,16 +25,32 @@ const changesOf = (m: MatchDoc): RatingChange[] => m.players.map((p) => ({
   seat: p.seat, userId: String(p.userId), ratingBefore: p.ratingBefore, ratingAfter: p.ratingAfter,
 }));
 
-/** RANK-1: new ratings by user id. Only a ranked 1v1 changes them. */
+/** RANK-1: new ratings by user id. Only a ranked game between two players changes them (Elo). */
 function newRatings(r: MatchResult, before: Map<string, number>): Map<string, number> {
   const after = new Map(before);
-  if (!r.ranked || r.format !== '1v1' || r.players.length !== 2) return after;
+  if (!r.ranked || r.players.length !== 2) return after;
   const [a, b] = r.players as [ResultPlayer, ResultPlayer];
-  const score = teamOf(a.seat, r.format) === r.winner ? 1 : 0;
-  const [na, nb] = eloUpdate(before.get(a.userId) ?? 0, before.get(b.userId) ?? 0, score);
+  const score = a.team === r.winner ? 1 : 0;
+  const [na, nb] = eloUpdate(before.get(a.userId) ?? START_RATING, before.get(b.userId) ?? START_RATING, score);
   after.set(a.userId, na);
   after.set(b.userId, nb);
   return after;
+}
+
+/**
+ * HUB-7: add `delta` to a user's rating in `game` and count one ranked game,
+ * starting from START_RATING / 0 when they never played it ranked.
+ */
+async function applyRating(userId: unknown, game: string, delta: number): Promise<void> {
+  const path = `ratings.${game}`;
+  await User.updateOne({ _id: userId }, [{
+    $set: {
+      [path]: {
+        rating: { $add: [{ $ifNull: [`$${path}.rating`, START_RATING] }, delta] },
+        games: { $add: [{ $ifNull: [`$${path}.games`, 0] }, 1] },
+      },
+    },
+  }], { updatePipeline: true });
 }
 
 /**
@@ -43,16 +62,16 @@ export async function recordMatch(r: MatchResult): Promise<RatingChange[]> {
   const existing = await Match.findOne({ matchId: r.matchId });
   if (existing) return changesOf(existing);
 
-  const users = await User.find({ _id: { $in: r.players.map((p) => p.userId) } }, { rating: 1 });
-  const before = new Map(users.map((u) => [u.id as string, u.rating]));
+  const users = await User.find({ _id: { $in: r.players.map((p) => p.userId) } }, { ratings: 1 });
+  const before = new Map(users.map((u) => [u.id as string, ratingOf(u, r.game).rating]));
   const after = newRatings(r, before);
   let doc: MatchDoc;
   try {
     doc = await Match.create({
-      matchId: r.matchId, ranked: r.ranked, winner: r.winner, boards: r.boards, abandoned: r.abandoned,
+      matchId: r.matchId, game: r.game, ranked: r.ranked, winner: r.winner, boards: r.boards, abandoned: r.abandoned,
       players: r.players.map((p) => ({
-        userId: p.userId, name: p.name, seat: p.seat, team: teamOf(p.seat, r.format),
-        ratingBefore: before.get(p.userId) ?? 0, ratingAfter: after.get(p.userId) ?? 0,
+        userId: p.userId, name: p.name, seat: p.seat, team: p.team,
+        ratingBefore: before.get(p.userId) ?? START_RATING, ratingAfter: after.get(p.userId) ?? START_RATING,
       })),
     });
   } catch (err) {
@@ -62,10 +81,7 @@ export async function recordMatch(r: MatchResult): Promise<RatingChange[]> {
     return changesOf(won);
   }
   if (r.ranked) {
-    await Promise.all(doc.players.map((p) => User.updateOne(
-      { _id: p.userId },
-      { $inc: { rating: p.ratingAfter - p.ratingBefore, rankedGames: 1 } },
-    )));
+    await Promise.all(doc.players.map((p) => applyRating(p.userId, r.game, p.ratingAfter - p.ratingBefore)));
   }
   return changesOf(doc);
 }

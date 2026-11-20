@@ -4,17 +4,18 @@ export type {
 export type { QueueMessage, SeatReservation } from './queue';
 export { parseQueueMessage, QUEUE_ROOM, QueueMessageSchema, RANKED_ROOM } from './queue';
 export {
-  ClientMessageSchema, makeShotInputSchema, parseClientMessage, parseServerMessage,
+  AimHintSchema, ClientMessageSchema, makeShotInputSchema, parseClientMessage, parseServerMessage,
   ServerMessageSchema, ShotInputSchema, UNIT_TOLERANCE,
 } from './schemas';
+export type { AimHint } from './schemas';
 export type {
-  CreateRoomOptions, EmoteId, LobbyView, PlayerView, RoomLookupResponse, RoomPhase,
+  CarromRoomConfig, CreateRoomOptions, EmoteId, LobbyView, PlayerView, RoomLookupResponse, RoomPhase,
 } from './room';
 export {
-  CreateRoomOptionsSchema, EMOTES, GAME_ROOM, INVITE_ALPHABET, INVITE_LENGTH, lengthOf, MSG,
+  CarromRoomConfigSchema, CreateRoomOptionsSchema, EMOTES, GAME_ROOM, INVITE_ALPHABET, INVITE_LENGTH, lobbyConfig, MSG,
 } from './room';
 export type {
-  ApiError, AuthResponse, Cosmetics, GoogleRequest, GuestRequest, LeaderboardEntry, LeaderboardResponse,
+  ApiError, AuthResponse, Cosmetics, GameRating, GoogleRequest, GuestRequest, LeaderboardEntry, LeaderboardResponse,
   LoginRequest, MatchesResponse, MatchPlayerView, MatchView, MeResponse, PublicUser, RegisterRequest,
   UpdateMeRequest,
 } from './api';

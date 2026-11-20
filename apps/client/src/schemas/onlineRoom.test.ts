@@ -6,7 +6,7 @@ describe('online room forms', () => {
     expect(createRoomSchema.safeParse({ format: '2v2', preset: 'point', length: '300' }).success).toBe(true);
     expect(createRoomSchema.safeParse({ format: '1v1', preset: 'point', length: '29' }).success).toBe(false);
     expect(toRoomOptions({ format: '1v1', preset: 'colour', length: '19' }))
-      .toEqual({ format: '1v1', preset: 'colour', length: { kind: 'points', target: 19 } });
+      .toEqual({ gameId: 'carrom', config: { format: '1v1', preset: 'colour', length: { kind: 'points', target: 19 } } });
   });
 
   it('ROOM-1 join code: any case and spaces are fine; 0/O/1/I and bad lengths are not', () => {

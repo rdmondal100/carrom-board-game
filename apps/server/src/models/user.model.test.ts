@@ -25,7 +25,8 @@ describe('user model', () => {
   it('AUTH-1 defaults: guest, rating 1000, 0 coins, avatar 0, no cosmetics, timestamps', async () => {
     const u = await User.create({ name: 'Rina' });
     expect(u.isGuest).toBe(true);
-    expect(u.rating).toBe(1000);
+    expect(model.ratingOf(u, 'carrom')).toEqual({ rating: 1000, games: 0 });
+    expect(toPublicUser(u)).toMatchObject({ rating: 1000, ratings: {} });
     expect(u.coins).toBe(0);
     expect(u.avatar).toBe(0);
     expect(u.createdAt).toBeInstanceOf(Date);

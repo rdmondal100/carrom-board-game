@@ -1,10 +1,21 @@
-import { simulateShot, stateHash } from '@carrom/engine';
-import type { LobbyView, PlayerView, ServerMessage } from '@carrom/protocol';
-import { applyShot, seatsFor, type GameState } from '@carrom/rules';
+import { simulateShot, stateHash, type ShotInput } from '@carrom/engine';
+import {
+  CarromRoomConfigSchema, lobbyConfig, type AimHint, type CarromRoomConfig, type LobbyView, type PlayerView,
+  type ServerMessage,
+} from '@carrom/protocol';
+import { applyShot, seatsFor, type GameState, type RuleEvent } from '@carrom/rules';
 import type { LocalGame } from './localGame';
 
-export type ShotResult = Extract<ServerMessage, { type: 'shotResult' }>;
-export type Timeout = Extract<ServerMessage, { type: 'timeout' }>;
+/** HUB-5 the room messages with carrom's payloads: move = shot, view = whole game, events = rule events. */
+export type CarromMessage = ServerMessage<GameState, RuleEvent, ShotInput, AimHint>;
+export type ShotResult = Extract<CarromMessage, { type: 'moveResult' }>;
+export type Timeout = Extract<CarromMessage, { type: 'timeout' }>;
+
+/** A carrom room's settings from its lobby (the server checked them; a broken value reads as 1v1 colour). */
+export function carromConfigOf(lobby: Pick<LobbyView, 'config'>): CarromRoomConfig {
+  const r = CarromRoomConfigSchema.safeParse(lobbyConfig(lobby));
+  return r.success ? r.data : { format: '1v1', preset: 'colour', length: { kind: 'board' } };
+}
 export type Queued = ShotResult | Timeout;
 
 /**
@@ -23,10 +34,11 @@ export interface Online {
   origin: GameState;
 }
 
-/** Fold one server message in. A `game` message replaces everything. */
-export function receive(o: Online | null, m: ServerMessage): Online | null {
-  if (m.type === 'game') return { shown: m.state, turnId: m.turnId, queue: [], animating: null, origin: m.state };
-  if (!o || (m.type !== 'shotResult' && m.type !== 'timeout')) return o;
+/** Fold one server message in (this room plays carrom). A `game` message replaces everything. */
+export function receive(o: Online | null, raw: ServerMessage): Online | null {
+  const m = raw as CarromMessage;
+  if (m.type === 'game') return { shown: m.view, turnId: m.turnId, queue: [], animating: null, origin: m.view };
+  if (!o || (m.type !== 'moveResult' && m.type !== 'timeout')) return o;
   if (m.turnId < o.turnId || o.queue.some((q) => q.turnId === m.turnId)) return o;
   return { ...o, queue: [...o.queue, m].sort((a, b) => a.turnId - b.turnId) };
 }
@@ -42,8 +54,8 @@ export function fromLog(log: readonly ServerMessage[]): Online | null {
  * picked up; a newer `game` message starts over.
  */
 export function catchUp(o: Online | null, log: readonly ServerMessage[]): Online | null {
-  const first = log[0];
-  if (!o || (first?.type === 'game' && first.state !== o.origin)) return fromLog(log);
+  const first = log[0] as CarromMessage | undefined;
+  if (!o || (first?.type === 'game' && first.view !== o.origin)) return fromLog(log);
   return log.reduce<Online | null>((x, m) => (m.type === 'game' ? x : receive(x, m)), o);
 }
 
@@ -70,11 +82,11 @@ export function animate(o: Online, turnId: number): Online {
 export function advance(o: Online, turnId: number): Online {
   const head = o.queue[0];
   if (!head || head.turnId !== turnId) return o;
-  return { ...o, shown: head.state, turnId: head.turnId + 1, queue: o.queue.slice(1), animating: null };
+  return { ...o, shown: head.view, turnId: head.turnId + 1, queue: o.queue.slice(1), animating: null };
 }
 
 /** Error codes the server answers a refused shot with. */
-export const SHOT_ERRORS: readonly string[] = ['NOT_YOUR_TURN', 'STALE_TURN', 'BAD_SHOT', 'GAME_OVER', 'NOT_PLAYING', 'BAD_MESSAGE'];
+export const SHOT_ERRORS: readonly string[] = ['NOT_YOUR_TURN', 'STALE_TURN', 'BAD_MOVE', 'GAME_OVER', 'NOT_PLAYING', 'BAD_MESSAGE'];
 
 /** The server refused this screen's shot: drop it (the board goes back to `shown`). */
 export function dropOwnShot(o: Online): Online {
@@ -84,8 +96,8 @@ export function dropOwnShot(o: Online): Online {
 /** ROOM-5: does a local simulateShot + applyShot from `shown` give the server's hash? */
 export function hashMatches(shown: GameState, msg: ShotResult): boolean {
   try {
-    const sim = simulateShot(shown.board, msg.input);
-    return stateHash(applyShot(shown, sim.events, sim.final).state.board) === msg.stateHash;
+    const sim = simulateShot(shown.board, msg.move);
+    return stateHash(applyShot(shown, sim.events, sim.final).state.board) === msg.hash;
   } catch {
     return false;
   }

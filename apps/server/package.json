@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@carrom/bot": "workspace:*",
+    "@carrom/game": "workspace:*",
     "@carrom/engine": "workspace:*",
     "@carrom/protocol": "workspace:*",
     "@carrom/rules": "workspace:*",
+    "@hub/game-kit": "workspace:*",
     "@colyseus/core": "^0.18.29",
     "@colyseus/schema": "^5.0.50",
     "@colyseus/ws-transport": "^0.18.5",

@@ -1,15 +1,14 @@
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
 import type { MatchView } from '@carrom/protocol/api';
 
-const TEAMS = ['A', 'B'] as const;
-
 const matchPlayerSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     /** Name at the time of the game (history shows it even after a rename). */
     name: { type: String, required: true },
     seat: { type: Number, required: true, min: 0, max: 3 },
-    team: { type: String, enum: TEAMS, required: true },
+    /** HUB-9 the game's team id (carrom: A or B). */
+    team: { type: String, required: true },
     ratingBefore: { type: Number, required: true },
     ratingAfter: { type: Number, required: true },
   },
@@ -20,8 +19,12 @@ const matchPlayerSchema = new Schema(
 const matchSchema = new Schema(
   {
     matchId: { type: String, required: true },
+    /** HUB-9 the game played. Old documents get 'carrom' from the startup migration (HUB-8). */
+    game: { type: String, required: true },
     players: { type: [matchPlayerSchema], required: true },
-    winner: { type: String, enum: TEAMS, required: true },
+    /** The winning team id. */
+    winner: { type: String, required: true },
+    /** Boards (rounds) played. */
     boards: { type: Number, required: true, min: 1 },
     ranked: { type: Boolean, required: true },
     abandoned: { type: Boolean, required: true, default: false },
@@ -30,7 +33,7 @@ const matchSchema = new Schema(
 );
 
 matchSchema.index({ matchId: 1 }, { unique: true });
-matchSchema.index({ 'players.userId': 1, createdAt: -1 });
+matchSchema.index({ game: 1, 'players.userId': 1, createdAt: -1 });
 
 export type MatchFields = InferSchemaType<typeof matchSchema>;
 export type MatchDoc = HydratedDocument<MatchFields>;
@@ -40,6 +43,7 @@ export const Match = mongoose.model('Match', matchSchema);
 export function toMatchView(m: MatchDoc): MatchView {
   return {
     id: m.id as string,
+    game: m.game,
     ranked: m.ranked,
     winner: m.winner,
     boards: m.boards,

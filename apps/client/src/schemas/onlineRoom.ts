@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { INVITE_ALPHABET, INVITE_LENGTH, type CreateRoomOptions } from '@carrom/protocol';
+import { INVITE_ALPHABET, INVITE_LENGTH, type CarromRoomConfig, type CreateRoomOptions } from '@carrom/protocol';
 import { LENGTHS, toLength } from './localSetup';
 
 // Messages are i18n keys; the forms translate them.
@@ -16,8 +16,9 @@ export const createRoomSchema = z.object({
 });
 export type CreateRoomForm = z.infer<typeof createRoomSchema>;
 
-export const toRoomOptions = (v: CreateRoomForm): CreateRoomOptions =>
-  ({ format: v.format, preset: v.preset, length: toLength(v.length) });
+/** HUB-5 a carrom room: the game id and its settings. */
+export const toRoomOptions = (v: CreateRoomForm): CreateRoomOptions<CarromRoomConfig> =>
+  ({ gameId: 'carrom', config: { format: v.format, preset: v.preset, length: toLength(v.length) } });
 
 /** The code as typed, made canonical: no spaces, upper case. */
 export const cleanCode = (raw: string): string => raw.replace(/\s+/g, '').toUpperCase();

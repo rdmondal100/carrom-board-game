@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { config, type BoardState, type Seat, type ShotEvent, type ShotInput } from '@carrom/engine';
-import type { LobbyView, ServerMessage } from '@carrom/protocol';
+import type { AimHint, LobbyView, ServerMessage } from '@carrom/protocol';
 import type { RuleEvent } from '@carrom/rules';
 import { EmoteBar, EMOTE_ICONS } from '@/components/EmoteBar';
 import { GameEndScreen } from '@/components/GameEndScreen';
@@ -147,7 +147,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
   const board = useBoardCanvas(host, view, {
     onShot: (input: ShotInput) => {
       haptic('strike');
-      sendToRoom({ type: 'shot', turnId: online.turnId, input });
+      sendToRoom({ type: 'move', turnId: online.turnId, move: input });
       setOnline((o) => o && animate(o, o.turnId));
     },
     onEvents: playEvents,
@@ -156,7 +156,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
       const now = performance.now();
       if (now - lastAim.current < AIM_SEND_GAP_MS) return;
       lastAim.current = now;
-      sendToRoom({ type: 'aim', ...aim });
+      sendToRoom({ type: 'hint', data: aim satisfies AimHint });
     },
   }, 'contain');
 
@@ -169,7 +169,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
 
   // ROOM-6: show the shooter's aim as it comes in.
   useEffect(() => onServerMessage((m) => {
-    if (m.type === 'aim' && m.seat !== me) board.current.showAim(m);
+    if (m.type === 'hint' && m.seat !== me) board.current.showAim(m.data as AimHint);
     if (m.type === 'emote') toast(`${EMOTE_ICONS[m.id]} ${seatName(gameRef.current, m.seat)}: ${t(`emote.${m.id}`)}`, { duration: 2000 });
   }), [board, me]);
 
@@ -182,7 +182,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
   useEffect(() => {
     const step = nextStep(online, playing);
     if (step.kind === 'replay') {
-      board.current.replay(step.msg.input);
+      board.current.replay(step.msg.move);
       setOnline((o) => o && animate(o, step.msg.turnId));
     } else if (step.kind === 'finish') {
       if (!hashMatches(online.shown, step.msg) && !warned.current) {
@@ -190,11 +190,11 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
         console.warn(`ROOM-5 state hash mismatch at turn ${step.msg.turnId}; using the server state`);
         toast(t('online.desync'));
       }
-      announce(gameRef.current, step.msg.ruleEvents);
+      announce(gameRef.current, step.msg.events);
       setOnline((o) => o && advance(o, step.msg.turnId));
     } else if (step.kind === 'timeout') {
       toast(t('toast.timeout', { name: seatName(gameRef.current, step.msg.seat) }));
-      announce(gameRef.current, step.msg.ruleEvents);
+      announce(gameRef.current, step.msg.events);
       setOnline((o) => o && advance(o, step.msg.turnId));
     }
   }, [board, online, playing, setOnline]);
@@ -234,7 +234,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
       </p>
       {mine?.bot && !mine.left && (
         <Button className="self-center" size="sm" variant="outline"
-          onClick={() => sendToRoom({ type: 'aim', x: 0, dirX: 0, dirY: 1, power: config.MIN_POWER })}>
+          onClick={() => sendToRoom({ type: 'hint', data: { x: 0, dirX: 0, dirY: 1, power: config.MIN_POWER } })}>
           {t('online.takeBack')}
         </Button>
       )}

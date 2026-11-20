@@ -6,10 +6,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, inject, it } from 'vi
 import { createServer } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
 import { User } from '../models/user.model.js';
-import { fastTiming, join, makeUser, SECRET, seatOf, serverRoom, until, wrap, type TestClient } from './roomTestkit.js';
+import {
+  carromMatchOf, carromRoom, fastTiming, join, makeUser, SECRET, seatOf, serverRoom, until, wrap, type TestClient,
+} from './roomTestkit.js';
 
 const timing = fastTiming();
-const opts1v1 = { format: '1v1', preset: 'colour', length: { kind: 'board' } };
+const opts1v1 = carromRoom();
 const straight = (seat: number): ShotInput => ({ seat: seat as ShotInput['seat'], x: 0, dirX: 0, dirY: 1, power: 0.6 });
 
 describe('game room', () => {
@@ -67,9 +69,11 @@ describe('game room', () => {
     await expect(colyseus.http.get('/rooms/O0O0O0')).rejects.toMatchObject({ statusCode: 404 });
   });
 
-  it('ROOM-1 bad create options are refused', async () => {
+  it('ROOM-1 HUB-4 bad create options are refused (old shape, bad config, unknown game)', async () => {
     colyseus.sdk.auth.token = await makeUser('Maker');
-    await expect(colyseus.sdk.create('game', { format: '3v3' })).rejects.toBeDefined();
+    await expect(colyseus.sdk.create('game', { format: '1v1', preset: 'colour', length: { kind: 'board' } })).rejects.toBeDefined();
+    await expect(colyseus.sdk.create('game', carromRoom({ format: '3v3' as '1v1' }))).rejects.toBeDefined();
+    await expect(colyseus.sdk.create('game', { gameId: 'chess', config: {} })).rejects.toBeDefined();
   });
 
   it('ROOM-2 join without token rejected; guest token accepted', async () => {
@@ -82,7 +86,7 @@ describe('game room', () => {
   });
 
   it('ROOM-3 seats fill in join order; host swaps and starts only when full', async () => {
-    const room = await colyseus.createRoom('game', { ...opts1v1, format: '2v2' });
+    const room = await colyseus.createRoom('game', carromRoom({ format: '2v2' }));
     const a = await joinAs(room.roomId, 'Anna');
     const b = await joinAs(room.roomId, 'Babu');
     expect([seatOf(colyseus, a), seatOf(colyseus, b)]).toEqual([0, 1]);
@@ -103,69 +107,77 @@ describe('game room', () => {
     // The client reads the synced state as protocol LobbyView via toJSON().
     await until(() => (d.room.state as { phase?: string }).phase === 'playing');
     const view = (d.room.state as { toJSON(): LobbyView }).toJSON();
-    expect(view).toMatchObject({ phase: 'playing', format: '2v2', preset: 'colour', lengthKind: 'board', hostId: a.room.sessionId });
+    expect(view).toMatchObject({ phase: 'playing', gameId: 'carrom', hostId: a.room.sessionId });
+    expect(JSON.parse(view.config)).toEqual({ format: '2v2', preset: 'colour', length: { kind: 'board' } });
     expect(view.players[d.room.sessionId]).toMatchObject({ name: 'Dipu', seat: 3, ready: true, bot: false, left: false });
   });
 
-  it('ROOM-4 out-of-turn, stale turnId and bad input → error, state unchanged', async () => {
+  it('ROOM-4 out-of-turn, stale turnId and bad move → error, state unchanged', async () => {
     const { room, game, bySeat } = await started1v1();
-    const turn = game.state.turnSeat;
+    const turn = game.view.turnSeat;
     const other = turn === 0 ? 2 : 0;
     const before = JSON.stringify(room.match);
-    bySeat(other).send({ type: 'shot', turnId: 0, input: straight(other) });
+    bySeat(other).send({ type: 'move', turnId: 0, move: straight(other) });
     await bySeat(other).waitFor('error', (e) => e.code === 'NOT_YOUR_TURN');
-    bySeat(turn).send({ type: 'shot', turnId: 5, input: straight(turn) });
+    bySeat(turn).send({ type: 'move', turnId: 5, move: straight(turn) });
     await bySeat(turn).waitFor('error', (e) => e.code === 'STALE_TURN');
-    bySeat(turn).send({ type: 'shot', turnId: 0, input: { ...straight(turn), power: 9 } });
+    bySeat(turn).send({ type: 'move', turnId: 0, move: { ...straight(turn), power: 9 } });
+    await bySeat(turn).waitFor('error', (e) => e.code === 'BAD_MOVE');
+    bySeat(turn).send({ type: 'shot', turnId: 0, input: straight(turn) });
     await bySeat(turn).waitFor('error', (e) => e.code === 'BAD_MESSAGE');
     expect(JSON.stringify(room.match)).toBe(before);
   });
 
-  it('ROOM-5 server stateHash equals a local simulateShot + applyShot of the same input', async () => {
+  it('ROOM-5 server hash equals a local simulateShot + applyShot of the same input', async () => {
     const { host, guest, game, bySeat } = await started1v1();
-    const input = { ...straight(game.state.turnSeat), x: 0.07, dirX: 0.28, dirY: 0.96 };
-    bySeat(input.seat).send({ type: 'shot', turnId: 0, input });
-    const res = await host.waitFor('shotResult');
-    await guest.waitFor('shotResult');
-    const sim = simulateShot(game.state.board, input);
-    const local = applyShot(game.state, sim.events, sim.final);
-    expect(res.stateHash).toBe(stateHash(local.state.board));
+    const input = { ...straight(game.view.turnSeat), x: 0.07, dirX: 0.28, dirY: 0.96 };
+    bySeat(input.seat).send({ type: 'move', turnId: 0, move: input });
+    const res = await host.waitFor('moveResult');
+    await guest.waitFor('moveResult');
+    const sim = simulateShot(game.view.board, input);
+    const local = applyShot(game.view, sim.events, sim.final);
+    expect(res.hash).toBe(stateHash(local.state.board));
     expect(res.durationMs).toBe(sim.durationMs);
-    expect(res.state).toEqual(JSON.parse(JSON.stringify(local.state)));
+    expect(res.view).toEqual(JSON.parse(JSON.stringify(local.state)));
+    expect(res.events).toEqual(JSON.parse(JSON.stringify(local.events)));
+    expect(res.move).toEqual(input);
   });
 
-  it('ROOM-6 aim is relayed to others, at most 10 per second', async () => {
+  it('ROOM-6 aim hint is relayed to others, at most 10 per second', async () => {
     const { game, bySeat } = await started1v1();
-    const turn = game.state.turnSeat;
+    const turn = game.view.turnSeat;
     const watcher = bySeat(turn === 0 ? 2 : 0);
-    const aim = { type: 'aim', x: 0.1, dirX: 0, dirY: 1, power: 0.5 } as const;
-    bySeat(turn).send(aim);
-    bySeat(turn).send({ ...aim, power: 0.6 });
-    await watcher.waitFor('aim', (m) => m.seat === turn && m.power === 0.5);
+    const aim = { x: 0.1, dirX: 0, dirY: 1, power: 0.5 };
+    bySeat(turn).send({ type: 'hint', data: aim });
+    bySeat(turn).send({ type: 'hint', data: { ...aim, power: 0.6 } });
+    // Not the shooter's turn, or not a valid aim: dropped.
+    watcher.send({ type: 'hint', data: aim });
+    bySeat(turn).send({ type: 'hint', data: { ...aim, dirY: 2 } });
+    await watcher.waitFor('hint', (m) => m.seat === turn && m.data.power === 0.5);
     await new Promise((r) => setTimeout(r, 150));
-    expect(watcher.inbox.filter((m) => m.type === 'aim')).toHaveLength(1);
-    expect(bySeat(turn).inbox.some((m) => m.type === 'aim')).toBe(false);
+    expect(watcher.inbox.filter((m) => m.type === 'hint')).toHaveLength(1);
+    expect(bySeat(turn).inbox.some((m) => m.type === 'hint')).toBe(false);
   });
 
   it('ROOM-7 timeout passes the turn; two timeouts → bot shoots for that seat', async () => {
     timing.shotClockMs = 150;
     const { room, host, game } = await started1v1();
-    const first = game.state.turnSeat;
+    const first = game.view.turnSeat;
     const t0 = await host.waitFor('timeout', (m) => m.turnId === 0);
     expect(t0.seat).toBe(first);
-    expect(t0.state.turnSeat).not.toBe(first);
+    expect(t0.view.turnSeat).not.toBe(first);
     const t2 = await host.waitFor('timeout', (m) => m.turnId === 2);
-    expect(t2.ruleEvents).toContainEqual({ type: 'botTakeover', seat: first });
+    expect(t2.events).toContainEqual({ type: 'botTakeover', seat: first });
     expect(room.botSeats.has(first)).toBe(true);
     // The other seat times out once more; then the bot plays `first`.
-    const shot = await host.waitFor('shotResult', (m) => m.seat === first, 15_000);
+    const shot = await host.waitFor('moveResult', (m) => m.seat === first, 15_000);
     expect(shot.turnId).toBe(4);
   });
 
   it('ROOM-7 any message from a taken-over player ends the takeover', async () => {
     timing.shotClockMs = 150;
     const { room, host, game, bySeat } = await started1v1();
-    const first = game.state.turnSeat;
+    const first = game.view.turnSeat;
     await host.waitFor('timeout', (m) => m.turnId === 2);
     timing.shotClockMs = 60_000;
     bySeat(first).send({ type: 'emote', id: 'oops' });
@@ -204,16 +216,16 @@ describe('game room', () => {
 
   it('ROOM-9 rematch needs all human votes, then the next seat breaks', async () => {
     const { room, host, guest } = await started1v1();
-    const m = room.match!;
+    const m = carromMatchOf(room);
     room.match = { ...m, state: { ...m.state, winner: 'A' } };
     room.state.phase = 'ended';
     host.send({ type: 'rematch' });
     await until(() => room.state.players.get(host.room.sessionId)?.rematch === true);
     expect(room.state.phase).toBe('ended');
     guest.send({ type: 'rematch' });
-    const next = await host.waitFor('game', (g) => g.state.winner === null && g !== host.inbox.find((x) => x.type === 'game'));
+    const next = await host.waitFor('game', (g) => g.view.winner === null && g !== host.inbox.find((x) => x.type === 'game'));
     expect(next.turnId).toBe(0);
-    expect(next.state.turnSeat).toBe(m.firstBreak === 0 ? 2 : 0);
+    expect(next.view.turnSeat).toBe(m.firstBreak === 0 ? 2 : 0);
     expect(room.state.phase).toBe('playing');
   });
 

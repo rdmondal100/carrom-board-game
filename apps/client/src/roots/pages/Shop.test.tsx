@@ -21,7 +21,7 @@ const patch = vi.mocked(axios.patch);
 const DEFAULTS = ['classic-striker', 'classic-coins', 'classic-board'];
 const user = (over: Partial<PublicUser> = {}): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false,
-  avatar: 0, rating: 1000, coins: 500, cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: DEFAULTS },
+  avatar: 0, rating: 1000, ratings: {}, coins: 500, cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: DEFAULTS },
   createdAt: '2026-11-20T00:00:00.000Z', ...over,
 });
 

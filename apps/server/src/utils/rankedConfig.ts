@@ -1,8 +1,11 @@
-import type { CreateRoomOptions } from '@carrom/protocol';
+import type { CarromRoomConfig } from '@carrom/protocol';
 import { START_RATING } from '../models/user.model.js';
 
-/** RANK-1: every ranked game is 1v1, colour preset, one board. */
-export const RANKED_OPTIONS: CreateRoomOptions = { format: '1v1', preset: 'colour', length: { kind: 'board' } };
+/** RANK-1: every ranked carrom game is 1v1, colour preset, one board. */
+export const CARROM_RANKED: CarromRoomConfig = { format: '1v1', preset: 'colour', length: { kind: 'board' } };
+
+/** HUB-6 the settings of each game's ranked play (games not listed have no ranked queue). */
+export const RANKED_CONFIGS: Record<string, unknown> = { carrom: CARROM_RANKED };
 
 /** RANK-1 Elo. */
 export const ELO_START = START_RATING;
@@ -32,9 +35,9 @@ export const DEFAULT_RANKED_TIMING: RankedTiming = {
   joinWaitMs: 20_000,
 };
 
-/** Redis keys of the queue. */
-export const QUEUE_KEY = 'ranked:queue';
-export const QUEUE_SINCE_KEY = 'ranked:since';
+/** HUB-6 Redis keys of one game's queue. */
+export const queueKey = (gameId: string): string => `ranked:${gameId}:queue`;
+export const queueSinceKey = (gameId: string): string => `ranked:${gameId}:since`;
 
 /** RANK-6 / history list sizes. */
 export const LEADERBOARD_DEFAULT = 100;

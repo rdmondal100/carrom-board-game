@@ -1,6 +1,4 @@
 import { schema, t, type SchemaType } from '@colyseus/schema';
-import type { Format } from '@carrom/rules';
-import { seatsFor } from '@carrom/rules';
 
 /** ROOM-3: one person in the room. Field meanings match protocol `PlayerView`. */
 export const PlayerState = schema({
@@ -27,10 +25,10 @@ export type PlayerState = SchemaType<typeof PlayerState>;
 export const LobbyState = schema({
   code: t.string(),
   phase: t.string(),
-  format: t.string(),
-  preset: t.string(),
-  lengthKind: t.string(),
-  target: t.uint16(),
+  /** HUB-4 the game this room plays. */
+  gameId: t.string(),
+  /** The game settings as JSON (checked by the game module at create). */
+  config: t.string(),
   hostId: t.string(),
   /** RANK-2 a ranked room: no host, starts when both matched players are in. */
   ranked: t.boolean(),
@@ -38,14 +36,13 @@ export const LobbyState = schema({
 }, 'LobbyState');
 export type LobbyState = SchemaType<typeof LobbyState>;
 
-/** ROOM-3: seats fill in join order (seatsFor order); null when the room is full. */
-export function freeSeat(taken: readonly number[], format: Format): number | null {
-  return seatsFor(format).find((s) => !taken.includes(s)) ?? null;
+/** ROOM-3: seats fill in join order (the game's seat order); null when the room is full. */
+export function freeSeat(taken: readonly number[], seats: readonly number[]): number | null {
+  return seats.find((s) => !taken.includes(s)) ?? null;
 }
 
-/** ROOM-3: may seats a and b be swapped in this format? */
-export function canSwap(a: number, b: number, format: Format): boolean {
-  const seats: number[] = seatsFor(format);
+/** ROOM-3: may seats a and b be swapped in a game with these seats? */
+export function canSwap(a: number, b: number, seats: readonly number[]): boolean {
   return a !== b && seats.includes(a) && seats.includes(b);
 }
 

@@ -1,10 +1,10 @@
 import { simulateShot, stateHash, type ShotInput } from '@carrom/engine';
-import type { LobbyView, ServerMessage } from '@carrom/protocol';
+import type { LobbyView } from '@carrom/protocol';
 import { applyShot, applyTimeout, newGame, type GameState } from '@carrom/rules';
 import { describe, expect, it } from 'vitest';
 import {
   advance, animate, asLocalGame, canShoot, catchUp, dropOwnShot, fromLog, hashMatches, nextStep, receive,
-  type Online, type ShotResult,
+  carromConfigOf, type CarromMessage, type Online, type ShotResult,
 } from './onlineGame';
 
 const g0 = newGame({ format: '1v1', preset: 'colour', length: { kind: 'board' }, seed: 3 });
@@ -14,18 +14,18 @@ function shot(state: GameState, turnId: number, over: Partial<ShotInput> = {}): 
   const sim = simulateShot(state.board, input);
   const out = applyShot(state, sim.events, sim.final);
   return {
-    type: 'shotResult', turnId, seat: state.turnSeat, input, ruleEvents: out.events,
-    stateHash: stateHash(out.state.board), state: out.state, durationMs: sim.durationMs,
+    type: 'moveResult', turnId, seat: state.turnSeat, move: input, events: out.events,
+    hash: stateHash(out.state.board), view: out.state, durationMs: sim.durationMs,
   };
 }
 
-const start = (): Online => receive(null, { type: 'game', state: g0, turnId: 0 })!;
+const start = (): Online => receive(null, { type: 'game', view: g0, turnId: 0 })!;
 
 describe('online game', () => {
   it('ROOM-5 a replay checks the hash; the right input matches, another does not', () => {
     const r = shot(g0, 0);
     expect(hashMatches(g0, r)).toBe(true);
-    expect(hashMatches(g0, { ...r, input: { ...r.input, power: 0.61 } })).toBe(false);
+    expect(hashMatches(g0, { ...r, move: { ...r.move, power: 0.61 } })).toBe(false);
   });
 
   it('ROOM-5 a remote shot is replayed, then its server state is shown', () => {
@@ -37,7 +37,7 @@ describe('online game', () => {
     expect(nextStep(o, false)).toEqual({ kind: 'finish', msg: r });
     o = advance(o, 0);
     expect(advance(o, 0)).toBe(o);
-    expect(o.shown).toBe(r.state);
+    expect(o.shown).toBe(r.view);
     expect(o.turnId).toBe(1);
     expect(o.animating).toBeNull();
   });
@@ -60,8 +60,8 @@ describe('online game', () => {
 
   it('ROOM-7 results show in turnId order; timeouts need no animation; old ones are ignored', () => {
     const r0 = shot(g0, 0);
-    const t = applyTimeout(r0.state);
-    const t1: ServerMessage = { type: 'timeout', turnId: 1, seat: r0.state.turnSeat, ruleEvents: t.events, state: t.state };
+    const t = applyTimeout(r0.view);
+    const t1: CarromMessage = { type: 'timeout', turnId: 1, seat: r0.view.turnSeat, events: t.events, view: t.state };
     let o = receive(receive(start(), t1), r0)!;
     expect(o.queue.map((q) => q.turnId)).toEqual([0, 1]);
     o = advance(animate(o, 0), 0);
@@ -73,22 +73,22 @@ describe('online game', () => {
 
   it('ROOM-8 a game message (rejoin, rematch) replaces everything; fromLog rebuilds the screen', () => {
     const r = shot(g0, 0);
-    const o = fromLog([{ type: 'game', state: g0, turnId: 0 }, r, { type: 'clock', turnId: 1, ms: 5 }])!;
+    const o = fromLog([{ type: 'game', view: g0, turnId: 0 }, r, { type: 'clock', turnId: 1, ms: 5 }])!;
     expect(o.queue).toEqual([r]);
-    expect(receive(o, { type: 'game', state: r.state, turnId: 1 })).toEqual({ shown: r.state, turnId: 1, queue: [], animating: null, origin: r.state });
+    expect(receive(o, { type: 'game', view: r.view, turnId: 1 })).toEqual({ shown: r.view, turnId: 1, queue: [], animating: null, origin: r.view });
     expect(fromLog([r])).toBeNull();
   });
 
   it('ROOM-5 catchUp picks up missed messages without losing an animation; a new game starts over', () => {
-    const game: ServerMessage = { type: 'game', state: g0, turnId: 0 };
+    const game: CarromMessage = { type: 'game', view: g0, turnId: 0 };
     const r = shot(g0, 0);
     const o = animate(fromLog([game])!, 0);
     const caught = catchUp(o, [game, r])!;
     expect(caught.queue).toEqual([r]);
     expect(caught.animating).toBe(0);
     expect(catchUp(caught, [game, r])).toEqual(caught);
-    const rematch: ServerMessage = { type: 'game', state: r.state, turnId: 0 };
-    expect(catchUp(caught, [rematch])!.shown).toBe(r.state);
+    const rematch: CarromMessage = { type: 'game', view: r.view, turnId: 0 };
+    expect(catchUp(caught, [rematch])!.shown).toBe(r.view);
     expect(catchUp(null, [game])!.shown).toBe(g0);
   });
 
@@ -108,11 +108,17 @@ describe('online game', () => {
         striker: 'classic-striker', coinSet: 'classic-coins',
       });
     const lobby: LobbyView = {
-      code: 'ABCDEF', phase: 'playing', format: '1v1', preset: 'colour', lengthKind: 'board', target: 0,
+      code: 'ABCDEF', phase: 'playing', gameId: 'carrom', config: '{"format":"1v1","preset":"colour","length":{"kind":"board"}}',
       hostId: 'x', ranked: false, players: { x: p(2, 'Rina', true), y: p(0, 'Sami') },
     };
     const g = asLocalGame(g0, lobby);
     expect(g.names).toEqual(['Sami', 'Rina']);
     expect(g.takeover).toEqual([2]);
+  });
+
+  it('HUB-4 carromConfigOf reads the lobby config; broken JSON falls back to 1v1 colour', () => {
+    expect(carromConfigOf({ config: '{"format":"2v2","preset":"point","length":{"kind":"points","target":29}}' }))
+      .toEqual({ format: '2v2', preset: 'point', length: { kind: 'points', target: 29 } });
+    expect(carromConfigOf({ config: '{nope' })).toEqual({ format: '1v1', preset: 'colour', length: { kind: 'board' } });
   });
 });

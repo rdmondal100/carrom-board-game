@@ -1,12 +1,27 @@
 import type { ColyseusTestServer } from '@colyseus/testing';
 import type { Room as SdkRoom } from '@colyseus/sdk';
-import { MSG, type ClientMessage, type ServerMessage } from '@carrom/protocol';
+import type { ShotInput } from '@carrom/engine';
+import type { CarromMatch } from '@carrom/game';
+import { MSG, type AimHint, type CarromRoomConfig, type ClientMessage, type ServerMessage as AnyServerMessage } from '@carrom/protocol';
+import type { GameState, RuleEvent } from '@carrom/rules';
 import { User } from '../models/user.model.js';
 import { signToken } from '../utils/jwt.js';
 import type { GameRoom } from './game.room.js';
 import type { RoomTiming } from './roomTiming.js';
 
 export const SECRET = 'r'.repeat(32);
+
+/** Room messages with carrom's payloads typed (the room tests play carrom). */
+export type ServerMessage = AnyServerMessage<GameState, RuleEvent, ShotInput, AimHint>;
+
+/** HUB-5 create options for a carrom room. */
+export const carromRoom = (config: Partial<CarromRoomConfig> = {}) => ({
+  gameId: 'carrom',
+  config: { format: '1v1', preset: 'colour', length: { kind: 'board' }, ...config },
+});
+
+/** The running carrom game of a server room. */
+export const carromMatchOf = (room: GameRoom): CarromMatch => room.match as CarromMatch;
 
 /** Short waits so room tests run in seconds. Tests may change fields per case. */
 export const fastTiming = (): RoomTiming => ({

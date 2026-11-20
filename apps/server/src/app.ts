@@ -94,7 +94,8 @@ export function createServer(
   gameServer.define('ping', PingRoom);
   gameServer.define(GAME_ROOM, gameRoomFor(env.JWT_SECRET, opts.roomTiming));
   gameServer.define(RANKED_ROOM, rankedRoomFor(env.JWT_SECRET, opts.roomTiming, opts.rankedTiming));
-  if (opts.redis) gameServer.define(QUEUE_ROOM, queueRoomFor(env.JWT_SECRET, opts.redis, opts.rankedTiming));
+  // HUB-6 one queue room per game: joinOrCreate with { gameId } finds that game's room.
+  if (opts.redis) gameServer.define(QUEUE_ROOM, queueRoomFor(env.JWT_SECRET, opts.redis, opts.rankedTiming)).filterBy(['gameId']);
   return { httpServer, gameServer };
 }
 

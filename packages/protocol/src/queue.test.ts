@@ -20,6 +20,7 @@ describe('ranked protocol', () => {
     expect(parseServerMessage({ type: 'rankedResult', winner: 'A', abandoned: false, players })).not.toBeNull();
     const bad = [{ ...players[0], ratingAfter: 1016.5 }];
     expect(parseServerMessage({ type: 'rankedResult', winner: 'A', abandoned: false, players: bad })).toBeNull();
-    expect(parseServerMessage({ type: 'rankedResult', winner: 'C', abandoned: false, players })).toBeNull();
+    // HUB-1 winner is any game's team id (or a seat as a string), never a number.
+    expect(parseServerMessage({ type: 'rankedResult', winner: 2, abandoned: false, players })).toBeNull();
   });
 });
