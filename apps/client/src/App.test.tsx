@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from './App';
@@ -166,5 +166,39 @@ describe('auth routes', () => {
   it('RANK-8 /leaderboard renders its page', async () => {
     show('/leaderboard');
     expect(await heading(en['leaderboard.title'])).toBeTruthy();
+  });
+
+  describe('offline', () => {
+    afterEach(() => { vi.restoreAllMocks(); });
+    const goOffline = () => vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    it('APP-9 online pages show the offline message when navigator.onLine is false', async () => {
+      goOffline();
+      for (const path of ['/online', '/join/ABCD', '/ranked', '/leaderboard', '/login']) {
+        show(path);
+        expect(await heading(en['offline.title'])).toBeTruthy();
+        expect(screen.getByRole('link', { name: en['offline.bot'] }).getAttribute('href')).toBe('/local/setup?vs=bot');
+        cleanup();
+      }
+    });
+
+    it('APP-9 Vs-bot setup and the menus still work offline', async () => {
+      goOffline();
+      show('/local/setup?vs=bot');
+      expect(await heading(en['setup.titleBot'])).toBeTruthy();
+      expect(screen.queryByTestId('offline')).toBeNull();
+      cleanup();
+      show('/play');
+      expect(await heading(en['play.title'])).toBeTruthy();
+    });
+
+    it('APP-9 the online page comes back when the network does', async () => {
+      const spy = goOffline();
+      show('/online');
+      expect(await heading(en['offline.title'])).toBeTruthy();
+      spy.mockReturnValue(true);
+      act(() => { window.dispatchEvent(new Event('online')); });
+      expect(screen.queryByTestId('offline')).toBeNull();
+    });
   });
 });

@@ -30,8 +30,6 @@ const TONES: Record<SoundKind, readonly Sweep[]> = {
 const SILENT = 0.0001;
 /** Fade-in time so tones start without a click, seconds. */
 const ATTACK_S = 0.004;
-/** How long to buzz on a pocket when haptics are on, ms. */
-export const POCKET_BUZZ_MS = 25;
 
 type AudioCtor = typeof AudioContext;
 let ctx: AudioContext | null = null;
@@ -84,15 +82,5 @@ export function playSound(kind: SoundKind, strength = 1): void {
     osc.connect(gain).connect(ac.destination);
     osc.start(start);
     osc.stop(end);
-  }
-}
-
-/** A short vibration when haptics are on and the device supports it. */
-export function buzz(ms: number): void {
-  if (!store.getState().settings.haptics) return;
-  try {
-    navigator.vibrate?.(ms);
-  } catch {
-    // Some browsers throw without a user gesture; haptics are optional.
   }
 }

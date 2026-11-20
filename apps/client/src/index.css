@@ -2,6 +2,12 @@
 
 /* shadcn/ui tokens: one warm, dark "wooden" theme. */
 :root {
+  /* APP-4: safe-area insets (notch, gesture bar). The Android app sets --safe-area-inset-* itself
+     (older WebViews report env() as 0); browsers use env(). */
+  --inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --inset-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --inset-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
   --radius: 0.75rem;
   --background: #1c1410;
   --foreground: #f5ead8;

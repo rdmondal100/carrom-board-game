@@ -20,7 +20,7 @@ export function Header() {
   const user = useAppSelector((s) => s.auth.user);
   const account = user ? t('nav.profile') : t('nav.login');
   return (
-    <header className="flex items-center gap-1 border-b border-border px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+    <header className="flex items-center gap-1 border-b border-border px-3 py-2 pt-[max(0.5rem,var(--inset-top))]">
       <Link to="/" className="mr-auto text-lg font-bold tracking-tight">{t('app.title')}</Link>
       <nav className="flex gap-0.5 text-sm">
         {LINKS.map(({ to, key, Icon, end }) => (

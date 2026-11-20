@@ -19,16 +19,18 @@ import {
 import { clearSave, loadGame, saveGame } from '@/game/save';
 import { useBoardCanvas } from '@/game/useBoardCanvas';
 import { t, useLang } from '@/i18n/t';
-import { buzz, playSound, POCKET_BUZZ_MS } from '@/lib/sound';
+import { onPauseRequest } from '@/lib/backButton';
+import { haptic } from '@/lib/native';
+import { playSound } from '@/lib/sound';
 import { useAppSelector } from '@/store/store';
 
 type BoardEnd = { next: Game; boardNo: number; winner: Team; points: number };
 
-/** UI-7: one frame's events → sounds (and a buzz on a pocket). */
+/** UI-7 / APP-7: one frame's events → sounds (and a haptic tap on a pocket). */
 function playEvents(events: ShotEvent[], board: BoardState): void {
   for (const cue of soundsForEvents(events, board)) {
     playSound(cue.kind, cue.strength);
-    if (cue.kind === 'pocket') buzz(POCKET_BUZZ_MS);
+    if (cue.kind === 'pocket') haptic('pocket');
   }
 }
 
@@ -93,6 +95,7 @@ function Play({ initial }: { initial: Game }) {
 
   const board = useBoardCanvas(host, initialSeat, {
     onShot: (input: ShotInput) => {
+      haptic('strike');
       const out = shootLocal(game, input);
       pending.current = { game: out.game, ruleEvents: out.ruleEvents };
     },
@@ -108,6 +111,9 @@ function Play({ initial }: { initial: Game }) {
   useEffect(() => {
     board.current.load(game.state.board, shooterSeat(game), rotate ? shooterSeat(game) : 0);
   }, [board, game, rotate]);
+
+  // APP-3: hardware back opens the pause menu (not while a shot plays, like the HUD button).
+  useEffect(() => onPauseRequest(() => { if (!playing) setPaused(true); }), [playing]);
 
   const overlay = paused || boardEnd !== null || gameEnd !== null;
   const botLevel = game.state.winner === null ? botLevelAt(game, game.state.turnSeat) : null;

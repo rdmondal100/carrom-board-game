@@ -22,7 +22,9 @@ import {
 import { useBoardCanvas, type RemoteAim } from '@/game/useBoardCanvas';
 import { t, useLang } from '@/i18n/t';
 import { gameLog, onServerMessage, sendToRoom } from '@/lib/colyseus';
-import { buzz, playSound, POCKET_BUZZ_MS } from '@/lib/sound';
+import { onPauseRequest } from '@/lib/backButton';
+import { haptic } from '@/lib/native';
+import { playSound } from '@/lib/sound';
 import { loadMe } from '@/store/authSlice';
 import { leaveRoom } from '@/store/roomSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
@@ -35,7 +37,7 @@ const AIM_SEND_GAP_MS = 100;
 function playEvents(events: ShotEvent[], board: BoardState): void {
   for (const cue of soundsForEvents(events, board)) {
     playSound(cue.kind, cue.strength);
-    if (cue.kind === 'pocket') buzz(POCKET_BUZZ_MS);
+    if (cue.kind === 'pocket') haptic('pocket');
   }
 }
 
@@ -128,6 +130,8 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
   const game = asLocalGame(online.shown, lobby);
   const gameRef = useRef(game);
   useEffect(() => { gameRef.current = game; });
+  // APP-3: back in an online match asks before leaving (online has no pause).
+  useEffect(() => onPauseRequest(() => setLeaving(true)), []);
   const shooter = online.shown.turnSeat;
   const myTurn = canShoot(online, me, playing);
   const botTurn = playerAt(lobby, shooter)?.bot === true;
@@ -136,6 +140,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
 
   const board = useBoardCanvas(host, view, {
     onShot: (input: ShotInput) => {
+      haptic('strike');
       sendToRoom({ type: 'shot', turnId: online.turnId, input });
       setOnline((o) => o && animate(o, o.turnId));
     },

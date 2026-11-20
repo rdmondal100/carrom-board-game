@@ -9,9 +9,20 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:quiet": "vitest run --reporter=dot --silent",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:android": "tsc --noEmit && vite build --mode android",
+    "android:sync": "pnpm build:android && cap sync android",
+    "android:open": "cap open android",
+    "android:build": "pnpm android:sync && node scripts/androidBuild.mjs assembleDebug",
+    "android:assets": "capacitor-assets generate --android"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capgo/capacitor-social-login": "^8.7.13",
     "@carrom/bot": "workspace:*",
     "@carrom/engine": "workspace:*",
     "@carrom/protocol": "workspace:*",
@@ -36,6 +47,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",

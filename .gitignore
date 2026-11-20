@@ -4,8 +4,14 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.android.example
 
 # Local planning docs (not pushed)
 specs/
 CLAUDE.md
 .claude
+# Android (spec 11): signing secrets and build output never go in git
+*.jks
+*.keystore
+keystore.properties
+apps/client/android/app/release/
