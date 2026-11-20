@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { RatingChange, ServerMessage } from '@carrom/protocol';
 import { teamOf } from '@carrom/rules';
+import { useGameEndAds } from '@/components/AdParts';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,6 +31,7 @@ interface ResultProps {
 
 /** RANK-8: ranked game over: win or loss and the rating change. */
 export function RankedResultScreen({ result, userId, onAgain, onHome }: ResultProps) {
+  const { leaving, leave } = useGameEndAds();
   const mine = result?.players.find((p) => p.userId === userId);
   return (
     <Dialog open>
@@ -48,8 +50,8 @@ export function RankedResultScreen({ result, userId, onAgain, onHome }: ResultPr
           </p>
         )}
         <DialogFooter className="mt-2 flex-row justify-center">
-          <Button autoFocus onClick={onAgain} disabled={!result}>{t('ranked.again')}</Button>
-          <Button variant="outline" onClick={onHome}>{t('gameEnd.home')}</Button>
+          <Button autoFocus onClick={() => leave(onAgain)} disabled={!result || leaving}>{t('ranked.again')}</Button>
+          <Button variant="outline" onClick={() => leave(onHome)} disabled={leaving}>{t('gameEnd.home')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

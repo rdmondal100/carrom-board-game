@@ -17,6 +17,8 @@ import { healthRouter } from './routes/health.route.js';
 import { leaderboardRouter } from './routes/leaderboard.route.js';
 import { matchRouter } from './routes/match.route.js';
 import { meRouter, shopRouter } from './routes/shop.route.js';
+import { adsRouter } from './routes/ads.route.js';
+import { googleKeys, type KeySource } from './utils/admobSsv.js';
 import { roomRouter } from './routes/room.route.js';
 import type { RankedTiming } from './utils/rankedConfig.js';
 import type { Redis } from './utils/redis.js';
@@ -32,6 +34,8 @@ export interface AppOptions {
   redis?: Redis;
   /** Ranked queue waits (tests shorten them). */
   rankedTiming?: RankedTiming;
+  /** AD-3 AdMob SSV public keys (tests use their own). */
+  ssvKeys?: KeySource;
 }
 
 /** Express app with every route and middleware; no listening (supertest uses it directly). */
@@ -47,6 +51,7 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
   app.use('/matches', matchRouter(env.JWT_SECRET));
   app.use('/shop', shopRouter(env.JWT_SECRET));
   app.use('/me', meRouter(env.JWT_SECRET));
+  app.use('/ads', adsRouter(env.JWT_SECRET, opts.ssvKeys ?? googleKeys()));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),

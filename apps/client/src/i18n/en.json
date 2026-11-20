@@ -324,5 +324,9 @@
   "item.classic-board": "Classic",
   "item.teak-board": "Teak",
   "item.midnight-board": "Midnight",
-  "item.royal-board": "Royal"
+  "item.royal-board": "Royal",
+  "ads.watch": "Watch an ad for {coins} coins ({left} left today)",
+  "ads.rewardPending": "+{coins} coins on the way",
+  "ads.notFinished": "Watch the whole ad to get the coins",
+  "ads.unavailable": "No ad right now, try again later"
 }

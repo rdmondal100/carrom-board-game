@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
 import { t, useLang } from '@/i18n/t';
+import { initAds, setMenuBanner } from '@/lib/ads';
 import { getToken } from '@/lib/auth';
 import { decideBack, isMatchPath, requestPause } from '@/lib/backButton';
 import { exitApp, onHardwareBack, setMatchMode } from '@/lib/native';
@@ -45,6 +46,11 @@ export function RootLayout() {
     document.documentElement.lang = lang;
     document.title = t('app.title');
   }, [lang]);
+
+  // AD-2: consent first (Android only; a no-op on the web). No ad shows at start (AD-4).
+  useEffect(() => { void initAds(); }, []);
+  // AD-5: the optional menu banner never shows on a match screen.
+  useEffect(() => { void setMenuBanner(!inMatch); }, [inMatch]);
 
   // APP-2: immersive + screen awake only while a match screen is open.
   useEffect(() => {

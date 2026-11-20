@@ -117,3 +117,31 @@ Upload it in Play Console (internal testing first).
 - [ ] Google login with the native picker (debug key's SHA-1 registered)
 - [ ] Airplane mode: a Vs-bot game works; Online / Ranked show the offline message
 - [ ] An online game against another device
+
+## 7. Ads (AdMob, spec 13)
+
+Android only; the web build shows no ads. Dev and debug builds use Google's **test** ids, so
+clicking them is safe.
+
+**AdMob console (once):**
+1. Create the app and three ad units: rewarded, interstitial, banner (banner only if you will
+   turn on the menu banner).
+2. Rewarded unit → *Server-side verification* → callback URL `https://<your API>/ads/ssv`.
+   Set the reward to 25 coins (the server pays `ADS_CONFIG.rewardedCoins` whatever AdMob says).
+3. *Privacy & messaging* → create a GDPR message (and others you need). The app shows Google's
+   consent form (UMP) at start when it is required; no ad is requested before it.
+
+**Release build:**
+- App id for Gradle: `CARROM_ADMOB_APP_ID=ca-app-pub-...~...` (env var, or `-PcarromAdmobAppId=`).
+  Without it the build uses Google's test app id.
+- Ad unit ids in `.env.android`: `VITE_ADMOB_REWARDED_ID`, `VITE_ADMOB_INTERSTITIAL_ID`,
+  `VITE_ADMOB_BANNER_ID`. All three must be set, or the build falls back to test ids.
+- `VITE_ADS_MENU_BANNER=true` turns on a small banner on menu screens (never on the game screen).
+
+**Manual check (spec 13), with test ids:**
+- [ ] A fresh install in an EEA locale/VPN shows the consent form before any ad.
+- [ ] Shop → "Watch an ad for 25 coins": the ad plays; the balance goes up by 25 within a few
+      seconds (needs the API reachable by Google for SSV). The 6th ad of the day isn't offered.
+- [ ] Closing the rewarded ad early gives no coins.
+- [ ] Finish 3 games: leaving the 3rd end screen shows one interstitial; the next one comes only
+      after 3 more games *and* 3 minutes. No ad on app start or during a match.

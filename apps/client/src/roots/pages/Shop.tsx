@@ -3,6 +3,7 @@ import { Check, Coins, Store } from 'lucide-react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { COSMETIC_TYPES, COSMETICS, type CosmeticItem, type CosmeticType, type PublicUser } from '@carrom/protocol';
+import { RewardedAdButton } from '@/components/AdParts';
 import { SkinPreview } from '@/components/SkinPreview';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -117,6 +118,7 @@ function ShopFor({ user }: { user: PublicUser }) {
           </li>
         ))}
       </ul>
+      <RewardedAdButton className="self-center" />
       <p className="text-center text-xs text-muted-foreground">{t('shop.earn')}</p>
     </div>
   );

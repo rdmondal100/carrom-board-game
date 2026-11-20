@@ -324,5 +324,9 @@
   "item.classic-board": "ক্লাসিক",
   "item.teak-board": "সেগুন",
   "item.midnight-board": "মাঝরাত",
-  "item.royal-board": "রাজকীয়"
+  "item.royal-board": "রাজকীয়",
+  "ads.watch": "বিজ্ঞাপন দেখে {coins} কয়েন নিন (আজ আর {left}টি)",
+  "ads.rewardPending": "+{coins} কয়েন আসছে",
+  "ads.notFinished": "কয়েন পেতে পুরো বিজ্ঞাপনটি দেখুন",
+  "ads.unavailable": "এখন কোনো বিজ্ঞাপন নেই, পরে আবার চেষ্টা করুন"
 }

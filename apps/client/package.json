@@ -17,6 +17,7 @@
     "android:assets": "capacitor-assets generate --android"
   },
   "dependencies": {
+    "@capacitor-community/admob": "8.2.1",
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",

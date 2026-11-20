@@ -41,7 +41,7 @@ describe('shopSlice', () => {
     expect(post).toHaveBeenCalledWith(`${API_BASE}/shop/buy`, { itemId: 'gold-striker' },
       { headers: { Authorization: 'Bearer tok' } });
     expect(store.getState().auth.user?.coins).toBe(100);
-    expect(store.getState().shop).toEqual({ busy: null, error: null });
+    expect(store.getState().shop).toEqual({ busy: null, error: null, adsLeft: null });
   });
 
   it('COS-7 a refused buy keeps the user and stores the failure', async () => {

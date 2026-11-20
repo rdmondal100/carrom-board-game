@@ -19,7 +19,7 @@ export type {
   UpdateMeRequest,
 } from './api';
 export { AVATAR_COUNT, NAME_MAX, NAME_MIN, PASSWORD_MIN } from './api';
-export type { BotRewardRequest, BuyRequest, EquipRequest, RewardResponse } from './api';
+export type { AdStatusResponse, BotRewardRequest, BuyRequest, EquipRequest, RewardResponse } from './api';
 export type { CosmeticItem, CosmeticType, Equipped, Rarity } from './cosmetics';
 export {
   COSMETIC_TYPES, COSMETICS, cosmeticById, DEFAULT_EQUIPPED, isDefaultItem, itemOrDefault, ownedItems, ownsItem,

@@ -1,13 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type {
-  BotRewardRequest, BuyRequest, EquipRequest, MeResponse, PublicUser, RewardResponse,
+  AdStatusResponse, BotRewardRequest, BuyRequest, EquipRequest, MeResponse, PublicUser, RewardResponse,
 } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { getAuthHeaders } from '@/lib/auth';
 import { userUpdated } from './authSlice';
 
-export type ShopAction = 'buy' | 'equip' | 'dailyBonus' | 'botReward';
+export type ShopAction = 'buy' | 'equip' | 'dailyBonus' | 'botReward' | 'adStatus';
 
 /** A failed call: HTTP status (0 = no answer) and the server's `error`. */
 export interface ShopFailure { action: ShopAction; status: number; error: string }
@@ -16,9 +16,11 @@ export interface ShopState {
   /** The item id being bought or equipped, or null. */
   busy: string | null;
   error: ShopFailure | null;
+  /** AD-3 rewarded ads that still pay today (null = not asked yet). */
+  adsLeft: number | null;
 }
 
-export const initialShopState = (): ShopState => ({ busy: null, error: null });
+export const initialShopState = (): ShopState => ({ busy: null, error: null, adsLeft: null });
 
 function failure(action: ShopAction, err: unknown): ShopFailure {
   if (axios.isAxiosError<{ error?: unknown }>(err)) {
@@ -76,13 +78,26 @@ export const claimBotReward = createAsyncThunk<number, boolean, Cfg>('shop/botRe
   }
 });
 
+/** AD-3: how many rewarded ads still pay today. */
+export const fetchAdStatus = createAsyncThunk<AdStatusResponse, void, Cfg>('shop/adStatus', async (_, { rejectWithValue }) => {
+  try {
+    const res = await axios.get<AdStatusResponse>(`${API_BASE}/ads/status`, { headers: getAuthHeaders() });
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(failure('adStatus', err));
+  }
+});
+
 const shopSlice = createSlice({
   name: 'shop',
   initialState: initialShopState,
   reducers: {
     clearShopError: (s) => { s.error = null; },
+    /** AD-3 a rewarded ad was watched to the end (the server credits it a moment later). */
+    adWatched: (s) => { if (s.adsLeft !== null) s.adsLeft = Math.max(0, s.adsLeft - 1); },
   },
   extraReducers: (b) => {
+    b.addCase(fetchAdStatus.fulfilled, (s, a) => { s.adsLeft = a.payload.rewardedLeft; });
     b.addCase(buyItem.pending, (s, a) => { s.busy = a.meta.arg; s.error = null; });
     b.addCase(equipItems.pending, (s, a) => {
       s.busy = a.meta.arg.striker ?? a.meta.arg.coins ?? a.meta.arg.board ?? null;
@@ -98,7 +113,7 @@ const shopSlice = createSlice({
   },
 });
 
-export const { clearShopError } = shopSlice.actions;
+export const { adWatched, clearShopError } = shopSlice.actions;
 export const shopReducer = shopSlice.reducer;
 
 /** The i18n key for a shop failure we can say better than the server, else null (show `error`). */

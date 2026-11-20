@@ -85,3 +85,8 @@ export type EquipRequest = Partial<Equipped>;
 export interface BotRewardRequest { won: boolean }
 /** COS-2 daily bonus, bot and online rewards: coins given now (0 = none) and the updated user. */
 export interface RewardResponse { reward: number; user: PublicUser }
+
+// ---- ads (spec 13) ---------------------------------------------------------
+
+/** AD-3 GET /ads/status: rewarded ads that still pay today, and coins per ad. */
+export interface AdStatusResponse { rewardedLeft: number; rewardedCoins: number }

@@ -38,6 +38,9 @@ const userSchema = new Schema(
     /** COS-2 UTC day of the counted Vs-bot rewards, and how many were given that day. */
     botRewardDay: { type: String, default: '' },
     botRewards: { type: Number, default: 0, min: 0 },
+    /** AD-3 UTC day of the counted rewarded ads, and how many paid that day. */
+    adRewardDay: { type: String, default: '' },
+    adRewards: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },
 );
