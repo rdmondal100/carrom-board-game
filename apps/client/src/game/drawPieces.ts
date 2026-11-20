@@ -4,17 +4,16 @@ import {
 } from '@carrom/engine';
 import {
   BOARD_COLOURS, GUIDE_ALPHA, GUIDE_MAX_LEN, LINE_WIDTH, PIECE_RING_ALPHA, PIECE_RING_RADIUS,
-  PIECE_SHADOW_ALPHA, PIECE_SHADOW_OFFSET, PIECE_SHINE, PIECE_STYLES, POCKET_ANIM_MS, PULL_ALPHA,
+  PIECE_SHADOW_ALPHA, PIECE_SHADOW_OFFSET, PIECE_SHINE, POCKET_ANIM_MS, PULL_ALPHA, type PieceStyle,
 } from '@/constants/view';
 import type { Aim } from './aim';
 import { worldToPx, worldToScreen } from './view';
 
-// One shared radial gradient per kind, lit from the top-left (local 0–1 space).
-const gradients = new Map<Kind, FillGradient>();
-function bodyFill(kind: Kind): FillGradient {
-  let fill = gradients.get(kind);
+// One shared radial gradient per style (COS-6 skins), lit from the top-left (local 0–1 space).
+const gradients = new WeakMap<PieceStyle, FillGradient>();
+function bodyFill(st: PieceStyle): FillGradient {
+  let fill = gradients.get(st);
   if (!fill) {
-    const st = PIECE_STYLES[kind];
     fill = new FillGradient({
       type: 'radial',
       center: { x: 0.34, y: 0.3 }, innerRadius: 0,
@@ -26,13 +25,13 @@ function bodyFill(kind: Kind): FillGradient {
         { offset: 1, color: st.edge },
       ],
     });
-    gradients.set(kind, fill);
+    gradients.set(st, fill);
   }
   return fill;
 }
 
 /** Each piece is a body plus a soft shadow kept on a layer below every body. */
-interface Sprite { g: Graphics; shadow: Graphics; drawnPx: number; blocked: boolean }
+interface Sprite { g: Graphics; shadow: Graphics; drawnPx: number; blocked: boolean; style: PieceStyle | null }
 
 export interface PieceLayer {
   container: Container;
@@ -61,18 +60,19 @@ export interface PieceView {
   pocketedAt: ReadonlyMap<string, number>;
   /** Set while placing/aiming: overrides the striker's board position. */
   striker: StrikerSpot | null;
+  /** COS-6 the look of each kind (the striker's is the shooter's skin). */
+  styleOf: (kind: Kind) => PieceStyle;
 }
 
-function paint(s: Sprite, p: Piece, boardPx: number, blocked: boolean): void {
+function paint(s: Sprite, p: Piece, boardPx: number, blocked: boolean, st: PieceStyle): void {
   const r = worldToPx(p.r, boardPx);
-  if (s.drawnPx === boardPx && s.blocked === blocked) return;
+  if (s.drawnPx === boardPx && s.blocked === blocked && s.style === st) return;
   const line = worldToPx(LINE_WIDTH, boardPx);
-  const st = PIECE_STYLES[p.kind];
   s.shadow.clear();
   s.shadow.circle(PIECE_SHADOW_OFFSET.x * r, PIECE_SHADOW_OFFSET.y * r, r)
     .fill({ color: BOARD_COLOURS.shadow, alpha: PIECE_SHADOW_ALPHA });
   s.g.clear();
-  s.g.circle(0, 0, r).fill(bodyFill(p.kind)).stroke({ width: line, color: st.edge });
+  s.g.circle(0, 0, r).fill(bodyFill(st)).stroke({ width: line, color: st.edge });
   // Engraved ring: a dark groove with a light lip just inside it.
   s.g.circle(0, 0, r * PIECE_RING_RADIUS)
     .stroke({ width: line, color: st.ring, alpha: PIECE_RING_ALPHA });
@@ -83,6 +83,7 @@ function paint(s: Sprite, p: Piece, boardPx: number, blocked: boolean): void {
   if (blocked) s.g.circle(0, 0, r + line * 2).stroke({ width: line * 2, color: BOARD_COLOURS.blocked });
   s.drawnPx = boardPx;
   s.blocked = blocked;
+  s.style = st;
 }
 
 /** Bring the sprites in line with the state. Cheap enough for every frame. */
@@ -92,14 +93,14 @@ export function syncPieces(layer: PieceLayer, view: PieceView): void {
     seen.add(p.id);
     let s = layer.sprites.get(p.id);
     if (!s) {
-      s = { g: new Graphics(), shadow: new Graphics(), drawnPx: 0, blocked: false };
+      s = { g: new Graphics(), shadow: new Graphics(), drawnPx: 0, blocked: false, style: null };
       layer.sprites.set(p.id, s);
       layer.shadows.addChild(s.shadow);
       layer.bodies.addChild(s.g);
     }
     const isStriker = p.kind === 'striker';
     const spot = isStriker ? view.striker : null;
-    paint(s, p, view.boardPx, spot ? !spot.ok : false);
+    paint(s, p, view.boardPx, spot ? !spot.ok : false, view.styleOf(p.kind));
 
     const world = spot ? spot.pos : p;
     const at = worldToScreen(world, view.viewSeat, view.boardPx);

@@ -31,7 +31,10 @@ describe('user model', () => {
     expect(u.createdAt).toBeInstanceOf(Date);
     expect(u.updatedAt).toBeInstanceOf(Date);
     const pub = toPublicUser(u);
-    expect(pub.cosmetics).toEqual({ equipped: [], owned: [] });
+    expect(pub.cosmetics).toEqual({
+      equipped: { striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board' },
+      owned: ['classic-striker', 'classic-coins', 'classic-board'],
+    });
     expect(pub).toMatchObject({ name: 'Rina', email: null, hasPassword: false, hasGoogle: false });
   });
 

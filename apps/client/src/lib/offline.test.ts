@@ -3,7 +3,7 @@ import { needsNetwork } from './offline';
 
 describe('offline', () => {
   it('APP-9 online entry screens need the network', () => {
-    for (const p of ['/online', '/join/ABCD', '/ranked', '/leaderboard', '/login', '/register']) expect(needsNetwork(p)).toBe(true);
+    for (const p of ['/online', '/join/ABCD', '/ranked', '/leaderboard', '/login', '/register', '/shop']) expect(needsNetwork(p)).toBe(true);
   });
 
   it('APP-9 same-device, Vs-bot and menus work offline; a running room is left alone', () => {

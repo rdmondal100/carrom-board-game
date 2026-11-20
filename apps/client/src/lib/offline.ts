@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
  * need no network. A running online lobby or game is left alone: a short drop
  * there is handled by the room's own reconnect, not by swapping the screen.
  */
-const NEEDS_NETWORK: readonly string[] = ['/online', '/ranked', '/leaderboard', '/login', '/register'];
+const NEEDS_NETWORK: readonly string[] = ['/online', '/ranked', '/leaderboard', '/login', '/register', '/shop'];
 
 export function needsNetwork(path: string): boolean {
   return NEEDS_NETWORK.includes(path) || path.startsWith('/join/');

@@ -1,8 +1,8 @@
 import type { BotLevel } from '@carrom/bot';
 import { simulateShot, type BoardState, type Seat, type ShotInput } from '@carrom/engine';
 import {
-  applyShot, applyTimeout, newGame, seatsFor,
-  type GameConfig, type GameState, type RuleEvent,
+  applyShot, applyTimeout, newGame, seatsFor, teamOf,
+  type GameConfig, type GameState, type RuleEvent, type Team,
 } from '@carrom/rules';
 
 /** Who plays a seat: a person on this device, or a bot at a level (BOT-6). */
@@ -96,4 +96,16 @@ export function shooterSeat(g: LocalGame): Seat {
 /** A fresh seed for who breaks first or a bot's noise. UI only; never used inside a shot. */
 export function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
+}
+
+/**
+ * COS-2: a Vs-bot game's result for the people on this device: true = won,
+ * false = lost, null = no reward (no bot, or people on both sides).
+ */
+export function vsBotResult(g: LocalGame, winner: Team): boolean | null {
+  const { format } = g.state.config;
+  const humanTeams = new Set<Team>();
+  seatsFor(format).forEach((seat, i) => { if ((g.players[i] ?? 'human') === 'human') humanTeams.add(teamOf(seat, format)); });
+  const [team] = [...humanTeams];
+  return humanTeams.size === 1 && team !== undefined ? team === winner : null;
 }

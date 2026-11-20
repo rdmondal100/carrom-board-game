@@ -10,8 +10,11 @@ export const PASSWORD_MIN = 8;
 /** Avatars are an index into a fixed set of AVATAR_COUNT pictures. */
 export const AVATAR_COUNT = 12;
 
+import type { Equipped } from './cosmetics';
+
+/** COS-5: `owned` already includes the default items; `equipped` has one item id per slot. */
 export interface Cosmetics {
-  equipped: string[];
+  equipped: Equipped;
   owned: string[];
 }
 
@@ -71,3 +74,14 @@ export interface MatchView {
 
 /** GET /matches/me */
 export interface MatchesResponse { matches: MatchView[] }
+
+// ---- cosmetics (spec 12) ---------------------------------------------------
+
+/** COS-3 POST /shop/buy */
+export interface BuyRequest { itemId: string }
+/** COS-4 PATCH /me/equip: only owned items. */
+export type EquipRequest = Partial<Equipped>;
+/** COS-2 POST /me/bot-reward: a finished Vs-bot game, reported by the client. */
+export interface BotRewardRequest { won: boolean }
+/** COS-2 daily bonus, bot and online rewards: coins given now (0 = none) and the updated user. */
+export interface RewardResponse { reward: number; user: PublicUser }

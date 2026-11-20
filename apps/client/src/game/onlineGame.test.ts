@@ -103,7 +103,10 @@ describe('online game', () => {
 
   it('asLocalGame names seats in seat order and marks bot seats as taken over', () => {
     const p = (seat: number, name: string, bot = false) =>
-      ({ sessionId: name, userId: name, name, avatar: 0, seat, ready: true, bot, left: false, rematch: false });
+      ({
+        sessionId: name, userId: name, name, avatar: 0, seat, ready: true, bot, left: false, rematch: false,
+        striker: 'classic-striker', coinSet: 'classic-coins',
+      });
     const lobby: LobbyView = {
       code: 'ABCDEF', phase: 'playing', format: '1v1', preset: 'colour', lengthKind: 'board', target: 0,
       hostId: 'x', ranked: false, players: { x: p(2, 'Rina', true), y: p(0, 'Sami') },

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { simulateShot, type Seat, type ShotInput } from '@carrom/engine';
 import { applyShot, applyTimeout, newGame, type GameConfig } from '@carrom/rules';
 import {
-  botLevelAt, seatName, shootLocal, startLocal, takeBack, takeOver, TAKEOVER_LEVEL, timeoutLocal,
+  botLevelAt, seatName, shootLocal, startLocal, takeBack, takeOver, TAKEOVER_LEVEL, timeoutLocal, vsBotResult,
 } from './localGame';
 
 const CFG: GameConfig = { format: '2v2', preset: 'point', length: { kind: 'points', target: 300 }, seed: 7 };
@@ -83,5 +83,17 @@ describe('localGame', () => {
     const g = startLocal({ ...CFG, format: '1v1' }, ['Bot', 'Bilu'], true, ['easy', 'human']);
     expect(takeOver(g, 0)).toBe(g);
     expect(botLevelAt(takeOver(g, 2), 2)).toBe(TAKEOVER_LEVEL);
+  });
+});
+
+describe('COS-2 Vs-bot result', () => {
+  it('COS-2 people on one side vs bots: won/lost; same-device or mixed sides: no reward', () => {
+    const one = { ...CFG, format: '1v1' as const };
+    const vsBot = startLocal(one, ['Asha', 'Bot'], false, ['human', 'medium']);
+    expect([vsBotResult(vsBot, 'A'), vsBotResult(vsBot, 'B')]).toEqual([true, false]);
+    expect(vsBotResult(startLocal(one, ['Asha', 'Bilu'], false), 'A')).toBeNull();
+    // 2v2: Asha + a bot partner vs two bots still counts; people on both teams does not.
+    expect(vsBotResult(startLocal(CFG, NAMES, false, ['human', 'easy', 'hard', 'medium']), 'B')).toBe(false);
+    expect(vsBotResult(startLocal(CFG, NAMES, false, ['human', 'human', 'hard', 'medium']), 'A')).toBeNull();
   });
 });

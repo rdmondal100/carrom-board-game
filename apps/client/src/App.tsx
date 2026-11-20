@@ -17,6 +17,7 @@ import { Profile } from './roots/pages/Profile';
 import { Register } from './roots/pages/Register';
 import { Sandbox } from './roots/pages/Sandbox';
 import { Settings } from './roots/pages/Settings';
+import { Shop } from './roots/pages/Shop';
 
 /** UI-1: every screen sits under RootLayout; unknown paths go home. */
 export const routes: RouteObject[] = [
@@ -34,6 +35,7 @@ export const routes: RouteObject[] = [
       { path: 'join/:code', element: <JoinByCode /> },
       { path: 'ranked', element: <Queue /> },
       { path: 'leaderboard', element: <Leaderboard /> },
+      { path: 'shop', element: <Shop /> },
       { path: 'settings', element: <Settings /> },
       { path: 'how-to-play', element: <HowToPlay /> },
       { path: 'login', element: <Login /> },

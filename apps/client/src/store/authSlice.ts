@@ -1,4 +1,4 @@
-import { createAsyncThunk, createSlice, isAnyOf } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, isAnyOf, type PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type {
   AuthResponse, GuestRequest, LoginRequest, MeResponse, PublicUser, RegisterRequest, UpdateMeRequest,
@@ -102,6 +102,8 @@ const authSlice = createSlice({
   initialState: initialAuthState,
   reducers: {
     clearAuthError: (s) => { s.error = null; },
+    /** COS-2..4: the server sent the user back after a purchase, equip or reward. */
+    userUpdated: (s, a: PayloadAction<PublicUser>) => { s.user = a.payload; },
   },
   extraReducers: (b) => {
     b.addCase(logout.fulfilled, () => ({ ...initialAuthState(), checked: true }));
@@ -125,7 +127,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, userUpdated } = authSlice.actions;
 export const authReducer = authSlice.reducer;
 
 /** The i18n key for a failure we can say better than the server, else null (show `error`). */

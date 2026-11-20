@@ -13,16 +13,18 @@ import { requestBotShot } from '@/game/botClient';
 import { soundsForEvents } from '@/game/eventSounds';
 import { coinKey, reasonKey } from '@/game/hud';
 import {
-  botLevelAt, newSeed, seatName, shooterSeat, shootLocal, startLocal, takeBack, timeoutLocal,
+  botLevelAt, newSeed, seatName, shooterSeat, shootLocal, startLocal, takeBack, timeoutLocal, vsBotResult,
   type LocalGame as Game,
 } from '@/game/localGame';
 import { clearSave, loadGame, saveGame } from '@/game/save';
+import { localSkins } from '@/game/skins';
 import { useBoardCanvas } from '@/game/useBoardCanvas';
 import { t, useLang } from '@/i18n/t';
 import { onPauseRequest } from '@/lib/backButton';
 import { haptic } from '@/lib/native';
 import { playSound } from '@/lib/sound';
-import { useAppSelector } from '@/store/store';
+import { claimBotReward } from '@/store/shopSlice';
+import { useAppDispatch, useAppSelector } from '@/store/store';
 
 type BoardEnd = { next: Game; boardNo: number; winner: Team; points: number };
 
@@ -45,6 +47,9 @@ function Play({ initial }: { initial: Game }) {
   useLang();
   const navigate = useNavigate();
   const rotate = useAppSelector((s) => s.settings.viewRotation);
+  const dispatch = useAppDispatch();
+  const signedIn = useAppSelector((s) => s.auth.user !== null);
+  const equipped = useAppSelector((s) => s.auth.user?.cosmetics.equipped);
   const host = useRef<HTMLDivElement>(null);
   const [game, setGame] = useState(initial);
   const [initialSeat] = useState(() => shooterSeat(initial));
@@ -111,6 +116,21 @@ function Play({ initial }: { initial: Game }) {
   useEffect(() => {
     board.current.load(game.state.board, shooterSeat(game), rotate ? shooterSeat(game) : 0);
   }, [board, game, rotate]);
+
+  // COS-6: this player's own skins on every seat.
+  useEffect(() => { board.current.setSkins(localSkins(equipped)); }, [board, equipped]);
+
+  // COS-2: a finished Vs-bot game earns coins (the server caps it per day); same-device games don't.
+  const rewarded = useRef<Game | null>(null);
+  useEffect(() => {
+    if (gameEnd === null || !signedIn || rewarded.current === game) return;
+    rewarded.current = game;
+    const won = vsBotResult(game, gameEnd);
+    if (won === null) return;
+    dispatch(claimBotReward(won)).unwrap()
+      .then((coins) => { if (coins > 0) toast.success(t('reward.toast', { coins })); })
+      .catch(() => { /* offline: no reward */ });
+  }, [dispatch, game, gameEnd, signedIn]);
 
   // APP-3: hardware back opens the pause menu (not while a shot plays, like the HUD button).
   useEffect(() => onPauseRequest(() => { if (!playing) setPaused(true); }), [playing]);

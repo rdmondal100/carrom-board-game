@@ -43,6 +43,10 @@ export interface PlayerView {
   left: boolean;
   /** ROOM-9 voted for a rematch. */
   rematch: boolean;
+  /** COS-6 equipped striker item id (shown to everyone). */
+  striker: string;
+  /** COS-6 equipped coin-set item id; the board's breaker's set is drawn. */
+  coinSet: string;
 }
 
 /** ROOM-3: the synced lobby state as plain data (`room.state.toJSON()`). */

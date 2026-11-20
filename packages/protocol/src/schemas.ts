@@ -84,6 +84,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
       seat, userId: z.string(), ratingBefore: z.number().int(), ratingAfter: z.number().int(),
     })),
   }),
+  z.object({ type: z.literal('reward'), coins: z.number().int().min(0) }),
 ]);
 
 /** Parse an unknown payload; null when it is not a valid client message. */

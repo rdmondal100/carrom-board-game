@@ -12,6 +12,7 @@ import { aimFromDrag, type Aim } from './aim';
 import { layoutFor, type BoardLayout } from './drawBoard';
 import type { RemoteAim } from './boardApi';
 import type { Playback } from './playback';
+import { DEFAULT_SKINS, type BoardSkins } from './skins';
 import { worldToPx, worldToScreen } from './view';
 
 export type Drag =
@@ -38,6 +39,8 @@ export interface Ctrl {
   playback: Playback | null;
   pocketedAt: Map<string, number>;
   layout: BoardLayout;
+  /** COS-6 what the board, coins and each seat's striker look like. */
+  skins: BoardSkins;
 }
 
 export function newCtrl(seat: Seat): Ctrl {
@@ -45,6 +48,7 @@ export function newCtrl(seat: Seat): Ctrl {
   return {
     board, seat, view: seat, locked: false, clock: null, along: 0, placed: placeStriker(board, seat, 0),
     drag: null, bot: null, remote: null, playback: null, pocketedAt: new Map(), layout: layoutFor(0),
+    skins: DEFAULT_SKINS,
   };
 }
 

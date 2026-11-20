@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import { ownedItems, resolveEquipped } from '@carrom/protocol';
 import type { PublicUser } from '@carrom/protocol/api';
 
 // Copies of the protocol constants (the server can't load workspace packages
@@ -27,10 +28,16 @@ const userSchema = new Schema(
     /** RANK-6 ranked games finished; only players with at least one are on the leaderboard. */
     rankedGames: { type: Number, required: true, default: 0, min: 0 },
     coins: { type: Number, required: true, default: 0, min: 0 },
+    /** COS-4 equipped item ids (one per slot); COS-3 bought ids (defaults are not stored, COS-5). */
     cosmetics: {
       equipped: { type: [String], default: [] },
       owned: { type: [String], default: [] },
     },
+    /** COS-2 UTC day (YYYY-MM-DD) the daily bonus was last given. */
+    dailyBonusDay: { type: String, default: '' },
+    /** COS-2 UTC day of the counted Vs-bot rewards, and how many were given that day. */
+    botRewardDay: { type: String, default: '' },
+    botRewards: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true },
 );
@@ -63,7 +70,10 @@ export function toPublicUser(u: UserDoc): PublicUser {
     avatar: u.avatar,
     rating: u.rating,
     coins: u.coins,
-    cosmetics: { equipped: [...(u.cosmetics?.equipped ?? [])], owned: [...(u.cosmetics?.owned ?? [])] },
+    cosmetics: {
+      equipped: resolveEquipped(u.cosmetics?.equipped ?? []),
+      owned: ownedItems(u.cosmetics?.owned ?? []),
+    },
     createdAt: u.createdAt.toISOString(),
   };
 }

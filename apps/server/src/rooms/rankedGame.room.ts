@@ -72,7 +72,7 @@ export class RankedGameRoom extends GameRoom {
     if (p && this.state.phase === 'playing') {
       this.state.phase = 'ended';
       this.turnTimer?.clear();
-      this.finish(teamOf(p.seat, this.format()) === 'A' ? 'B' : 'A', true);
+      this.finish(teamOf(p.seat, this.format()) === 'A' ? 'B' : 'A', true, p.sessionId);
     }
     super.onLeave(client);
   }
@@ -85,11 +85,12 @@ export class RankedGameRoom extends GameRoom {
     this.finish(winner, false);
   }
 
-  /** RANK-4 / RANK-5: save once, then tell both players their new ratings. */
-  private finish(winner: Team, abandoned: boolean): void {
+  /** RANK-4 / RANK-5: save once, then tell both players their new ratings. COS-2 coins (not for the leaver). */
+  private finish(winner: Team, abandoned: boolean, leaver = ''): void {
     const m = this.match;
     if (!m || this.recorded) return;
     this.recorded = true;
+    this.rewardGame(winner, leaver);
     const players = [...this.state.players.values()].map((p) => ({ userId: p.userId, name: p.name, seat: p.seat }));
     this.pendingResult = recordMatch({
       matchId: this.roomId, ranked: true, format: this.format(), winner, boards: m.state.boardNo, abandoned, players,

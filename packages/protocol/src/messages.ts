@@ -31,7 +31,9 @@ export type ServerMessage =
   /** ROOM-7 the shot clock for `turnId` runs now with `ms` left. */
   | { type: 'clock'; turnId: number; ms: number }
   /** RANK-4 a ranked game is over and ratings are saved (also on abandon). */
-  | { type: 'rankedResult'; winner: Team; abandoned: boolean; players: RatingChange[] };
+  | { type: 'rankedResult'; winner: Team; abandoned: boolean; players: RatingChange[] }
+  /** COS-2 coins this player just earned for the finished game. */
+  | { type: 'reward'; coins: number };
 
 /** RANK-4 one player's rating before and after a ranked game. */
 export interface RatingChange { seat: number; userId: string; ratingBefore: number; ratingAfter: number }

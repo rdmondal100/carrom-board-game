@@ -10,6 +10,7 @@ import { aimFor, botPreviewAt, drawClock, newCtrl, pullFor, type Ctrl } from './
 import { drawBoard, layoutFor } from './drawBoard';
 import { createPieceLayer, drawAim, syncPieces } from './drawPieces';
 import { createPlayback } from './playback';
+import { boardPalette, coinSkin, strikerStyle } from './skins';
 import { screenToWorld, worldToPx, worldToScreen } from './view';
 
 export interface BoardCallbacks {
@@ -80,7 +81,7 @@ export function useBoardCanvas(
       if (size.canvasPx !== c.layout.canvasPx) app.renderer.resize(size.canvasPx, size.canvasPx);
       c.layout = size;
       root.position.set(size.framePx, size.framePx);
-      drawBoard(boardG, size, c.view);
+      drawBoard(boardG, size, c.view, boardPalette(c.skins.board));
     };
     redrawRef.current = redraw;
 
@@ -173,6 +174,7 @@ export function useBoardCanvas(
       syncPieces(pieces, {
         state: c.board, viewSeat: c.view, boardPx: c.layout.boardPx, nowMs: now,
         pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
+        styleOf: (kind) => (kind === 'striker' ? strikerStyle(c.skins.strikers[c.seat]) : coinSkin(c.skins.coins)[kind]),
       });
       const d = c.drag;
       // A bot's preview or ROOM-6 another player's aim is drawn like a drag.

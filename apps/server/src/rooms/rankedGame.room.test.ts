@@ -205,6 +205,15 @@ describe('ranked queue and rooms', () => {
     expect(m.winner).toBe('B');
   });
 
+  it('COS-2 ranked: a finished game rewards both; an abandon rewards only the one who stayed', async () => {
+    const { a, b, ca, room } = await matchedPair();
+    await ca.room.leave();
+    await until(() => room.pendingRewards !== null);
+    await room.pendingRewards;
+    const coins = async (id: string) => (await User.findById(id))!.coins;
+    expect([await coins(a.userId), await coins(b.userId)]).toEqual([0, 30]);
+  });
+
   it('RANK-2 only the matchmaker makes ranked rooms; strangers cannot take a reserved seat', async () => {
     const x = await user('Xena');
     colyseus.sdk.auth.token = x.token;

@@ -16,6 +16,7 @@ import { authRouter } from './routes/auth.route.js';
 import { healthRouter } from './routes/health.route.js';
 import { leaderboardRouter } from './routes/leaderboard.route.js';
 import { matchRouter } from './routes/match.route.js';
+import { meRouter, shopRouter } from './routes/shop.route.js';
 import { roomRouter } from './routes/room.route.js';
 import type { RankedTiming } from './utils/rankedConfig.js';
 import type { Redis } from './utils/redis.js';
@@ -44,6 +45,8 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
   app.use('/rooms', roomRouter);
   app.use('/leaderboard', leaderboardRouter(env.JWT_SECRET));
   app.use('/matches', matchRouter(env.JWT_SECRET));
+  app.use('/shop', shopRouter(env.JWT_SECRET));
+  app.use('/me', meRouter(env.JWT_SECRET));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),

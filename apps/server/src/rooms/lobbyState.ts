@@ -13,6 +13,10 @@ export const PlayerState = schema({
   bot: t.boolean(),
   left: t.boolean(),
   rematch: t.boolean(),
+  /** COS-6 equipped striker item id. */
+  striker: t.string(),
+  /** COS-6 equipped coin-set item id. */
+  coinSet: t.string(),
 }, 'PlayerState');
 export type PlayerState = SchemaType<typeof PlayerState>;
 

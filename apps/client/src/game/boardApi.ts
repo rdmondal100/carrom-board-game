@@ -1,5 +1,6 @@
 import type { BoardState, Seat, ShotInput } from '@carrom/engine';
 import { newCtrl, type Ctrl } from './boardCtrl';
+import type { BoardSkins } from './skins';
 
 /** ROOM-6: another player's aim, seat-relative to the shooter. */
 export interface RemoteAim { x: number; dirX: number; dirY: number; power: number }
@@ -23,6 +24,8 @@ export interface BoardApi {
   replay(input: ShotInput): void;
   /** ROOM-6: show the shooter's aim as another player sends it (null hides it). */
   showAim(aim: RemoteAim | null): void;
+  /** COS-6 change the look (board, coin set, striker per seat); safe during a shot. */
+  setSkins(skins: BoardSkins): void;
 }
 
 interface Deps {
@@ -40,7 +43,7 @@ export function createBoardApi({ ctrl, redraw, replace, shoot }: Deps): BoardApi
     reset(seat) {
       const c = ctrl();
       if (!c || c.playback) return;
-      Object.assign(c, { ...newCtrl(seat), layout: c.layout });
+      Object.assign(c, { ...newCtrl(seat), layout: c.layout, skins: c.skins });
       replace(c);
       redraw();
     },
@@ -90,6 +93,12 @@ export function createBoardApi({ ctrl, redraw, replace, shoot }: Deps): BoardApi
       const c = ctrl();
       if (!c || c.playback) return;
       c.remote = aim;
+    },
+    setSkins(skins) {
+      const c = ctrl();
+      if (!c) return;
+      c.skins = skins;
+      redraw();
     },
   };
 }

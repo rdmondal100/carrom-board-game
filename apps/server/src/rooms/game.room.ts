@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { Room, ServerError, type AuthContext, type Client, type Delayed } from '@colyseus/core';
 import { chooseShot } from '@carrom/bot';
 import {
-  CreateRoomOptionsSchema, lengthOf, MSG, parseClientMessage, type ClientMessage, type ServerMessage,
+  CreateRoomOptionsSchema, lengthOf, MSG, parseClientMessage, resolveEquipped, type ClientMessage, type ServerMessage,
 } from '@carrom/protocol';
 import type { Format, GameConfig, Preset, Team } from '@carrom/rules';
 import { User } from '../models/user.model.js';
@@ -10,9 +10,10 @@ import { uniqueInviteCode } from '../utils/inviteCode.js';
 import { verifyToken } from '../utils/jwt.js';
 import { newMatch, playShot, rematchOf, ShotRejected, timeOut, type Match } from './gameLogic.js';
 import { canSwap, freeSeat, LobbyState, PlayerState, swapped } from './lobbyState.js';
+import { rewardPlayers } from './roomRewards.js';
 import { DEFAULT_TIMING, ROOM_BOT_LEVEL, throttled, type RoomTiming } from './roomTiming.js';
 
-export interface RoomUser { userId: string; name: string; avatar: number }
+export interface RoomUser { userId: string; name: string; avatar: number; striker: string; coinSet: string } // COS-6 item ids
 
 /** ROOM-1..10: a private game room joined by invite code. Use `gameRoomFor` to configure it. */
 export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string } }> {
@@ -22,6 +23,8 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
   /** Seats the server bot plays right now. */
   readonly botSeats = new Set<number>();
   protected turnTimer: Delayed | null = null;
+  /** COS-2 the last game's coin rewards (tests await it). */
+  pendingRewards: Promise<void> | null = null;
   /** When the running shot clock expires (Date.now ms), for a rejoiner's clock. */
   private clockEndsAt = 0;
   private readonly lastAim = new Map<string, number>();
@@ -53,7 +56,8 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     for (const p of this.state.players.values()) {
       if (p.userId === claims.sub && !p.left) throw new ServerError(409, 'You are already in this room');
     }
-    return { userId: claims.sub, name: user.name, avatar: user.avatar };
+    const eq = resolveEquipped(user.cosmetics?.equipped ?? []);
+    return { userId: claims.sub, name: user.name, avatar: user.avatar, striker: eq.striker, coinSet: eq.coins };
   }
 
   onJoin(client: Client, _options: unknown, auth: RoomUser): void {
@@ -62,7 +66,7 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     if (seat === null) throw new ServerError(409, 'The room is full');
     this.state.players.set(client.sessionId, new PlayerState({
       sessionId: client.sessionId, userId: auth.userId, name: auth.name, avatar: auth.avatar, seat,
-      ready: true, bot: false, left: false, rematch: false,
+      ready: true, bot: false, left: false, rematch: false, striker: auth.striker, coinSet: auth.coinSet,
     }));
     if (this.state.hostId === '' && !this.state.ranked) this.state.hostId = client.sessionId;
   }
@@ -247,8 +251,14 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     this.startMatch(rematchOf(this.match));
   }
 
-  /** A game just ended with a winner (ranked rooms save the result). */
-  protected onGameEnd(_winner: Team): void { /* private rooms keep no record */ }
+  /** A game just ended with a winner. Private rooms keep no record; they only give coins. */
+  protected onGameEnd(winner: Team): void { this.rewardGame(winner); }
+
+  /** COS-2 coins for everyone still in the game (not `skip`, a session that just abandoned it). */
+  protected rewardGame(winner: Team, skip = ''): void {
+    this.pendingRewards = rewardPlayers(this.state.players.values(), this.format(), winner, skip,
+      (id, msg) => this.clients.getById(id)?.send(MSG, msg));
+  }
 
   // ---- helpers ----
 

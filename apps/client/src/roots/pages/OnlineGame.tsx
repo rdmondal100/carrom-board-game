@@ -19,6 +19,7 @@ import {
   advance, animate, asLocalGame, canShoot, catchUp, dropOwnShot, fromLog, hashMatches, nextStep, playerAt, seatOf,
   SHOT_ERRORS, type Online,
 } from '@/game/onlineGame';
+import { onlineSkins } from '@/game/skins';
 import { useBoardCanvas, type RemoteAim } from '@/game/useBoardCanvas';
 import { t, useLang } from '@/i18n/t';
 import { gameLog, onServerMessage, sendToRoom } from '@/lib/colyseus';
@@ -92,6 +93,11 @@ export function OnlineGame() {
       setResult(m);
       void dispatch(loadMe());
     }
+    // COS-7: coins for this game; refresh the balance in the header.
+    if (m.type === 'reward') {
+      toast.success(t('reward.toast', { coins: m.coins }));
+      void dispatch(loadMe());
+    }
     if (m.type === 'error' && m.code === 'NO_OPPONENT') {
       toast(t('ranked.noOpponent'));
       navigate('/ranked', { replace: true });
@@ -153,6 +159,13 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
       sendToRoom({ type: 'aim', ...aim });
     },
   }, 'contain');
+
+  // COS-6: each seat's striker, the breaker's coin set, our own board.
+  const ownBoard = useAppSelector((s) => s.auth.user?.cosmetics.equipped.board);
+  const breakSeat = online.shown.breakSeat;
+  useEffect(() => {
+    board.current.setSkins(onlineSkins(Object.values(lobby.players), breakSeat, ownBoard));
+  }, [board, lobby.players, breakSeat, ownBoard]);
 
   // ROOM-6: show the shooter's aim as it comes in.
   useEffect(() => onServerMessage((m) => {

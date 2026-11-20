@@ -43,7 +43,7 @@ const patchBody = z.strictObject({
 });
 
 /** Parse the body; on failure answer 400 with the first problem and return null. */
-function parseBody<T>(schema: z.ZodType<T>, req: Request, res: Response): T | null {
+export function parseBody<T>(schema: z.ZodType<T>, req: Request, res: Response): T | null {
   const r = schema.safeParse(req.body ?? {});
   if (r.success) return r.data;
   const issue = r.error.issues[0];

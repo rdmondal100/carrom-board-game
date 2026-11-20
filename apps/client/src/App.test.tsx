@@ -14,6 +14,7 @@ vi.mock('./game/useBoardCanvas', () => ({
   useBoardCanvas: () => ({
     current: {
       reset() {}, setSeat() {}, load() {}, setLocked() {}, setClock() {}, playBot() {}, cancelBot() {}, replay() {}, showAim() {},
+      setSkins() {},
     },
   }),
 }));
