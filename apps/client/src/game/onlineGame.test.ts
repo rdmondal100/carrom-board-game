@@ -106,7 +106,7 @@ describe('online game', () => {
       ({ sessionId: name, userId: name, name, avatar: 0, seat, ready: true, bot, left: false, rematch: false });
     const lobby: LobbyView = {
       code: 'ABCDEF', phase: 'playing', format: '1v1', preset: 'colour', lengthKind: 'board', target: 0,
-      hostId: 'x', players: { x: p(2, 'Rina', true), y: p(0, 'Sami') },
+      hostId: 'x', ranked: false, players: { x: p(2, 'Rina', true), y: p(0, 'Sami') },
     };
     const g = asLocalGame(g0, lobby);
     expect(g.names).toEqual(['Sami', 'Rina']);

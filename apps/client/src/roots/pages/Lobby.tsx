@@ -72,7 +72,7 @@ export function Lobby() {
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!lobby) return <p className="text-center text-muted-foreground">{t('online.connecting')}</p>;
-  if (lobby.phase !== 'lobby') return <Navigate to="/online/game" replace />;
+  if (lobby.phase !== 'lobby' || lobby.ranked) return <Navigate to="/online/game" replace />;
 
   const format = lobby.format as Format;
   const seats = seatsFor(format);

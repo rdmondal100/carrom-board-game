@@ -1,9 +1,9 @@
 import { createAsyncThunk, createSlice, isAnyOf, type PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
-import type { CreateRoomOptions, LobbyView, RoomLookupResponse } from '@carrom/protocol';
+import type { CreateRoomOptions, LobbyView, RoomLookupResponse, SeatReservation } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import {
-  createGameRoom, currentLobby, joinGameRoom, leaveGameRoom, resumeGameRoom,
+  createGameRoom, currentLobby, enterRankedRoom, joinGameRoom, leaveGameRoom, resumeGameRoom,
 } from '@/lib/colyseus';
 
 /** A failed create/join: HTTP-like status (0 = no answer) and the server's message. */
@@ -60,6 +60,18 @@ export const joinByCode = createAsyncThunk<Joined, string, { rejectValue: RoomFa
   },
 );
 
+/** RANK-2: take the seat the matchmaker reserved in a ranked room. */
+export const joinRanked = createAsyncThunk<Joined, SeatReservation, { rejectValue: RoomFailure }>(
+  'room/ranked',
+  async (reservation, { rejectWithValue }) => {
+    try {
+      return joined(await enterRankedRoom(reservation));
+    } catch (err) {
+      return rejectWithValue(roomFailure(err));
+    }
+  },
+);
+
 /** ROOM-8: rejoin after a reload; rejects quietly (status 0) when there is nothing to rejoin. */
 export const resumeRoom = createAsyncThunk<Joined, void, { rejectValue: RoomFailure }>(
   'room/resume',
@@ -88,16 +100,16 @@ const roomSlice = createSlice({
   },
   extraReducers: (b) => {
     b.addCase(leaveRoom.fulfilled, () => initialRoomState());
-    b.addMatcher(isAnyOf(createRoom.pending, joinByCode.pending, resumeRoom.pending), (s) => {
+    b.addMatcher(isAnyOf(createRoom.pending, joinByCode.pending, joinRanked.pending, resumeRoom.pending), (s) => {
       s.connecting = true;
       s.error = null;
     });
-    b.addMatcher(isAnyOf(createRoom.fulfilled, joinByCode.fulfilled, resumeRoom.fulfilled), (s, a) => {
+    b.addMatcher(isAnyOf(createRoom.fulfilled, joinByCode.fulfilled, joinRanked.fulfilled, resumeRoom.fulfilled), (s, a) => {
       s.connecting = false;
       s.sessionId = a.payload.sessionId;
       s.lobby = a.payload.lobby ?? s.lobby;
     });
-    b.addMatcher(isAnyOf(createRoom.rejected, joinByCode.rejected, resumeRoom.rejected), (s, a) => {
+    b.addMatcher(isAnyOf(createRoom.rejected, joinByCode.rejected, joinRanked.rejected, resumeRoom.rejected), (s, a) => {
       s.connecting = false;
       const f = a.payload ?? { status: 0, error: a.error.message ?? '' };
       s.error = f.error === '' ? null : f;

@@ -1,5 +1,5 @@
 import type { ShotInput } from '@carrom/engine';
-import type { GameState, RuleEvent } from '@carrom/rules';
+import type { GameState, RuleEvent, Team } from '@carrom/rules';
 import type { EmoteId } from './room';
 
 /** Messages a client sends to a match room. */
@@ -29,7 +29,12 @@ export type ServerMessage =
   /** ROOM-7 the shot clock ran out for `seat`. */
   | { type: 'timeout'; turnId: number; seat: number; ruleEvents: RuleEvent[]; state: GameState }
   /** ROOM-7 the shot clock for `turnId` runs now with `ms` left. */
-  | { type: 'clock'; turnId: number; ms: number };
+  | { type: 'clock'; turnId: number; ms: number }
+  /** RANK-4 a ranked game is over and ratings are saved (also on abandon). */
+  | { type: 'rankedResult'; winner: Team; abandoned: boolean; players: RatingChange[] };
+
+/** RANK-4 one player's rating before and after a ranked game. */
+export interface RatingChange { seat: number; userId: string; ratingBefore: number; ratingAfter: number }
 
 export type ClientMessageType = ClientMessage['type'];
 export type ServerMessageType = ServerMessage['type'];

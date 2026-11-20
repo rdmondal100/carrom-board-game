@@ -2,11 +2,12 @@ import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import { onLobbyChange } from '@/lib/colyseus';
 import { authReducer } from './authSlice';
+import { rankedReducer } from './rankedSlice';
 import { lobbyChanged, roomReducer } from './roomSlice';
 import { saveSettings, settingsReducer } from './settingsSlice';
 
 export function makeStore() {
-  const s = configureStore({ reducer: { settings: settingsReducer, auth: authReducer, room: roomReducer } });
+  const s = configureStore({ reducer: { settings: settingsReducer, auth: authReducer, room: roomReducer, ranked: rankedReducer } });
   // UI-2: every settings change is written back to localStorage.
   let last = s.getState().settings;
   s.subscribe(() => {

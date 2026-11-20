@@ -7,6 +7,7 @@ import type { PublicUser } from '@carrom/protocol';
 import { AuthError, Field } from '@/components/AuthForm';
 import { Avatar, AVATAR_COLOURS } from '@/components/Avatar';
 import { GoogleButton } from '@/components/GoogleButton';
+import { MatchHistory } from '@/components/RankedParts';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { t, useLang } from '@/i18n/t';
@@ -120,6 +121,8 @@ export function Profile() {
           <AuthError actions={['google']} />
         </Card>
       )}
+
+      <MatchHistory userId={user.id} />
 
       <Card><ProfileEditor key={user.id} user={user} /></Card>
 

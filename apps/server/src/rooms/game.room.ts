@@ -4,16 +4,15 @@ import { chooseShot } from '@carrom/bot';
 import {
   CreateRoomOptionsSchema, lengthOf, MSG, parseClientMessage, type ClientMessage, type ServerMessage,
 } from '@carrom/protocol';
-import type { Format, GameConfig, Preset } from '@carrom/rules';
+import type { Format, GameConfig, Preset, Team } from '@carrom/rules';
 import { User } from '../models/user.model.js';
-import { findRoomByCode, makeInviteCode } from '../utils/inviteCode.js';
+import { uniqueInviteCode } from '../utils/inviteCode.js';
 import { verifyToken } from '../utils/jwt.js';
 import { newMatch, playShot, rematchOf, ShotRejected, timeOut, type Match } from './gameLogic.js';
 import { canSwap, freeSeat, LobbyState, PlayerState, swapped } from './lobbyState.js';
-import { DEFAULT_TIMING, ROOM_BOT_LEVEL, type RoomTiming } from './roomTiming.js';
+import { DEFAULT_TIMING, ROOM_BOT_LEVEL, throttled, type RoomTiming } from './roomTiming.js';
 
 export interface RoomUser { userId: string; name: string; avatar: number }
-const CODE_TRIES = 20;
 
 /** ROOM-1..10: a private game room joined by invite code. Use `gameRoomFor` to configure it. */
 export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string } }> {
@@ -22,7 +21,7 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
   match: Match | null = null;
   /** Seats the server bot plays right now. */
   readonly botSeats = new Set<number>();
-  private turnTimer: Delayed | null = null;
+  protected turnTimer: Delayed | null = null;
   /** When the running shot clock expires (Date.now ms), for a rejoiner's clock. */
   private clockEndsAt = 0;
   private readonly lastAim = new Map<string, number>();
@@ -35,11 +34,11 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
   async onCreate(options: unknown): Promise<void> {
     const opts = CreateRoomOptionsSchema.parse(options);
     this.maxClients = opts.format === '1v1' ? 2 : 4;
-    let code = makeInviteCode();
-    for (let i = 0; i < CODE_TRIES && (await findRoomByCode(code)) !== null; i++) code = makeInviteCode();
+    const code = await uniqueInviteCode();
     this.state = new LobbyState({
       code, phase: 'lobby', format: opts.format, preset: opts.preset,
       lengthKind: opts.length.kind, target: opts.length.kind === 'points' ? opts.length.target : 0, hostId: '',
+      ranked: false,
     });
     await this.setMetadata({ code });
     await this.setPrivate(true);
@@ -59,13 +58,18 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
 
   onJoin(client: Client, _options: unknown, auth: RoomUser): void {
     if (this.state.phase !== 'lobby') throw new ServerError(409, 'The game has started');
-    const seat = freeSeat(this.takenSeats(), this.format());
+    const seat = this.seatFor(auth);
     if (seat === null) throw new ServerError(409, 'The room is full');
     this.state.players.set(client.sessionId, new PlayerState({
       sessionId: client.sessionId, userId: auth.userId, name: auth.name, avatar: auth.avatar, seat,
       ready: true, bot: false, left: false, rematch: false,
     }));
-    if (this.state.hostId === '') this.state.hostId = client.sessionId;
+    if (this.state.hostId === '' && !this.state.ranked) this.state.hostId = client.sessionId;
+  }
+
+  /** ROOM-3: seats fill in join order. */
+  protected seatFor(_auth: RoomUser): number | null {
+    return freeSeat([...this.state.players.values()].map((p) => p.seat), this.format());
   }
 
   /** ROOM-8: keep the seat for a while; the seat's turns keep running on the clock. */
@@ -113,10 +117,14 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     if (!p) return;
     const msg = parseClientMessage(raw);
     if (!msg) return this.fail(client, 'BAD_MESSAGE', 'Message not understood');
+    if (!this.allows(msg)) return this.fail(client, 'NOT_ALLOWED', 'Not in this room');
     // ROOM-7: any message from a person ends a bot takeover of their seat.
     if (p.bot && !p.left) this.setBot(p.seat, false);
     this.handle(client, p, msg);
   }
+
+  /** Message types this kind of room takes (a ranked room refuses lobby and rematch ones). */
+  protected allows(_msg: ClientMessage): boolean { return true; }
 
   private handle(client: Client, p: PlayerState, msg: ClientMessage): void {
     const isHost = this.state.hostId === client.sessionId;
@@ -134,12 +142,12 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
       case 'shot':
         return this.shoot(client, p.seat, msg.turnId, msg.input);
       case 'aim': {
-        if (!this.match || this.match.state.turnSeat !== p.seat || this.throttled(this.lastAim, client, this.timing.aimGapMs)) return;
+        if (!this.match || this.match.state.turnSeat !== p.seat || throttled(this.lastAim, client.sessionId, this.timing.aimGapMs)) return;
         const { x, dirX, dirY, power } = msg;
         return this.broadcast(MSG, { type: 'aim', seat: p.seat, x, dirX, dirY, power } satisfies ServerMessage, { except: client });
       }
       case 'emote':
-        if (this.throttled(this.lastEmote, client, this.timing.emoteGapMs)) return this.fail(client, 'TOO_FAST', 'One emote every 2 s');
+        if (throttled(this.lastEmote, client.sessionId, this.timing.emoteGapMs)) return this.fail(client, 'TOO_FAST', 'One emote every 2 s');
         return this.toAll({ type: 'emote', seat: p.seat, id: msg.id });
       case 'rematch':
         if (this.state.phase !== 'ended') return this.fail(client, 'NOT_ALLOWED', 'The game is not over');
@@ -166,7 +174,7 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
 
   // ---- game flow ----
 
-  private startMatch(m: Match): void {
+  protected startMatch(m: Match): void {
     this.match = m;
     this.state.phase = 'playing';
     for (const p of this.state.players.values()) p.rematch = false;
@@ -183,6 +191,7 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     if (!m) return;
     if (m.state.winner !== null) {
       this.state.phase = 'ended';
+      this.onGameEnd(m.state.winner);
       return;
     }
     const { turnId } = m;
@@ -238,10 +247,13 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     this.startMatch(rematchOf(this.match));
   }
 
+  /** A game just ended with a winner (ranked rooms save the result). */
+  protected onGameEnd(_winner: Team): void { /* private rooms keep no record */ }
+
   // ---- helpers ----
 
   /** Full game to one client (reconnect), with the clock still running. */
-  private sync(client: Client): void {
+  protected sync(client: Client): void {
     const m = this.match;
     if (!m) return;
     client.send(MSG, { type: 'game', state: m.state, turnId: m.turnId } satisfies ServerMessage);
@@ -251,31 +263,20 @@ export class GameRoom extends Room<{ state: LobbyState; metadata: { code: string
     }
   }
 
-  private toAll(msg: ServerMessage): void {
+  protected toAll(msg: ServerMessage): void {
     this.broadcast(MSG, msg);
   }
 
-  private fail(client: Client, code: string, message: string): void {
+  protected fail(client: Client, code: string, message: string): void {
     client.send(MSG, { type: 'error', code, message } satisfies ServerMessage);
   }
 
-  private throttled(last: Map<string, number>, client: Client, gapMs: number): boolean {
-    const now = Date.now();
-    if (now - (last.get(client.sessionId) ?? -Infinity) < gapMs) return true;
-    last.set(client.sessionId, now);
-    return false;
-  }
-
-  private format(): Format {
+  protected format(): Format {
     return this.state.format as Format;
   }
 
-  private config(): Omit<GameConfig, 'seed'> {
+  protected config(): Omit<GameConfig, 'seed'> {
     return { format: this.format(), preset: this.state.preset as Preset, length: lengthOf(this.state) };
-  }
-
-  private takenSeats(): number[] {
-    return [...this.state.players.values()].map((p) => p.seat);
   }
 }
 

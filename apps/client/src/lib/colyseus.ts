@@ -1,7 +1,8 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
-  GAME_ROOM, MSG, parseServerMessage,
-  type ClientMessage, type CreateRoomOptions, type LobbyView, type ServerMessage,
+  GAME_ROOM, MSG, parseQueueMessage, parseServerMessage, QUEUE_ROOM,
+  type ClientMessage, type CreateRoomOptions, type LobbyView, type QueueMessage, type SeatReservation,
+  type ServerMessage,
 } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { getToken } from './auth';
@@ -109,4 +110,37 @@ export function onServerMessage(l: Listener<ServerMessage>): () => void {
 export function onLobbyChange(l: Listener<LobbyView | null>): () => void {
   lobbyListeners.add(l);
   return () => lobbyListeners.delete(l);
+}
+
+// ---- ranked queue (spec 10) ----
+
+let queueRoom: Room | null = null;
+
+/** RANK-2: join the shared ranked queue; `onMessage` gets status, bot offer and the match. */
+export async function joinQueue(onMessage: Listener<QueueMessage>, onClosed: () => void): Promise<void> {
+  await leaveQueue();
+  const r = await sdk().joinOrCreate(QUEUE_ROOM);
+  r.reconnection.enabled = false;
+  queueRoom = r;
+  r.onMessage(MSG, (raw: unknown) => {
+    const m = parseQueueMessage(raw);
+    if (m) onMessage(m);
+  });
+  r.onLeave(() => {
+    if (queueRoom !== r) return;
+    queueRoom = null;
+    onClosed();
+  });
+}
+
+/** RANK-2 cancel: leaving the queue room takes the player out of the queue. */
+export async function leaveQueue(): Promise<void> {
+  const r = queueRoom;
+  queueRoom = null;
+  await r?.leave().catch(() => {});
+}
+
+/** RANK-2: take the reserved seat in the ranked game room; it then works like any online room. */
+export async function enterRankedRoom(reservation: SeatReservation): Promise<Room> {
+  return attach(await sdk().consumeSeatReservation(reservation));
 }

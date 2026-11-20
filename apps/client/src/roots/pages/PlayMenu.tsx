@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { Bot, Globe, Users } from 'lucide-react';
+import { Bot, Globe, Trophy, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { t, useLang } from '@/i18n/t';
@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 
 interface Mode { id: string; Icon: LucideIcon; to: string | null }
 
-/** UI-1 / BOT-6 / ROOM-11: same device, vs bot, and online private rooms. A null `to` shows "coming soon". */
+/** UI-1 / BOT-6 / ROOM-11 / RANK-8: same device, vs bot, online private rooms, ranked. A null `to` shows "coming soon". */
 const MODES: readonly Mode[] = [
   { id: 'local', Icon: Users, to: '/local/setup' },
   { id: 'bot', Icon: Bot, to: '/local/setup?vs=bot' },
   { id: 'online', Icon: Globe, to: '/online' },
+  { id: 'ranked', Icon: Trophy, to: '/ranked' },
 ];
 
 function ModeCard({ mode }: { mode: Mode }) {
@@ -36,6 +37,9 @@ export function PlayMenu() {
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <h2 className="text-xl font-bold">{t('play.title')}</h2>
       {MODES.map((m) => <ModeCard key={m.id} mode={m} />)}
+      <Link to="/leaderboard" className="self-center text-sm text-muted-foreground underline" data-testid="leaderboard-link">
+        {t('play.leaderboard')}
+      </Link>
     </div>
   );
 }

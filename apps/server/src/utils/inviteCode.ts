@@ -22,3 +22,12 @@ export async function findRoomByCode(code: string): Promise<string | null> {
   const rooms = await matchMaker.query({ name: GAME_ROOM });
   return rooms.find((r) => (r.metadata as { code?: unknown } | undefined)?.code === code)?.roomId ?? null;
 }
+
+const CODE_TRIES = 20;
+
+/** ROOM-1: a code no live room uses (gives up after CODE_TRIES and takes the last one). */
+export async function uniqueInviteCode(): Promise<string> {
+  let code = makeInviteCode();
+  for (let i = 0; i < CODE_TRIES && (await findRoomByCode(code)) !== null; i++) code = makeInviteCode();
+  return code;
+}

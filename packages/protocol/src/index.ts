@@ -1,6 +1,8 @@
 export type {
-  ClientMessage, ClientMessageType, ServerMessage, ServerMessageType,
+  ClientMessage, ClientMessageType, RatingChange, ServerMessage, ServerMessageType,
 } from './messages';
+export type { QueueMessage, SeatReservation } from './queue';
+export { parseQueueMessage, QUEUE_ROOM, QueueMessageSchema, RANKED_ROOM } from './queue';
 export {
   ClientMessageSchema, makeShotInputSchema, parseClientMessage, parseServerMessage,
   ServerMessageSchema, ShotInputSchema, UNIT_TOLERANCE,
@@ -12,7 +14,8 @@ export {
   CreateRoomOptionsSchema, EMOTES, GAME_ROOM, INVITE_ALPHABET, INVITE_LENGTH, lengthOf, MSG,
 } from './room';
 export type {
-  ApiError, AuthResponse, Cosmetics, GoogleRequest, GuestRequest, LoginRequest, MeResponse,
-  PublicUser, RegisterRequest, UpdateMeRequest,
+  ApiError, AuthResponse, Cosmetics, GoogleRequest, GuestRequest, LeaderboardEntry, LeaderboardResponse,
+  LoginRequest, MatchesResponse, MatchPlayerView, MatchView, MeResponse, PublicUser, RegisterRequest,
+  UpdateMeRequest,
 } from './api';
 export { AVATAR_COUNT, NAME_MAX, NAME_MIN, PASSWORD_MIN } from './api';

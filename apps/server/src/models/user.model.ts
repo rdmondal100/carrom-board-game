@@ -24,6 +24,8 @@ const userSchema = new Schema(
     isGuest: { type: Boolean, required: true, default: true },
     avatar: { type: Number, required: true, default: 0, min: 0, max: AVATAR_COUNT - 1 },
     rating: { type: Number, required: true, default: START_RATING },
+    /** RANK-6 ranked games finished; only players with at least one are on the leaderboard. */
+    rankedGames: { type: Number, required: true, default: 0, min: 0 },
     coins: { type: Number, required: true, default: 0, min: 0 },
     cosmetics: {
       equipped: { type: [String], default: [] },
@@ -36,6 +38,8 @@ const userSchema = new Schema(
 // Unique only among users that have the field (guests have neither).
 userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: onlyStrings } });
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: onlyStrings } });
+// RANK-6 leaderboard order: rating, then the older account first.
+userSchema.index({ rating: -1, createdAt: 1, _id: 1 }, { partialFilterExpression: { rankedGames: { $gt: 0 } } });
 
 export type UserFields = InferSchemaType<typeof userSchema>;
 export type UserDoc = HydratedDocument<UserFields>;

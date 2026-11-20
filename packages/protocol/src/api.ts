@@ -42,3 +42,32 @@ export interface MeResponse { user: PublicUser }
 
 /** Every error answer: `{ error }` (plus `stack` outside production). */
 export interface ApiError { error: string }
+
+// ---- ranked (spec 10) ------------------------------------------------------
+
+/** RANK-6: one row of the leaderboard. `rank` is 1-based. */
+export interface LeaderboardEntry { rank: number; id: string; name: string; avatar: number; rating: number }
+
+/** GET /leaderboard: top players, plus the caller's row when signed in and ranked. */
+export interface LeaderboardResponse { players: LeaderboardEntry[]; me: LeaderboardEntry | null }
+
+/** RANK-5: one player of a finished match. `team` is 'A' or 'B'. */
+export interface MatchPlayerView {
+  userId: string; name: string; seat: number; team: 'A' | 'B'; ratingBefore: number; ratingAfter: number;
+}
+
+/** RANK-5: a finished online game. */
+export interface MatchView {
+  id: string;
+  ranked: boolean;
+  winner: 'A' | 'B';
+  /** Boards played. */
+  boards: number;
+  /** The loser left and did not come back (RANK-4). */
+  abandoned: boolean;
+  players: MatchPlayerView[];
+  createdAt: string;
+}
+
+/** GET /matches/me */
+export interface MatchesResponse { matches: MatchView[] }

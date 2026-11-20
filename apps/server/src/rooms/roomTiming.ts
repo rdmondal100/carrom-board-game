@@ -30,3 +30,10 @@ export const DEFAULT_TIMING: RoomTiming = {
 
 /** ROOM-7: the server bot plays taken-over seats at this level. */
 export const ROOM_BOT_LEVEL = 'medium' as const;
+
+/** True when `key` acted less than `gapMs` ago (then it is dropped); else records now. */
+export function throttled(last: Map<string, number>, key: string, gapMs: number, now = Date.now()): boolean {
+  if (now - (last.get(key) ?? -Infinity) < gapMs) return true;
+  last.set(key, now);
+  return false;
+}

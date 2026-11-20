@@ -1,0 +1,53 @@
+import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import type { MatchView } from '@carrom/protocol/api';
+
+const TEAMS = ['A', 'B'] as const;
+
+const matchPlayerSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    /** Name at the time of the game (history shows it even after a rename). */
+    name: { type: String, required: true },
+    seat: { type: Number, required: true, min: 0, max: 3 },
+    team: { type: String, enum: TEAMS, required: true },
+    ratingBefore: { type: Number, required: true },
+    ratingAfter: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+/** RANK-5: one finished online game. `matchId` makes writing it idempotent (RANK-4). */
+const matchSchema = new Schema(
+  {
+    matchId: { type: String, required: true },
+    players: { type: [matchPlayerSchema], required: true },
+    winner: { type: String, enum: TEAMS, required: true },
+    boards: { type: Number, required: true, min: 1 },
+    ranked: { type: Boolean, required: true },
+    abandoned: { type: Boolean, required: true, default: false },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } },
+);
+
+matchSchema.index({ matchId: 1 }, { unique: true });
+matchSchema.index({ 'players.userId': 1, createdAt: -1 });
+
+export type MatchFields = InferSchemaType<typeof matchSchema>;
+export type MatchDoc = HydratedDocument<MatchFields>;
+
+export const Match = mongoose.model('Match', matchSchema);
+
+export function toMatchView(m: MatchDoc): MatchView {
+  return {
+    id: m.id as string,
+    ranked: m.ranked,
+    winner: m.winner,
+    boards: m.boards,
+    abandoned: m.abandoned,
+    players: m.players.map((p) => ({
+      userId: String(p.userId), name: p.name, seat: p.seat, team: p.team,
+      ratingBefore: p.ratingBefore, ratingAfter: p.ratingAfter,
+    })),
+    createdAt: m.createdAt.toISOString(),
+  };
+}

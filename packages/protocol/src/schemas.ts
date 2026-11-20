@@ -76,6 +76,14 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
   z.object({ type: z.literal('game'), state: gameState, turnId }),
   z.object({ type: z.literal('timeout'), turnId, seat, ruleEvents, state: gameState }),
   z.object({ type: z.literal('clock'), turnId, ms: z.number().min(0) }),
+  z.object({
+    type: z.literal('rankedResult'),
+    winner: z.enum(['A', 'B']),
+    abandoned: z.boolean(),
+    players: z.array(z.object({
+      seat, userId: z.string(), ratingBefore: z.number().int(), ratingAfter: z.number().int(),
+    })),
+  }),
 ]);
 
 /** Parse an unknown payload; null when it is not a valid client message. */

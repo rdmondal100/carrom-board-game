@@ -3,16 +3,22 @@ import cors from 'cors';
 import express from 'express';
 import { matchMaker, Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { GAME_ROOM } from '@carrom/protocol';
+import { GAME_ROOM, QUEUE_ROOM, RANKED_ROOM } from '@carrom/protocol';
 import { loadEnv, type Env } from './env.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { authRateLimit } from './middleware/rateLimit.middleware.js';
 import { gameRoomFor } from './rooms/game.room.js';
 import { PingRoom } from './rooms/ping.room.js';
+import { queueRoomFor } from './rooms/queue.room.js';
+import { rankedRoomFor } from './rooms/rankedGame.room.js';
 import type { RoomTiming } from './rooms/roomTiming.js';
 import { authRouter } from './routes/auth.route.js';
 import { healthRouter } from './routes/health.route.js';
+import { leaderboardRouter } from './routes/leaderboard.route.js';
+import { matchRouter } from './routes/match.route.js';
 import { roomRouter } from './routes/room.route.js';
+import type { RankedTiming } from './utils/rankedConfig.js';
+import type { Redis } from './utils/redis.js';
 
 export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV' | 'JWT_SECRET' | 'GOOGLE_CLIENT_IDS'>;
 
@@ -21,6 +27,10 @@ export interface AppOptions {
   authRateLimit?: number;
   /** Game room waits (tests shorten them). */
   roomTiming?: RoomTiming;
+  /** RANK-2 queue store; without it there is no ranked queue room. */
+  redis?: Redis;
+  /** Ranked queue waits (tests shorten them). */
+  rankedTiming?: RankedTiming;
 }
 
 /** Express app with every route and middleware; no listening (supertest uses it directly). */
@@ -32,6 +42,8 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
 
   app.use('/health', healthRouter);
   app.use('/rooms', roomRouter);
+  app.use('/leaderboard', leaderboardRouter(env.JWT_SECRET));
+  app.use('/matches', matchRouter(env.JWT_SECRET));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),
@@ -60,6 +72,8 @@ export function createServer(
   });
   gameServer.define('ping', PingRoom);
   gameServer.define(GAME_ROOM, gameRoomFor(env.JWT_SECRET, opts.roomTiming));
+  gameServer.define(RANKED_ROOM, rankedRoomFor(env.JWT_SECRET, opts.roomTiming, opts.rankedTiming));
+  if (opts.redis) gameServer.define(QUEUE_ROOM, queueRoomFor(env.JWT_SECRET, opts.redis, opts.rankedTiming));
   return { httpServer, gameServer };
 }
 

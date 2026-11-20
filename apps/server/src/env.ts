@@ -25,6 +25,8 @@ const clientIds = z.string().default('').transform((s) =>
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
   MONGODB_URL: z.string().regex(/^mongodb(\+srv)?:\/\//, 'must start with mongodb:// or mongodb+srv://'),
+  /** RANK-2 the ranked queue. */
+  REDIS_URL: z.string().regex(/^rediss?:\/\//, 'must start with redis:// or rediss://'),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN, `must be at least ${JWT_SECRET_MIN} characters`),
   CORS_ORIGIN: origins,
   GOOGLE_CLIENT_IDS: clientIds,

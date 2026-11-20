@@ -8,6 +8,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // A leading _ marks a parameter a base-class hook takes but does not use.
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }] },
+  },
+  {
     files: ['packages/**/*.ts'],
     languageOptions: { globals: { ...globals.es2022 } },
   },

@@ -48,6 +48,8 @@ describe('routes', () => {
     expect(screen.getByTestId('mode-local').getAttribute('href')).toBe('/local/setup');
     expect(screen.getByTestId('mode-bot').getAttribute('href')).toBe('/local/setup?vs=bot');
     expect(screen.getByTestId('mode-online').getAttribute('href')).toBe('/online');
+    expect(screen.getByTestId('mode-ranked').getAttribute('href')).toBe('/ranked');
+    expect(screen.getByTestId('leaderboard-link').getAttribute('href')).toBe('/leaderboard');
     expect(screen.queryAllByText(en['play.soon'])).toHaveLength(0);
   });
 
@@ -154,5 +156,15 @@ describe('auth routes', () => {
     const router = show('/profile');
     expect(await heading(en['auth.login.title'])).toBeTruthy();
     expect(router.state.location.pathname).toBe('/login');
+  });
+
+  it('RANK-8 /ranked asks a signed-out player to sign in first', async () => {
+    show('/ranked');
+    expect(await screen.findByText(en['online.signInFirst'])).toBeTruthy();
+  });
+
+  it('RANK-8 /leaderboard renders its page', async () => {
+    show('/leaderboard');
+    expect(await heading(en['leaderboard.title'])).toBeTruthy();
   });
 });

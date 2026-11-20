@@ -8,6 +8,7 @@ import { EmoteBar, EMOTE_ICONS } from '@/components/EmoteBar';
 import { GameEndScreen } from '@/components/GameEndScreen';
 import { Hud } from '@/components/Hud';
 import { useOnlineRoom } from '@/components/OnlineParts';
+import { RankedResultScreen } from '@/components/RankedParts';
 import { ShotClock } from '@/components/ShotClock';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,10 +23,12 @@ import { useBoardCanvas, type RemoteAim } from '@/game/useBoardCanvas';
 import { t, useLang } from '@/i18n/t';
 import { gameLog, onServerMessage, sendToRoom } from '@/lib/colyseus';
 import { buzz, playSound, POCKET_BUZZ_MS } from '@/lib/sound';
+import { loadMe } from '@/store/authSlice';
 import { leaveRoom } from '@/store/roomSlice';
-import { useAppDispatch } from '@/store/store';
+import { useAppDispatch, useAppSelector } from '@/store/store';
 
 type Clock = { turnId: number; ms: number };
+type RankedResult = Extract<ServerMessage, { type: 'rankedResult' }>;
 /** ROOM-6: send at most 10 aims a second (the server drops the rest). */
 const AIM_SEND_GAP_MS = 100;
 
@@ -66,10 +69,16 @@ function usePresenceToasts(lobby: LobbyView | null, me: string | null): void {
   }, [lobby, me]);
 }
 
+const lastResult = (log: readonly ServerMessage[]): RankedResult | null =>
+  ([...log].reverse().find((m) => m.type === 'rankedResult') as RankedResult | undefined) ?? null;
+
 /** ROOM-11: the online game page. Waits for the room and the first `game` message. */
 export function OnlineGame() {
   useLang();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { lobby, sessionId } = useOnlineRoom();
+  const [result, setResult] = useState<RankedResult | null>(() => lastResult(gameLog()));
   const [online, setOnline] = useState<Online | null>(() => fromLog(gameLog()));
   const [clock, setClock] = useState<Clock | null>(() => lastClock(gameLog()));
   usePresenceToasts(lobby, sessionId);
@@ -77,24 +86,35 @@ export function OnlineGame() {
   // Each message folds in the whole log, so any that came before we listened are picked up too.
   useEffect(() => onServerMessage((m) => {
     if (m.type === 'clock') setClock({ turnId: m.turnId, ms: m.ms });
+    if (m.type === 'rankedResult') {
+      setResult(m);
+      void dispatch(loadMe());
+    }
+    if (m.type === 'error' && m.code === 'NO_OPPONENT') {
+      toast(t('ranked.noOpponent'));
+      navigate('/ranked', { replace: true });
+      return;
+    }
     if (m.type === 'error') {
       if (SHOT_ERRORS.includes(m.code)) setOnline((o) => o && dropOwnShot(o));
       toast(m.message);
     }
     setOnline((o) => catchUp(o, gameLog()));
-  }), []);
+  }), [dispatch, navigate]);
 
-  if (lobby?.phase === 'lobby') return <Navigate to="/online/lobby" replace />;
+  if (lobby?.phase === 'lobby' && !lobby.ranked) return <Navigate to="/online/lobby" replace />;
   if (!lobby || !online) return <p className="text-center text-muted-foreground">{t('online.connecting')}</p>;
-  return <Play lobby={lobby} sessionId={sessionId} online={online} setOnline={setOnline} clock={clock} />;
+  return <Play lobby={lobby} sessionId={sessionId} online={online} setOnline={setOnline} clock={clock} result={result} />;
 }
 
 interface PlayProps {
   lobby: LobbyView; sessionId: string | null; online: Online; clock: Clock | null;
+  /** RANK-4 ranked games only. */
+  result: RankedResult | null;
   setOnline: (f: (o: Online | null) => Online | null) => void;
 }
 
-function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
+function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const host = useRef<HTMLDivElement>(null);
@@ -112,6 +132,7 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
   const myTurn = canShoot(online, me, playing);
   const botTurn = playerAt(lobby, shooter)?.bot === true;
   const mine = sessionId ? lobby.players[sessionId] : undefined;
+  const userId = useAppSelector((s) => s.auth.user?.id ?? null);
 
   const board = useBoardCanvas(host, view, {
     onShot: (input: ShotInput) => {
@@ -171,9 +192,9 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
   const clockOn = settled && !over && !botTurn && clock !== null && clock.turnId === online.turnId;
   useEffect(() => { if (!clockOn) board.current.setClock(null); }, [board, clockOn]);
 
-  const leave = async () => {
+  const leave = async (to = '/') => {
     await dispatch(leaveRoom());
-    navigate('/');
+    navigate(to);
   };
   const humans = Object.values(lobby.players).filter((p) => !p.left);
   const votes = humans.filter((p) => p.rematch).length;
@@ -211,7 +232,10 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
           </DialogContent>
         </Dialog>
       )}
-      {over && online.shown.winner && (
+      {lobby.ranked && (over || result) && (
+        <RankedResultScreen result={result} userId={userId} onAgain={() => void leave('/ranked')} onHome={() => void leave()} />
+      )}
+      {!lobby.ranked && over && online.shown.winner && (
         <GameEndScreen
           game={game} winner={online.shown.winner} onHome={() => void leave()}
           onRematch={() => sendToRoom({ type: 'rematch' })} rematchDisabled={mine?.rematch === true}
