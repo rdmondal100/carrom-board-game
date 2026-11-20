@@ -93,6 +93,26 @@ export function shooterSeat(g: LocalGame): Seat {
   return g.state.turnSeat as Seat;
 }
 
+/** Seats chosen as 'human' in setup (a BOT-7 takeover still counts as the person's seat). */
+export function humanSeats(g: LocalGame): Seat[] {
+  return seatsFor(g.state.config.format).filter((_, i) => (g.players[i] ?? 'human') === 'human');
+}
+
+/**
+ * LOC-3: the seat shown at the bottom. Only a person's seat is ever shown:
+ * with one person (Vs bot) it never moves; with several, rotation follows the
+ * people who shoot and stays on `prev` during a bot's turn.
+ */
+export function viewSeatFor(g: LocalGame, rotate: boolean, prev: Seat): Seat {
+  const people = humanSeats(g);
+  const shooter = shooterSeat(g);
+  if (people.length === 0) return rotate ? shooter : 0;
+  if (people.length === 1) return people[0] as Seat;
+  if (!rotate) return people[0] as Seat;
+  if (people.includes(shooter)) return shooter;
+  return people.includes(prev) ? prev : (people[0] as Seat);
+}
+
 /** A fresh seed for who breaks first or a bot's noise. UI only; never used inside a shot. */
 export function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);

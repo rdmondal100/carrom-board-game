@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { simulateShot, type Seat, type ShotInput } from '@carrom/engine';
 import { applyShot, applyTimeout, newGame, type GameConfig } from '@carrom/rules';
 import {
-  botLevelAt, seatName, shootLocal, startLocal, takeBack, takeOver, TAKEOVER_LEVEL, timeoutLocal, vsBotResult,
+  botLevelAt, humanSeats, seatName, shootLocal, startLocal, takeBack, takeOver, TAKEOVER_LEVEL, timeoutLocal,
+  viewSeatFor, vsBotResult, type LocalGame,
 } from './localGame';
 
 const CFG: GameConfig = { format: '2v2', preset: 'point', length: { kind: 'points', target: 300 }, seed: 7 };
@@ -83,6 +84,48 @@ describe('localGame', () => {
     const g = startLocal({ ...CFG, format: '1v1' }, ['Bot', 'Bilu'], true, ['easy', 'human']);
     expect(takeOver(g, 0)).toBe(g);
     expect(botLevelAt(takeOver(g, 2), 2)).toBe(TAKEOVER_LEVEL);
+  });
+});
+
+describe('LOC-3 view seat', () => {
+  const at = (g: LocalGame, seat: number): LocalGame => ({ ...g, state: { ...g.state, turnSeat: seat } });
+  const one = { ...CFG, format: '1v1' as const };
+
+  it('LOC-3 vs bot 1v1: the person stays at the bottom on every turn, rotation on or off', () => {
+    const g = startLocal(one, ['Bot', 'Bilu'], false, ['hard', 'human']);
+    for (const rotate of [true, false]) {
+      expect(viewSeatFor(at(g, 0), rotate, 2)).toBe(2);
+      expect(viewSeatFor(at(g, 2), rotate, 2)).toBe(2);
+    }
+  });
+
+  it('LOC-3 one person + three bots: the view never moves', () => {
+    const g = startLocal(CFG, NAMES, false, ['easy', 'human', 'hard', 'medium']);
+    for (const s of [0, 1, 2, 3]) expect(viewSeatFor(at(g, s), true, 1)).toBe(1);
+  });
+
+  it('LOC-3 two people + two bots: follows the people, holds during bot turns', () => {
+    const g = startLocal(CFG, NAMES, false, ['human', 'easy', 'human', 'hard']);
+    expect(viewSeatFor(at(g, 0), true, 2)).toBe(0);
+    expect(viewSeatFor(at(g, 1), true, 0)).toBe(0);
+    expect(viewSeatFor(at(g, 2), true, 0)).toBe(2);
+    expect(viewSeatFor(at(g, 3), true, 2)).toBe(2);
+    expect(viewSeatFor(at(g, 3), false, 2)).toBe(0);
+  });
+
+  it('LOC-3 all people: shooter when rotating, first seat when not', () => {
+    const g = startLocal(CFG, NAMES, false);
+    for (const s of [0, 1, 2, 3]) {
+      expect(viewSeatFor(at(g, s), true, 0)).toBe(s);
+      expect(viewSeatFor(at(g, s), false, 0)).toBe(0);
+    }
+  });
+
+  it('LOC-3 a takeover seat is still the person\'s view', () => {
+    const g = takeOver(startLocal(one, ['Asha', 'Bot'], false, ['human', 'medium']), 0);
+    expect(humanSeats(g)).toEqual([0]);
+    expect(viewSeatFor(at(g, 0), true, 0)).toBe(0);
+    expect(viewSeatFor(at(g, 2), true, 0)).toBe(0);
   });
 });
 

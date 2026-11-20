@@ -13,7 +13,8 @@ import { requestBotShot } from '@/game/botClient';
 import { soundsForEvents } from '@/game/eventSounds';
 import { coinKey, reasonKey } from '@/game/hud';
 import {
-  botLevelAt, newSeed, seatName, shooterSeat, shootLocal, startLocal, takeBack, timeoutLocal, vsBotResult,
+  botLevelAt, humanSeats, newSeed, seatName, shooterSeat, shootLocal, startLocal, takeBack, timeoutLocal,
+  viewSeatFor, vsBotResult,
   type LocalGame as Game,
 } from '@/game/localGame';
 import { clearSave, loadGame, saveGame } from '@/game/save';
@@ -52,7 +53,8 @@ function Play({ initial }: { initial: Game }) {
   const equipped = useAppSelector((s) => s.auth.user?.cosmetics.equipped);
   const host = useRef<HTMLDivElement>(null);
   const [game, setGame] = useState(initial);
-  const [initialSeat] = useState(() => shooterSeat(initial));
+  const [initialSeat] = useState(() => viewSeatFor(initial, rotate, humanSeats(initial)[0] ?? shooterSeat(initial)));
+  const viewRef = useRef(initialSeat);
   const [turnNo, setTurnNo] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [placedOk, setPlacedOk] = useState(true);
@@ -112,9 +114,11 @@ function Play({ initial }: { initial: Game }) {
     onPlacedChange: setPlacedOk,
   }, 'contain');
 
-  // LOC-3: show the current board, turned to the shooter unless rotation is off.
+  // LOC-3: show the current board from a person's seat; Vs bot it never turns.
   useEffect(() => {
-    board.current.load(game.state.board, shooterSeat(game), rotate ? shooterSeat(game) : 0);
+    const view = viewSeatFor(game, rotate, viewRef.current);
+    viewRef.current = view;
+    board.current.load(game.state.board, shooterSeat(game), view);
   }, [board, game, rotate]);
 
   // COS-6: this player's own skins on every seat.

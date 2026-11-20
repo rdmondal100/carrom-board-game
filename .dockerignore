@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+.git
+.claude
+specs
+apps/client/android
+apps/client/assets
+*.jks
+*.keystore
