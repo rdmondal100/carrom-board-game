@@ -18,6 +18,7 @@
     "@carrom/protocol": "workspace:*",
     "@carrom/rules": "workspace:*",
     "@hub/game-kit": "workspace:*",
+    "@hub/ludo": "workspace:*",
     "@colyseus/core": "^0.18.29",
     "@colyseus/schema": "^5.0.50",
     "@colyseus/ws-transport": "^0.18.5",

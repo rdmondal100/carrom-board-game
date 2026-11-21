@@ -14,8 +14,12 @@ describe('HAPP-1 / HAPP-3 game registry', () => {
     expect(BUILD_GAMES).toHaveLength(ALL_GAMES.length);
   });
 
-  it('HAPP-1 carrom is playable with every page; the others are coming-soon stubs', () => {
-    const [carrom, ...rest] = ALL_GAMES;
+  it('HAPP-1 LUDO-6 carrom and ludo are playable with every page; the others are coming-soon stubs', () => {
+    const [carrom, ludo, ...rest] = ALL_GAMES;
+    expect(ludo!.id).toBe('ludo');
+    expect(Object.values(ludo!.playModes).every(Boolean)).toBe(true);
+    expect(Object.keys(ludo!.routes).sort()).toEqual(Object.keys(carrom!.routes).sort());
+    expect(ludo!.CosmeticPreview).toBeDefined();
     expect(isPlayable(carrom!)).toBe(true);
     expect(Object.keys(carrom!.routes).sort()).toEqual(['howToPlay', 'lobby', 'localGame', 'onlineGame', 'online', 'setup'].sort());
     expect(carrom!.CosmeticPreview).toBeDefined();

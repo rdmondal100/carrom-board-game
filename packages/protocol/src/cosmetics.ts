@@ -10,7 +10,7 @@
  */
 export const GAME_SLOTS = {
   carrom: ['striker', 'coins', 'board'],
-  ludo: ['tokens', 'board'],
+  ludo: ['tokens', 'board', 'dice'],
   callbreak: ['cardBack', 'table'],
   nodipar: ['boat', 'river'],
 } as const;
@@ -47,7 +47,7 @@ export const COSMETIC_TYPES: readonly SlotOf<'carrom'>[] = GAME_SLOTS.carrom;
 /** COS-5: owned by everyone, equipped until a player picks something else. */
 export const DEFAULT_SLOTS: Readonly<EquippedMap> = {
   carrom: { striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board' },
-  ludo: { tokens: 'classic-tokens', board: 'classic-ludo-board' },
+  ludo: { tokens: 'classic-tokens', board: 'classic-ludo-board', dice: 'classic-dice' },
   callbreak: { cardBack: 'classic-card-back', table: 'classic-table' },
   nodipar: { boat: 'classic-boat', river: 'classic-river' },
 };
@@ -72,6 +72,16 @@ export const COSMETICS: readonly CosmeticItem[] = [
   // HAPP-5 the other games' free defaults; their shop items come with their specs (18–20).
   { id: 'classic-tokens', game: 'ludo', type: 'tokens', price: 0, rarity: 'common', assetKey: 'ludo.tokens.classic' },
   { id: 'classic-ludo-board', game: 'ludo', type: 'board', price: 0, rarity: 'common', assetKey: 'ludo.board.classic' },
+  { id: 'classic-dice', game: 'ludo', type: 'dice', price: 0, rarity: 'common', assetKey: 'ludo.dice.classic' },
+  // LUDO-8 Ludo's shop: token sets, board themes and dice (dice may become 'any' when another game rolls).
+  { id: 'gem-tokens', game: 'ludo', type: 'tokens', price: 150, rarity: 'rare', assetKey: 'ludo.tokens.gem' },
+  { id: 'lantern-tokens', game: 'ludo', type: 'tokens', price: 400, rarity: 'epic', assetKey: 'ludo.tokens.lantern' },
+  { id: 'shapla-tokens', game: 'ludo', type: 'tokens', price: 800, rarity: 'legendary', assetKey: 'ludo.tokens.shapla' },
+  { id: 'nakshi-ludo-board', game: 'ludo', type: 'board', price: 250, rarity: 'rare', assetKey: 'ludo.board.nakshi' },
+  { id: 'river-ludo-board', game: 'ludo', type: 'board', price: 500, rarity: 'epic', assetKey: 'ludo.board.river' },
+  { id: 'night-ludo-board', game: 'ludo', type: 'board', price: 800, rarity: 'legendary', assetKey: 'ludo.board.night' },
+  { id: 'wood-dice', game: 'ludo', type: 'dice', price: 120, rarity: 'rare', assetKey: 'ludo.dice.wood' },
+  { id: 'gold-dice', game: 'ludo', type: 'dice', price: 450, rarity: 'epic', assetKey: 'ludo.dice.gold' },
   { id: 'classic-card-back', game: 'callbreak', type: 'cardBack', price: 0, rarity: 'common', assetKey: 'callbreak.cardBack.classic' },
   { id: 'classic-table', game: 'callbreak', type: 'table', price: 0, rarity: 'common', assetKey: 'callbreak.table.classic' },
   { id: 'classic-boat', game: 'nodipar', type: 'boat', price: 0, rarity: 'common', assetKey: 'nodipar.boat.classic' },

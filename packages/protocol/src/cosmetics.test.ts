@@ -67,7 +67,10 @@ describe('COS-5 defaults', () => {
       for (const g of games) expect(fitsSlot(c, g, c.type), c.id).toBe(true);
     }
     expect(itemsForGame('carrom').every((c) => c.game === 'carrom')).toBe(true);
-    expect(itemsForGame('ludo').map((c) => c.id)).toEqual(['classic-tokens', 'classic-ludo-board']);
+    // LUDO-8 ludo's items: token sets, board themes and dice, all for ludo only.
+    expect(itemsForGame('ludo').map((c) => c.type)).toEqual(expect.arrayContaining(['tokens', 'board', 'dice']));
+    expect(itemsForGame('ludo').every((c) => c.game === 'ludo')).toBe(true);
+    expect(itemsForGame('ludo').filter((c) => c.price > 0).length).toBeGreaterThanOrEqual(6);
     // A carrom board never fits ludo's board slot.
     expect(fitsSlot(cosmeticById('teak-board'), 'ludo', 'board')).toBe(false);
   });

@@ -1,11 +1,15 @@
 import type { CarromRoomConfig } from '@carrom/protocol';
+import { DEFAULT_LUDO_CONFIG, type LudoConfig } from '@hub/ludo';
 import { START_RATING } from '../models/user.model.js';
 
 /** RANK-1: every ranked carrom game is 1v1, colour preset, one board. */
 export const CARROM_RANKED: CarromRoomConfig = { format: '1v1', preset: 'colour', length: { kind: 'board' } };
 
 /** HUB-6 the settings of each game's ranked play (games not listed have no ranked queue). */
-export const RANKED_CONFIGS: Record<string, unknown> = { carrom: CARROM_RANKED };
+/** LUDO-7 ranked Ludo is 1v1 with the BD rules, server rolls. */
+export const LUDO_RANKED: LudoConfig = DEFAULT_LUDO_CONFIG;
+
+export const RANKED_CONFIGS: Record<string, unknown> = { carrom: CARROM_RANKED, ludo: LUDO_RANKED };
 
 /** RANK-1 Elo. */
 export const ELO_START = START_RATING;

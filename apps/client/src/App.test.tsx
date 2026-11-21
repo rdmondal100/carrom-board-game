@@ -46,7 +46,8 @@ describe('routes', () => {
     show('/');
     expect(await screen.findByText(en['hub.tagline'])).toBeTruthy();
     expect(screen.getByTestId('game-carrom').getAttribute('href')).toBe('/g/carrom/play');
-    for (const id of ['ludo', 'callbreak', 'nodipar']) expect(screen.getByTestId(`game-${id}`).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByTestId('game-ludo').getAttribute('href')).toBe('/g/ludo/play');
+    for (const id of ['callbreak', 'nodipar']) expect(screen.getByTestId(`game-${id}`).getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByTestId('daily-bonus')).toBeTruthy();
     expect(screen.queryByTestId('game-home')).toBeNull();
   });
@@ -99,9 +100,9 @@ describe('routes', () => {
   });
 
   it('HAPP-1 a coming-soon game: every mode "coming soon"; its pages go to its play menu', async () => {
-    const router = show('/g/ludo/local/setup');
+    const router = show('/g/callbreak/local/setup');
     expect(await heading(new RegExp(en['play.title']))).toBeTruthy();
-    expect(at(router)).toBe('/g/ludo/play');
+    expect(at(router)).toBe('/g/callbreak/play');
     expect(screen.getAllByText(en['play.soon'])).toHaveLength(4);
   });
 

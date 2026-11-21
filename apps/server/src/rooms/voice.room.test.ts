@@ -3,10 +3,11 @@ import { RANKED_ROOM, type VoiceSignal } from '@carrom/protocol';
 import { afterAll, afterEach, beforeAll, describe, expect, inject, it } from 'vitest';
 import { createServer } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
+import { Match } from '../models/match.model.js';
 import { User } from '../models/user.model.js';
 import { signToken } from '../utils/jwt.js';
 import { rankedCreateOptions } from './ranked.js';
-import { carromRoom, fastTiming, join, makeUser, SECRET, serverRoom, until, type TestClient } from './roomTestkit.js';
+import { carromRoom, fastTiming, join, makeUser, SECRET, serverRoom, sleep, until, type TestClient } from './roomTestkit.js';
 
 const sdp = (text: string): VoiceSignal => ({ kind: 'offer', sdp: text });
 const voiceIn = (c: TestClient) => c.inbox.filter((m) => m.type === 'voice');
@@ -25,8 +26,10 @@ describe('voice in rooms', () => {
   });
   afterEach(async () => {
     await Promise.all(clients.splice(0).map((c) => c.room.leave().catch(() => {})));
+    // A ranked room left mid-game writes an abandon Match; let it land, then wipe it with the users.
+    await sleep(150);
     await colyseus.cleanup();
-    await User.deleteMany({});
+    await Promise.all([User.deleteMany({}), Match.deleteMany({})]);
   });
   afterAll(async () => {
     await colyseus.shutdown();

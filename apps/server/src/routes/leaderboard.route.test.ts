@@ -96,7 +96,8 @@ describe('leaderboard and history routes', () => {
     expect(carrom.body.players.map((p: { name: string }) => p.name)).toEqual(['CarromOnly']);
     expect((await request(app).get('/leaderboard')).body).toEqual(carrom.body);
     expect((await request(app).get('/leaderboard?game=nope')).status).toBe(400);
-    expect((await request(app).get('/leaderboard?game=ludo')).status).toBe(400); // ludo isn't registered yet
+    // LUDO-7 ludo is registered: its own board.
+    expect((await request(app).get('/leaderboard?game=ludo')).body.players.map((p: { name: string }) => p.name)).toEqual(['LudoOnly']);
     const me = await player('Mine', 1000, 3, 0);
     expect((await request(app).get('/matches/me?game=nope').set(bearer(me))).status).toBe(400);
     expect((await request(app).get('/matches/me?game=carrom').set(bearer(me))).body.matches).toEqual([]);

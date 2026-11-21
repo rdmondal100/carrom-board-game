@@ -114,7 +114,7 @@ describe('shop and wallet routes', () => {
       const res = await request(app).patch('/me/equip').set(p.auth).send({ game: 'ludo', board: 'classic-ludo-board' });
       expect(res.status).toBe(200);
       expect(res.body.user.cosmetics.equipped.carrom).toEqual(me.body.user.cosmetics.equipped.carrom);
-      expect(res.body.user.cosmetics.equipped.ludo).toEqual({ tokens: 'classic-tokens', board: 'classic-ludo-board' });
+      expect(res.body.user.cosmetics.equipped.ludo).toEqual({ tokens: 'classic-tokens', board: 'classic-ludo-board', dice: 'classic-dice' });
       // And carrom equips leave ludo alone.
       const back = await request(app).patch('/me/equip').set(p.auth).send({ board: 'classic-board' });
       expect(back.body.user.cosmetics.equipped.ludo).toEqual(res.body.user.cosmetics.equipped.ludo);
