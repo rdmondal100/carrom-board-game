@@ -1,52 +1,106 @@
 /**
  * COS-1: the cosmetics catalogue. Looks only: an item names a skin the client
- * draws by `assetKey`; nothing here changes how a shot plays. This file has no
+ * draws by `assetKey`; nothing here changes how a game plays. This file has no
  * imports, so the server and client can both load it, and the engine never does.
  */
 
-export type CosmeticType = 'striker' | 'coins' | 'board';
+/**
+ * HAPP-5 the cosmetic slots of each game. The keys are game-kit's GAME_IDS
+ * (the server's user.model.test checks they match).
+ */
+export const GAME_SLOTS = {
+  carrom: ['striker', 'coins', 'board'],
+  ludo: ['tokens', 'board'],
+  callbreak: ['cardBack', 'table'],
+  nodipar: ['boat', 'river'],
+} as const;
+
+export type CosmeticGame = keyof typeof GAME_SLOTS;
+export type SlotOf<G extends CosmeticGame> = (typeof GAME_SLOTS)[G][number];
+export type CosmeticType = SlotOf<CosmeticGame>;
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export const COSMETIC_GAMES = Object.keys(GAME_SLOTS) as CosmeticGame[];
 
 export interface CosmeticItem {
   id: string;
+  /** HAPP-5 the game it is for; 'any' fits that slot type in every game that has it. */
+  game: CosmeticGame | 'any';
   type: CosmeticType;
   /** Coins. 0 = a default item everyone owns (COS-5). */
   price: number;
   rarity: Rarity;
-  /** The client's skin key (`game/skins.ts`). */
+  /** The client's skin key (the game's `skins.ts`). */
   assetKey: string;
 }
 
-/** The item id equipped in each slot. */
-export interface Equipped { striker: string; coins: string; board: string }
+/** The item id equipped in each slot of one game. */
+export type GameSlots<G extends CosmeticGame> = { [S in SlotOf<G>]: string };
+/** HAPP-5 every game's equipped items. */
+export type EquippedMap = { [G in CosmeticGame]: GameSlots<G> };
+/** Carrom's slots (spec 12). */
+export type Equipped = GameSlots<'carrom'>;
 
-export const COSMETIC_TYPES: readonly CosmeticType[] = ['striker', 'coins', 'board'];
+/** Carrom's slot types (spec 12 name, kept). */
+export const COSMETIC_TYPES: readonly SlotOf<'carrom'>[] = GAME_SLOTS.carrom;
 
 /** COS-5: owned by everyone, equipped until a player picks something else. */
-export const DEFAULT_EQUIPPED: Readonly<Equipped> = {
-  striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board',
+export const DEFAULT_SLOTS: Readonly<EquippedMap> = {
+  carrom: { striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board' },
+  ludo: { tokens: 'classic-tokens', board: 'classic-ludo-board' },
+  callbreak: { cardBack: 'classic-card-back', table: 'classic-table' },
+  nodipar: { boat: 'classic-boat', river: 'classic-river' },
 };
 
+/** Carrom's defaults (spec 12 name, kept). */
+export const DEFAULT_EQUIPPED: Readonly<Equipped> = DEFAULT_SLOTS.carrom;
+
 export const COSMETICS: readonly CosmeticItem[] = [
-  { id: 'classic-striker', type: 'striker', price: 0, rarity: 'common', assetKey: 'striker.classic' },
-  { id: 'ruby-striker', type: 'striker', price: 150, rarity: 'rare', assetKey: 'striker.ruby' },
-  { id: 'emerald-striker', type: 'striker', price: 150, rarity: 'rare', assetKey: 'striker.emerald' },
-  { id: 'gold-striker', type: 'striker', price: 400, rarity: 'epic', assetKey: 'striker.gold' },
-  { id: 'galaxy-striker', type: 'striker', price: 900, rarity: 'legendary', assetKey: 'striker.galaxy' },
-  { id: 'classic-coins', type: 'coins', price: 0, rarity: 'common', assetKey: 'coins.classic' },
-  { id: 'jade-coins', type: 'coins', price: 200, rarity: 'rare', assetKey: 'coins.jade' },
-  { id: 'pearl-coins', type: 'coins', price: 350, rarity: 'epic', assetKey: 'coins.pearl' },
-  { id: 'neon-coins', type: 'coins', price: 700, rarity: 'legendary', assetKey: 'coins.neon' },
-  { id: 'classic-board', type: 'board', price: 0, rarity: 'common', assetKey: 'board.classic' },
-  { id: 'teak-board', type: 'board', price: 250, rarity: 'rare', assetKey: 'board.teak' },
-  { id: 'midnight-board', type: 'board', price: 500, rarity: 'epic', assetKey: 'board.midnight' },
-  { id: 'royal-board', type: 'board', price: 800, rarity: 'legendary', assetKey: 'board.royal' },
+  { id: 'classic-striker', game: 'carrom', type: 'striker', price: 0, rarity: 'common', assetKey: 'striker.classic' },
+  { id: 'ruby-striker', game: 'carrom', type: 'striker', price: 150, rarity: 'rare', assetKey: 'striker.ruby' },
+  { id: 'emerald-striker', game: 'carrom', type: 'striker', price: 150, rarity: 'rare', assetKey: 'striker.emerald' },
+  { id: 'gold-striker', game: 'carrom', type: 'striker', price: 400, rarity: 'epic', assetKey: 'striker.gold' },
+  { id: 'galaxy-striker', game: 'carrom', type: 'striker', price: 900, rarity: 'legendary', assetKey: 'striker.galaxy' },
+  { id: 'classic-coins', game: 'carrom', type: 'coins', price: 0, rarity: 'common', assetKey: 'coins.classic' },
+  { id: 'jade-coins', game: 'carrom', type: 'coins', price: 200, rarity: 'rare', assetKey: 'coins.jade' },
+  { id: 'pearl-coins', game: 'carrom', type: 'coins', price: 350, rarity: 'epic', assetKey: 'coins.pearl' },
+  { id: 'neon-coins', game: 'carrom', type: 'coins', price: 700, rarity: 'legendary', assetKey: 'coins.neon' },
+  { id: 'classic-board', game: 'carrom', type: 'board', price: 0, rarity: 'common', assetKey: 'board.classic' },
+  { id: 'teak-board', game: 'carrom', type: 'board', price: 250, rarity: 'rare', assetKey: 'board.teak' },
+  { id: 'midnight-board', game: 'carrom', type: 'board', price: 500, rarity: 'epic', assetKey: 'board.midnight' },
+  { id: 'royal-board', game: 'carrom', type: 'board', price: 800, rarity: 'legendary', assetKey: 'board.royal' },
+  // HAPP-5 the other games' free defaults; their shop items come with their specs (18–20).
+  { id: 'classic-tokens', game: 'ludo', type: 'tokens', price: 0, rarity: 'common', assetKey: 'ludo.tokens.classic' },
+  { id: 'classic-ludo-board', game: 'ludo', type: 'board', price: 0, rarity: 'common', assetKey: 'ludo.board.classic' },
+  { id: 'classic-card-back', game: 'callbreak', type: 'cardBack', price: 0, rarity: 'common', assetKey: 'callbreak.cardBack.classic' },
+  { id: 'classic-table', game: 'callbreak', type: 'table', price: 0, rarity: 'common', assetKey: 'callbreak.table.classic' },
+  { id: 'classic-boat', game: 'nodipar', type: 'boat', price: 0, rarity: 'common', assetKey: 'nodipar.boat.classic' },
+  { id: 'classic-river', game: 'nodipar', type: 'river', price: 0, rarity: 'common', assetKey: 'nodipar.river.classic' },
 ];
 
 const BY_ID = new Map(COSMETICS.map((c) => [c.id, c]));
 
 export function cosmeticById(id: string): CosmeticItem | undefined {
   return BY_ID.get(id);
+}
+
+export function isCosmeticGame(id: unknown): id is CosmeticGame {
+  return typeof id === 'string' && Object.hasOwn(GAME_SLOTS, id);
+}
+
+/** Is `slot` one of `game`'s slots? */
+export function isSlotOf(game: CosmeticGame, slot: string): boolean {
+  return (GAME_SLOTS[game] as readonly string[]).includes(slot);
+}
+
+/** HAPP-5 can `item` go in `game`'s `slot`? */
+export function fitsSlot(item: CosmeticItem | undefined, game: CosmeticGame, slot: string): boolean {
+  return item !== undefined && item.type === slot && isSlotOf(game, slot) && (item.game === game || item.game === 'any');
+}
+
+/** HAPP-5 the catalogue items that fit some slot of `game` ('any' items included). */
+export function itemsForGame(game: CosmeticGame): CosmeticItem[] {
+  return COSMETICS.filter((c) => fitsSlot(c, game, c.type));
 }
 
 /** COS-5 a default item (price 0) is owned by everyone. */
@@ -64,21 +118,53 @@ export function ownedItems(bought: readonly string[]): string[] {
   return COSMETICS.filter((c) => ownsItem(bought, c.id)).map((c) => c.id);
 }
 
-/** The id of `type` among `ids`, if one is a known item of that type (last wins). */
-function pick(ids: readonly string[], type: CosmeticType): string | undefined {
-  return [...ids].reverse().find((id) => BY_ID.get(id)?.type === type);
+/**
+ * HAPP-5 stored equip entries: `game:id` (one game's slot) or a bare `id`
+ * (spec 12 documents: the slot of that item's own game). Later entries win.
+ */
+function entryFits(entry: string, game: CosmeticGame, slot: string): string | undefined {
+  const cut = entry.indexOf(':');
+  if (cut >= 0 && entry.slice(0, cut) !== game) return undefined;
+  const id = cut >= 0 ? entry.slice(cut + 1) : entry;
+  return fitsSlot(BY_ID.get(id), game, slot) ? id : undefined;
 }
 
-/** The equipped item per slot from a stored id list; unknown or missing → the default. */
-export function resolveEquipped(ids: readonly string[]): Equipped {
-  return {
-    striker: pick(ids, 'striker') ?? DEFAULT_EQUIPPED.striker,
-    coins: pick(ids, 'coins') ?? DEFAULT_EQUIPPED.coins,
-    board: pick(ids, 'board') ?? DEFAULT_EQUIPPED.board,
-  };
+/** HAPP-5 one game's equipped item per slot from the stored entries; unknown or missing → the default. */
+export function resolveGameSlots<G extends CosmeticGame>(entries: readonly string[], game: G): GameSlots<G> {
+  const out: Record<string, string> = { ...DEFAULT_SLOTS[game] };
+  for (const slot of GAME_SLOTS[game]) {
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const id = entryFits(entries[i]!, game, slot);
+      if (id !== undefined) {
+        out[slot] = id;
+        break;
+      }
+    }
+  }
+  return out as GameSlots<G>;
 }
 
-/** A known item of `type`, or that slot's default (for ids that come over the wire). */
-export function itemOrDefault(id: string | undefined, type: CosmeticType): string {
-  return id !== undefined && BY_ID.get(id)?.type === type ? id : DEFAULT_EQUIPPED[type];
+/** HAPP-5 every game's equipped items from the stored entries. */
+export function resolveEquippedMap(entries: readonly string[]): EquippedMap {
+  const out = {} as Record<CosmeticGame, Record<string, string>>;
+  for (const g of COSMETIC_GAMES) out[g] = resolveGameSlots(entries, g);
+  return out as EquippedMap;
+}
+
+/** HAPP-5 the entries to store for an equipped map (`game:id`, every slot). */
+export function equippedEntries(map: EquippedMap): string[] {
+  return COSMETIC_GAMES.flatMap((g) => Object.values<string>(map[g]).map((id) => `${g}:${id}`));
+}
+
+/** Carrom's equipped items from the stored entries (spec 12; old id lists resolve as before). */
+export function resolveEquipped(entries: readonly string[]): Equipped {
+  return resolveGameSlots(entries, 'carrom');
+}
+
+/** A known item for `game`'s `type` slot, or that slot's default (for ids that come over the wire). */
+export function itemOrDefault<G extends CosmeticGame = 'carrom'>(
+  id: string | undefined, type: SlotOf<G>, game: G = 'carrom' as G,
+): string {
+  if (id !== undefined && fitsSlot(BY_ID.get(id), game, type)) return id;
+  return (DEFAULT_SLOTS[game] as Record<string, string>)[type]!;
 }

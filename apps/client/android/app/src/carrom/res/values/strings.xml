@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/androidBuild.mjs from src/constants/brand.ts; edit brand.ts, not this file. -->
+<resources>
+    <string name="app_name">Carrom Adda</string>
+    <string name="title_activity_main">Carrom Adda</string>
+</resources>

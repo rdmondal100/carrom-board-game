@@ -10,11 +10,11 @@ export const PASSWORD_MIN = 8;
 /** Avatars are an index into a fixed set of AVATAR_COUNT pictures. */
 export const AVATAR_COUNT = 12;
 
-import type { Equipped } from './cosmetics';
+import type { CosmeticGame, CosmeticType, EquippedMap } from './cosmetics';
 
-/** COS-5: `owned` already includes the default items; `equipped` has one item id per slot. */
+/** COS-5: `owned` already includes the default items. HAPP-5 `equipped` = one item id per slot, per game. */
 export interface Cosmetics {
-  equipped: Equipped;
+  equipped: EquippedMap;
   owned: string[];
 }
 
@@ -88,8 +88,8 @@ export interface MatchesResponse { matches: MatchView[] }
 
 /** COS-3 POST /shop/buy */
 export interface BuyRequest { itemId: string }
-/** COS-4 PATCH /me/equip: only owned items. */
-export type EquipRequest = Partial<Equipped>;
+/** COS-4 / HAPP-5 PATCH /me/equip: only owned items, for one game's slots (`game` defaults to carrom). */
+export type EquipRequest = { game?: CosmeticGame } & Partial<Record<CosmeticType, string>>;
 /** COS-2 POST /me/bot-reward: a finished Vs-bot game, reported by the client. */
 export interface BotRewardRequest { won: boolean }
 /** COS-2 daily bonus, bot and online rewards: coins given now (0 = none) and the updated user. */
@@ -110,8 +110,11 @@ export const IAP_PACKS = [
 ] as const;
 export type IapProductId = (typeof IAP_PACKS)[number]['productId'];
 
-/** IAP-2 POST /iap/verify: a Play Billing purchase to check and credit. */
-export interface IapVerifyRequest { productId: string; purchaseToken: string }
+/**
+ * IAP-2 POST /iap/verify: a Play Billing purchase to check and credit.
+ * HAPP-9 `packageName` = the app it was bought in (one of the server's PLAY_PACKAGE_NAMES; missing = the first).
+ */
+export interface IapVerifyRequest { productId: string; purchaseToken: string; packageName?: string }
 /**
  * IAP-3/4: `credited` = coins given by this call (0 on a replay or while
  * pending). 200 credited, 202 pending (retry later).

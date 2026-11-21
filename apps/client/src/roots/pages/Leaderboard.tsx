@@ -4,6 +4,7 @@ import type { LeaderboardEntry } from '@carrom/protocol';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useGame } from '@/games/GamesContext';
 import { t, useLang } from '@/i18n/t';
 import { cn } from '@/lib/utils';
 import { fetchLeaderboard } from '@/store/rankedSlice';
@@ -26,22 +27,23 @@ function Row({ e, mine }: { e: LeaderboardEntry; mine: boolean }) {
   );
 }
 
-/** RANK-6 / RANK-8: top 100 by rating, and my rank. */
+/** RANK-6 / RANK-8 / HAPP-2: one game's top 100 by rating, and my rank. */
 export function Leaderboard() {
   useLang();
+  const game = useGame();
   const dispatch = useAppDispatch();
   const { players, me, loading, error } = useAppSelector((s) => s.ranked.leaderboard);
   const user = useAppSelector((s) => s.auth.user);
-  useEffect(() => { void dispatch(fetchLeaderboard(undefined)); }, [dispatch, user?.id]);
+  useEffect(() => { void dispatch(fetchLeaderboard({ game: game.id })); }, [dispatch, user?.id, game.id]);
 
   const meInList = me !== null && players.some((p) => p.id === me.id);
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h2 className="flex items-center gap-2 text-xl font-bold"><Trophy className="size-5 text-amber-400" />{t('leaderboard.title')}</h2>
+      <h2 className="flex items-center gap-2 text-xl font-bold"><Trophy className="size-5 text-amber-400" />{t(game.nameKey)} · {t('leaderboard.title')}</h2>
       {error && (
         <div className="flex flex-col gap-2">
           <p role="alert" className="rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">{t('online.err.network')}</p>
-          <Button variant="outline" onClick={() => void dispatch(fetchLeaderboard(undefined))}>{t('leaderboard.retry')}</Button>
+          <Button variant="outline" onClick={() => void dispatch(fetchLeaderboard({ game: game.id }))}>{t('leaderboard.retry')}</Button>
         </div>
       )}
       {loading && players.length === 0 && <p className="text-center text-muted-foreground">{t('auth.loading')}</p>}

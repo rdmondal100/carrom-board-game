@@ -25,8 +25,11 @@ export type {
   RewardResponse,
 } from './api';
 export { IAP_PACKS } from './api';
-export type { CosmeticItem, CosmeticType, Equipped, Rarity } from './cosmetics';
+export type {
+  CosmeticGame, CosmeticItem, CosmeticType, Equipped, EquippedMap, GameSlots, Rarity, SlotOf,
+} from './cosmetics';
 export {
-  COSMETIC_TYPES, COSMETICS, cosmeticById, DEFAULT_EQUIPPED, isDefaultItem, itemOrDefault, ownedItems, ownsItem,
-  resolveEquipped,
+  COSMETIC_GAMES, COSMETIC_TYPES, COSMETICS, cosmeticById, DEFAULT_EQUIPPED, DEFAULT_SLOTS, equippedEntries, fitsSlot,
+  GAME_SLOTS, isCosmeticGame, isDefaultItem, isSlotOf, itemOrDefault, itemsForGame, ownedItems, ownsItem, resolveEquipped,
+  resolveEquippedMap, resolveGameSlots,
 } from './cosmetics';

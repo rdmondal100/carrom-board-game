@@ -7,7 +7,7 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { AD_UNITS, ADS_MENU_BANNER } from '@/constants/ads';
 import {
   gameFinished, interstitialShown, mayShowInterstitial, parseAdPolicy, type AdMoment, type AdPolicyState,
-} from '@/game/adPolicy';
+} from '@/lib/adPolicy';
 import { readStorage, writeStorage } from './storage';
 
 const POLICY_KEY = 'carrom.adPolicy';

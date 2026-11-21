@@ -1,32 +1,41 @@
 import { useEffect } from 'react';
-import { BookOpen, Coins, Home, LogIn, Play, Settings, Store } from 'lucide-react';
+import { BookOpen, Coins, Home, LogIn, Play, Settings, Store, type LucideIcon } from 'lucide-react';
 import { Link, NavLink } from 'react-router';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
+import { useAppName } from '@/games/appName';
+import { useGames } from '@/games/GamesContext';
+import { gamePath, type ClientGame } from '@/games/types';
 import { setLang, t, useLang } from '@/i18n/t';
 import { cn } from '@/lib/utils';
 import { claimDailyBonus } from '@/store/shopSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
-const LINKS = [
-  { to: '/', key: 'nav.home', Icon: Home, end: true },
-  { to: '/play', key: 'nav.play', Icon: Play, end: false },
-  { to: '/shop', key: 'nav.shop', Icon: Store, end: false },
-  { to: '/how-to-play', key: 'nav.howTo', Icon: BookOpen, end: false },
-  { to: '/settings', key: 'nav.settings', Icon: Settings, end: false },
-] as const;
+interface NavItem { to: string; key: string; Icon: LucideIcon; end: boolean }
+
+/** HAPP-3 the hub: home, shop, settings. A one-game app adds its play menu and how-to-play. */
+function navLinks(single: ClientGame | null): NavItem[] {
+  const links: NavItem[] = [{ to: '/', key: 'nav.home', Icon: Home, end: true }];
+  if (single) links.push({ to: gamePath(single.id), key: 'nav.play', Icon: Play, end: false });
+  links.push({ to: '/shop', key: 'nav.shop', Icon: Store, end: false });
+  if (single?.routes.howToPlay) links.push({ to: gamePath(single.id, 'how-to-play'), key: 'nav.howTo', Icon: BookOpen, end: false });
+  links.push({ to: '/settings', key: 'nav.settings', Icon: Settings, end: false });
+  return links;
+}
 
 /** COS-2: users whose daily bonus this page load has already asked for. */
 const bonusAsked = new Set<string>();
 
-/** App bar: title, icon nav (labels from sm up), coin balance, quick language switch. */
+/** App bar: app name (HAPP-4), icon nav (labels from sm up), coin balance, quick language switch. */
 export function Header() {
   const lang = useLang();
   const other = lang === 'bn' ? 'en' : 'bn';
   const user = useAppSelector((s) => s.auth.user);
   const account = user ? t('nav.profile') : t('nav.login');
   const dispatch = useAppDispatch();
+  const appName = useAppName();
+  const links = navLinks(useGames().single);
   const userId = user?.id;
   // COS-2: claim today's login bonus once per page load (the server gives it once per day).
   useEffect(() => {
@@ -38,9 +47,9 @@ export function Header() {
   }, [dispatch, userId]);
   return (
     <header className="flex items-center gap-1 border-b border-border px-3 py-2 pt-[max(0.5rem,var(--inset-top))]">
-      <Link to="/" className="mr-auto text-lg font-bold tracking-tight">{t('app.title')}</Link>
+      <Link to="/" className="mr-auto text-lg font-bold tracking-tight">{appName}</Link>
       <nav className="flex gap-0.5 text-sm">
-        {LINKS.map(({ to, key, Icon, end }) => (
+        {links.map(({ to, key, Icon, end }) => (
           <NavLink
             key={to}
             to={to}

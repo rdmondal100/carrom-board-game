@@ -3,7 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  COSMETIC_TYPES, COSMETICS, DEFAULT_EQUIPPED, itemOrDefault, ownedItems, ownsItem, resolveEquipped,
+  COSMETIC_GAMES, COSMETIC_TYPES, COSMETICS, cosmeticById, DEFAULT_EQUIPPED, DEFAULT_SLOTS, equippedEntries, fitsSlot,
+  GAME_SLOTS, isSlotOf, itemOrDefault, itemsForGame, ownedItems, ownsItem, resolveEquipped, resolveEquippedMap,
+  resolveGameSlots,
 } from './cosmetics';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -19,7 +21,7 @@ function sources(dir: string): string[] {
 describe('COS-1 catalogue', () => {
   it('COS-1 no catalogue item has physics-like keys', () => {
     for (const item of COSMETICS) {
-      expect(Object.keys(item).sort()).toEqual(['assetKey', 'id', 'price', 'rarity', 'type']);
+      expect(Object.keys(item).sort()).toEqual(['assetKey', 'game', 'id', 'price', 'rarity', 'type']);
       for (const k of PHYSICS_KEYS) expect(item).not.toHaveProperty(k);
     }
   });
@@ -45,12 +47,29 @@ describe('COS-1 catalogue', () => {
 });
 
 describe('COS-5 defaults', () => {
-  it('COS-5 each type has exactly one free default item, and it is the default equip', () => {
-    for (const type of COSMETIC_TYPES) {
-      const free = COSMETICS.filter((c) => c.type === type && c.price === 0);
-      expect(free.map((c) => c.id)).toEqual([DEFAULT_EQUIPPED[type]]);
-      expect(DEFAULT_EQUIPPED[type]).toMatch(/^classic-/);
+  it('COS-5 HAPP-5 each game slot has exactly one free default item, and it is the default equip', () => {
+    for (const game of COSMETIC_GAMES) {
+      for (const slot of GAME_SLOTS[game]) {
+        const free = COSMETICS.filter((c) => c.game === game && c.type === slot && c.price === 0);
+        const def = (DEFAULT_SLOTS[game] as Record<string, string>)[slot];
+        expect(free.map((c) => c.id)).toEqual([def]);
+        expect(def).toMatch(/^classic-/);
+      }
     }
+    expect(DEFAULT_EQUIPPED).toEqual(DEFAULT_SLOTS.carrom);
+    expect(COSMETIC_TYPES).toEqual(['striker', 'coins', 'board']);
+  });
+
+  it('HAPP-5 every item fits a slot of its game', () => {
+    for (const c of COSMETICS) {
+      const games = c.game === 'any' ? COSMETIC_GAMES.filter((g) => isSlotOf(g, c.type)) : [c.game];
+      expect(games.length, c.id).toBeGreaterThan(0);
+      for (const g of games) expect(fitsSlot(c, g, c.type), c.id).toBe(true);
+    }
+    expect(itemsForGame('carrom').every((c) => c.game === 'carrom')).toBe(true);
+    expect(itemsForGame('ludo').map((c) => c.id)).toEqual(['classic-tokens', 'classic-ludo-board']);
+    // A carrom board never fits ludo's board slot.
+    expect(fitsSlot(cosmeticById('teak-board'), 'ludo', 'board')).toBe(false);
   });
 
   it('COS-5 everyone owns the defaults; bought ids count only if known', () => {
@@ -58,7 +77,8 @@ describe('COS-5 defaults', () => {
     expect(ownsItem([], 'gold-striker')).toBe(false);
     expect(ownsItem(['gold-striker'], 'gold-striker')).toBe(true);
     expect(ownsItem(['nope'], 'nope')).toBe(false);
-    expect(ownedItems(['gold-striker', 'nope'])).toEqual(['classic-striker', 'gold-striker', 'classic-coins', 'classic-board']);
+    expect(ownedItems(['gold-striker', 'nope']).slice(0, 4)).toEqual(['classic-striker', 'gold-striker', 'classic-coins', 'classic-board']);
+    expect(ownedItems([])).toContain('classic-tokens');
   });
 
   it('COS-5 resolveEquipped fills missing or unknown slots with defaults', () => {
@@ -68,5 +88,26 @@ describe('COS-5 defaults', () => {
     });
     expect(itemOrDefault('jade-coins', 'striker')).toBe('classic-striker');
     expect(itemOrDefault(undefined, 'board')).toBe('classic-board');
+    expect(itemOrDefault('teak-board', 'board', 'ludo')).toBe('classic-ludo-board');
+  });
+
+  it('HAPP-5 an old equipped id list resolves to the carrom slots; other games get defaults', () => {
+    const map = resolveEquippedMap(['gold-striker', 'jade-coins']);
+    expect(map.carrom).toEqual({ striker: 'gold-striker', coins: 'jade-coins', board: 'classic-board' });
+    expect(map.ludo).toEqual(DEFAULT_SLOTS.ludo);
+    expect(map.callbreak).toEqual(DEFAULT_SLOTS.callbreak);
+    expect(map.nodipar).toEqual(DEFAULT_SLOTS.nodipar);
+  });
+
+  it('HAPP-5 scoped entries only touch their own game; stored entries round-trip', () => {
+    const old = ['gold-striker', 'teak-board'];
+    const next = resolveEquippedMap(old);
+    next.ludo.board = 'classic-ludo-board';
+    const stored = equippedEntries(next);
+    expect(stored).toContain('ludo:classic-ludo-board');
+    expect(resolveEquippedMap(stored)).toEqual(next);
+    expect(resolveEquippedMap(stored).carrom).toEqual(resolveEquippedMap(old).carrom);
+    // An entry scoped to another game, or naming another game's item, is ignored.
+    expect(resolveGameSlots(['ludo:gold-striker', 'carrom:classic-ludo-board'], 'carrom')).toEqual(DEFAULT_SLOTS.carrom);
   });
 });

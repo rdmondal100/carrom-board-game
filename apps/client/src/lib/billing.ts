@@ -2,6 +2,7 @@
 // on the web. This file never credits coins: it hands purchase tokens to the
 // caller, which sends them to POST /iap/verify (the server verifies and consumes).
 import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
+import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { IAP_PACKS, type IapProductId, type IapVerifyRequest } from '@carrom/protocol';
 
@@ -23,9 +24,24 @@ function setup(): Promise<void> {
   return configured;
 }
 
+let ownPackage: Promise<string | undefined> | null = null;
+
+/** HAPP-9 this app's package id (each flavor is its own Play app); undefined if it can't be read. */
+function appPackage(): Promise<string | undefined> {
+  ownPackage ??= App.getInfo().then((i) => i.id, () => undefined);
+  return ownPackage;
+}
+
+/** HAPP-9 what /iap/verify needs for one purchase token. */
+async function verifyRequest(productId: IapProductId, purchaseToken: string): Promise<IapVerifyRequest> {
+  const packageName = await appPackage();
+  return packageName ? { productId, purchaseToken, packageName } : { productId, purchaseToken };
+}
+
 /** For tests: forget the setup call. */
 export function resetBillingForTest(): void {
   configured = null;
+  ownPackage = null;
 }
 
 /** IAP-1: the packs Play returns, in our order; [] when billing is off or the store can't be reached. */
@@ -59,7 +75,7 @@ export async function purchasePack(productId: IapProductId, userId: string): Pro
       productIdentifier: productId, productType: PURCHASE_TYPE.INAPP, appAccountToken: userId,
       isConsumable: false, autoAcknowledgePurchases: false,
     });
-    return tx.purchaseToken ? { productId, purchaseToken: tx.purchaseToken } : null;
+    return tx.purchaseToken ? await verifyRequest(productId, tx.purchaseToken) : null;
   } catch {
     return null;
   }
@@ -75,8 +91,9 @@ export async function unfinishedPurchases(userId: string): Promise<IapVerifyRequ
   try {
     await setup();
     const { purchases } = await NativePurchases.getPurchases({ productType: PURCHASE_TYPE.INAPP, appAccountToken: userId });
-    return purchases.flatMap((p) =>
-      isPack(p.productIdentifier) && p.purchaseToken ? [{ productId: p.productIdentifier, purchaseToken: p.purchaseToken }] : []);
+    const held = purchases.flatMap((p) =>
+      isPack(p.productIdentifier) && p.purchaseToken ? [{ productId: p.productIdentifier, token: p.purchaseToken }] : []);
+    return await Promise.all(held.map((h) => verifyRequest(h.productId, h.token)));
   } catch {
     return [];
   }

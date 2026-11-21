@@ -1,4 +1,6 @@
 import * as protocol from '@carrom/protocol/api';
+import { COSMETIC_GAMES, DEFAULT_SLOTS, ownedItems } from '@carrom/protocol';
+import { GAME_IDS } from '@hub/game-kit';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { connectDb, disconnectDb } from '../connectDb.js';
 import * as model from './user.model.js';
@@ -17,6 +19,10 @@ describe('user model', () => {
     await disconnectDb();
   });
 
+  it('HAPP-5 the cosmetic games are the game-kit games', () => {
+    expect([...COSMETIC_GAMES].sort()).toEqual([...GAME_IDS].sort());
+  });
+
   it('AUTH-1 server constants match the protocol', () => {
     expect([model.NAME_MIN, model.NAME_MAX, model.PASSWORD_MIN, model.AVATAR_COUNT])
       .toEqual([protocol.NAME_MIN, protocol.NAME_MAX, protocol.PASSWORD_MIN, protocol.AVATAR_COUNT]);
@@ -32,10 +38,8 @@ describe('user model', () => {
     expect(u.createdAt).toBeInstanceOf(Date);
     expect(u.updatedAt).toBeInstanceOf(Date);
     const pub = toPublicUser(u);
-    expect(pub.cosmetics).toEqual({
-      equipped: { striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board' },
-      owned: ['classic-striker', 'classic-coins', 'classic-board'],
-    });
+    expect(pub.cosmetics).toEqual({ equipped: DEFAULT_SLOTS, owned: ownedItems([]) });
+    expect(pub.cosmetics.equipped.carrom).toEqual({ striker: 'classic-striker', coins: 'classic-coins', board: 'classic-board' });
     expect(pub).toMatchObject({ name: 'Rina', email: null, hasPassword: false, hasGoogle: false });
   });
 

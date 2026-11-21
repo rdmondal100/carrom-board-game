@@ -2,39 +2,44 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { createApp, type AppEnv } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
-import { CANCELLED_PURCHASE, IAP_OFF, INVALID_PURCHASE, NOT_YOUR_PURCHASE } from '../controllers/iap.controller.js';
+import { CANCELLED_PURCHASE, IAP_OFF, INVALID_PURCHASE, NOT_YOUR_PURCHASE, UNKNOWN_APP } from '../controllers/iap.controller.js';
 import { Purchase } from '../models/purchase.model.js';
 import { User } from '../models/user.model.js';
 import { signToken } from '../utils/jwt.js';
 import type { PlayBilling, ProductPurchase } from '../utils/playBilling.js';
 
 const SECRET = 'a'.repeat(32);
-const env: AppEnv = { CORS_ORIGIN: ['http://localhost:5173'], NODE_ENV: 'test', JWT_SECRET: SECRET, GOOGLE_CLIENT_IDS: [] };
+const CARROM_APP = 'com.carromadda.app';
+const HUB_APP = 'com.example.hub';
+const env: AppEnv = {
+  CORS_ORIGIN: ['http://localhost:5173'], NODE_ENV: 'test', JWT_SECRET: SECRET, GOOGLE_CLIENT_IDS: [],
+  PLAY_PACKAGE_NAMES: [CARROM_APP, HUB_APP],
+};
 
-/** A stand-in for Google Play: tokens → state, per product. Records consume calls. */
+/** A stand-in for Google Play: tokens → state, per app and product. Records consume calls. */
 class FakePlay {
-  purchases = new Map<string, ProductPurchase & { productId: string }>();
+  purchases = new Map<string, ProductPurchase & { productId: string; pkg: string }>();
   consumed: string[] = [];
   failConsume = false;
 
-  add(token: string, productId: string, over: Partial<ProductPurchase> = {}): void {
+  add(token: string, productId: string, over: Partial<ProductPurchase> = {}, pkg = CARROM_APP): void {
     this.purchases.set(token, {
-      productId, purchaseState: 0, consumptionState: 0, orderId: `GPA.${token}`, accountId: null, ...over,
+      productId, pkg, purchaseState: 0, consumptionState: 0, orderId: `GPA.${token}`, accountId: null, ...over,
     });
   }
 
   billing(): PlayBilling {
     return {
-      getProduct: async (productId, token) => {
+      getProduct: async (pkg, productId, token) => {
         const p = this.purchases.get(token);
-        if (!p || p.productId !== productId) return null;
+        if (!p || p.productId !== productId || p.pkg !== pkg) return null;
         return { purchaseState: p.purchaseState, consumptionState: p.consumptionState, orderId: p.orderId, accountId: p.accountId };
       },
-      consume: async (productId, token) => {
+      consume: async (pkg, productId, token) => {
         if (this.failConsume) throw new Error('Play is down');
         this.consumed.push(token);
         const p = this.purchases.get(token);
-        if (p && p.productId === productId) p.consumptionState = 1;
+        if (p && p.productId === productId && p.pkg === pkg) p.consumptionState = 1;
       },
     };
   }
@@ -45,8 +50,8 @@ let play = new FakePlay();
 const app = createApp(env, {
   authRateLimit: 10_000,
   playBilling: {
-    getProduct: (id, t) => play.billing().getProduct(id, t),
-    consume: (id, t) => play.billing().consume(id, t),
+    getProduct: (pkg, id, t) => play.billing().getProduct(pkg, id, t),
+    consume: (pkg, id, t) => play.billing().consume(pkg, id, t),
   },
 });
 
@@ -151,6 +156,26 @@ describe('IAP-3 /iap/verify', () => {
     expect(res.status).toBe(503);
     expect(res.body.error).toBe(IAP_OFF);
     expect((await request(createApp(env)).post('/iap/verify').set(bearer(userId)).send({})).status).toBe(503);
+  });
+
+  it('HAPP-9 a package not in PLAY_PACKAGE_NAMES → 400; a listed package verifies as before', async () => {
+    play.add('h1', 'coins_500', {}, HUB_APP);
+    const send = (packageName: string) => request(app).post('/iap/verify').set(bearer(userId))
+      .send({ productId: 'coins_500', purchaseToken: 'h1', packageName });
+    const bad = await send('com.evil.app');
+    expect(bad.status).toBe(400);
+    expect(bad.body.error).toBe(UNKNOWN_APP);
+    expect(await Purchase.countDocuments()).toBe(0);
+    // The token belongs to the hub app: asking Play under the carrom app finds nothing.
+    expect((await send(CARROM_APP)).body.error).toBe(INVALID_PURCHASE);
+    const ok = await send(HUB_APP);
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ status: 'credited', credited: 500 });
+    expect(play.consumed).toEqual(['h1']);
+    // No packageName (a client older than spec 16) = the first listed package.
+    play.add('h2', 'coins_500');
+    expect((await verify(userId, 'coins_500', 'h2')).body.credited).toBe(500);
+    expect(await coinsOf(userId)).toBe(1000);
   });
 
   it('IAP-4 pending → later completed credits once', async () => {

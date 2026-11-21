@@ -1,22 +1,45 @@
 apply plugin: 'com.android.application'
 
+// HAPP-7 one Play app per game plus the all-games hub. applicationId can never change after a
+// flavor's first Play upload (carrom keeps its spec 11 id). Launcher names and icons live in
+// src/<flavor>/res (written by scripts/androidBuild.mjs from src/constants/brand.ts).
+def APP_FLAVORS = [
+    carrom   : 'com.carromadda.app',
+    ludo     : 'com.carromadda.ludo',
+    callbreak: 'com.carromadda.callbreak',
+    nodipar  : 'com.carromadda.nodipar',
+    hub      : 'com.carromadda.hub',
+]
+// HAPP-7 only flavors whose game is playable get release builds (scripts/androidBuild.mjs has the same list).
+def RELEASE_FLAVORS = ['carrom', 'hub']
+// AD-6 Google's test AdMob app id, used unless <FLAVOR>_ADMOB_APP_ID (or -P<flavor>AdmobAppId) is set.
+def TEST_ADMOB_APP_ID = 'ca-app-pub-3940256099942544~3347511713'
+
 android {
     namespace = "com.carromadda.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.carromadda.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // APP-10: bump versionCode by 1 for every Play upload; versionName is what players see.
         versionCode 1
         versionName "0.1.0"
-        // AD-6: the real AdMob app id only for release builds (env or -PcarromAdmobAppId); else Google's test app id.
-        manifestPlaceholders = [admobAppId: System.getenv("CARROM_ADMOB_APP_ID") ?: (project.findProperty("carromAdmobAppId") ?: "ca-app-pub-3940256099942544~3347511713")]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    flavorDimensions = ['app']
+    productFlavors {
+        APP_FLAVORS.each { name, appId ->
+            create(name) {
+                dimension 'app'
+                applicationId appId
+                // AD-6 / HAPP-7 each app has its own AdMob app id: env <FLAVOR>_ADMOB_APP_ID or -P<flavor>AdmobAppId.
+                manifestPlaceholders = [admobAppId: System.getenv("${name.toUpperCase()}_ADMOB_APP_ID") ?: (project.findProperty("${name}AdmobAppId") ?: TEST_ADMOB_APP_ID)]
+            }
         }
     }
     // APP-10: release signing reads env vars, so no secret is ever in git (see ANDROID.md).
@@ -37,6 +60,13 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+// HAPP-7 no release variant for a game that can't be played yet.
+androidComponents {
+    beforeVariants(selector().withBuildType('release')) { variant ->
+        if (!RELEASE_FLAVORS.contains(variant.productFlavors[0].second)) variant.enable = false
     }
 }
 

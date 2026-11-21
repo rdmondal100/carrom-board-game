@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { gamePath } from '@/games/types';
 import type { LobbyView } from '@carrom/protocol';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,9 +10,9 @@ import { useAppDispatch, useAppSelector } from '@/store/store';
 
 /**
  * ROOM-8: the room this tab is in. After a reload it rejoins with the saved
- * reconnection token; with no room to go back to it goes to the online menu.
+ * reconnection token; with no room to go back to it goes to the game's online menu.
  */
-export function useOnlineRoom(): { lobby: LobbyView | null; sessionId: string | null } {
+export function useOnlineRoom(gameId: string): { lobby: LobbyView | null; sessionId: string | null } {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { lobby, sessionId, connecting } = useAppSelector((s) => s.room);
@@ -19,12 +20,12 @@ export function useOnlineRoom(): { lobby: LobbyView | null; sessionId: string | 
   useEffect(() => {
     if (lobby || connecting) return;
     if (tried.current) {
-      navigate('/online', { replace: true });
+      navigate(gamePath(gameId, 'online'), { replace: true });
       return;
     }
     tried.current = true;
     void dispatch(resumeRoom());
-  }, [dispatch, navigate, lobby, connecting]);
+  }, [dispatch, navigate, lobby, connecting, gameId]);
   return { lobby, sessionId };
 }
 

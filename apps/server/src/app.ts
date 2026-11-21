@@ -26,13 +26,11 @@ import type { RankedTiming } from './utils/rankedConfig.js';
 import type { Redis } from './utils/redis.js';
 
 export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV' | 'JWT_SECRET' | 'GOOGLE_CLIENT_IDS'>
-  & Partial<Pick<Env, 'PLAY_PACKAGE_NAME' | 'PLAY_SERVICE_ACCOUNT_JSON'>>;
+  & Partial<Pick<Env, 'PLAY_PACKAGE_NAMES' | 'PLAY_SERVICE_ACCOUNT_JSON'>>;
 
 /** IAP-3 the Play Developer API from the env, or null (purchases off) without its keys. */
 function billingFrom(env: AppEnv): PlayBilling | null {
-  return env.PLAY_PACKAGE_NAME && env.PLAY_SERVICE_ACCOUNT_JSON
-    ? playBillingFromEnv(env.PLAY_PACKAGE_NAME, env.PLAY_SERVICE_ACCOUNT_JSON)
-    : null;
+  return env.PLAY_PACKAGE_NAMES && env.PLAY_SERVICE_ACCOUNT_JSON ? playBillingFromEnv(env.PLAY_SERVICE_ACCOUNT_JSON) : null;
 }
 
 export interface AppOptions {
@@ -64,7 +62,10 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
   app.use('/shop', shopRouter(env.JWT_SECRET));
   app.use('/me', meRouter(env.JWT_SECRET));
   app.use('/ads', adsRouter(env.JWT_SECRET, opts.ssvKeys ?? googleKeys()));
-  app.use('/iap', iapRouter(env.JWT_SECRET, opts.playBilling === undefined ? billingFrom(env) : opts.playBilling));
+  app.use('/iap', iapRouter(env.JWT_SECRET, {
+    billing: opts.playBilling === undefined ? billingFrom(env) : opts.playBilling,
+    packages: env.PLAY_PACKAGE_NAMES ?? [],
+  }));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),

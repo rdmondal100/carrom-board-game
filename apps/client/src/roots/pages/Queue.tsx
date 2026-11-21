@@ -4,26 +4,31 @@ import { Loader2, Trophy } from 'lucide-react';
 import type { QueueMessage } from '@carrom/protocol';
 import { SignInGate } from '@/components/OnlineParts';
 import { Button } from '@/components/ui/button';
+import { useGame } from '@/games/GamesContext';
+import { gamePath, modePath } from '@/games/types';
 import { Card, CardTitle } from '@/components/ui/card';
 import { t, useLang } from '@/i18n/t';
 import { joinQueue, leaveQueue } from '@/lib/colyseus';
 import {
   dismissBotOffer, formatWait, queueFailed, queueJoining, queueLeft, queueMessage,
 } from '@/store/rankedSlice';
+import { ratingIn } from '@/store/authSlice';
 import { joinRanked, roomFailure } from '@/store/roomSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
-/** RANK-8: queue for a ranked game: timer, rating window, cancel, bot offer (RANK-3). */
+/** RANK-8 / HAPP-2: queue for one game's ranked: timer, rating window, cancel, bot offer (RANK-3). */
 export function Queue() {
   useLang();
+  const game = useGame();
   return (
-    <SignInGate next="/ranked">
+    <SignInGate next={gamePath(game.id, 'ranked')}>
       <QueuePanel />
     </SignInGate>
   );
 }
 
 function QueuePanel() {
+  const game = useGame();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
@@ -47,7 +52,7 @@ function QueuePanel() {
       await leaveQueue();
       const r = await dispatch(joinRanked(m.reservation));
       dispatch(queueLeft());
-      if (joinRanked.fulfilled.match(r)) navigate('/online/game');
+      if (joinRanked.fulfilled.match(r)) navigate(gamePath(game.id, 'online/game'));
       else {
         matched.current = false;
         dispatch(queueFailed(r.payload ?? { status: 0, error: '' }));
@@ -59,7 +64,7 @@ function QueuePanel() {
     matched.current = false;
     dispatch(queueJoining());
     try {
-      await joinQueue(onMessage, () => { if (!matched.current) dispatch(queueLeft()); });
+      await joinQueue(onMessage, () => { if (!matched.current) dispatch(queueLeft()); }, game.id);
     } catch (err) {
       dispatch(queueFailed(roomFailure(err)));
     }
@@ -73,7 +78,7 @@ function QueuePanel() {
   const playBot = async () => {
     await leaveQueue();
     dispatch(queueLeft());
-    navigate('/local/setup?vs=bot');
+    navigate(modePath(game.id, 'bot'));
   };
 
   const searching = q.status === 'joining' || q.status === 'queued';
@@ -81,9 +86,9 @@ function QueuePanel() {
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-      <h2 className="flex items-center gap-2 text-xl font-bold"><Trophy className="size-5 text-amber-400" />{t('ranked.title')}</h2>
-      <p className="text-sm text-muted-foreground">{t('ranked.rules')}</p>
-      {user && <p className="text-lg">{t('ranked.yourRating', { rating: user.rating })}</p>}
+      <h2 className="flex items-center gap-2 text-xl font-bold"><Trophy className="size-5 text-amber-400" />{t(game.nameKey)} · {t('ranked.title')}</h2>
+      <p className="text-sm text-muted-foreground">{t(`games.${game.id}.rankedRules`)}</p>
+      {user && <p className="text-lg">{t('ranked.yourRating', { rating: ratingIn(user, game.id).rating })}</p>}
       {user?.isGuest && (
         <p className="rounded-md bg-muted px-3 py-2 text-sm">
           {t('ranked.guestHint')} <Link className="underline" to="/profile">{t('nav.profile')}</Link>
@@ -121,7 +126,7 @@ function QueuePanel() {
         </Card>
       )}
 
-      <Button asChild variant="ghost"><Link to="/leaderboard">{t('play.leaderboard')}</Link></Button>
+      <Button asChild variant="ghost"><Link to={gamePath(game.id, 'leaderboard')}>{t('play.leaderboard')}</Link></Button>
     </div>
   );
 }

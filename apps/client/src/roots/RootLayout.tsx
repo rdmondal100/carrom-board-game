@@ -6,6 +6,7 @@ import { OfflineNotice } from '@/components/OfflineNotice';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
+import { useAppName } from '@/games/appName';
 import { t, useLang } from '@/i18n/t';
 import { initAds, setMenuBanner } from '@/lib/ads';
 import { getToken } from '@/lib/auth';
@@ -38,6 +39,7 @@ export function RootLayout() {
   const online = useOnline();
   const [askExit, setAskExit] = useState(false);
   const inMatch = isMatchPath(pathname);
+  const appName = useAppName();
 
   // AUTH-9: a saved token → load who it belongs to.
   useEffect(() => {
@@ -45,8 +47,8 @@ export function RootLayout() {
   }, [dispatch]);
   useEffect(() => {
     document.documentElement.lang = lang;
-    document.title = t('app.title');
-  }, [lang]);
+    document.title = appName;
+  }, [lang, appName]);
 
   // AD-2: consent first (Android only; a no-op on the web). No ad shows at start (AD-4).
   useEffect(() => { void initAds(); }, []);
@@ -83,7 +85,7 @@ export function RootLayout() {
       {askExit && (
         <Dialog open onOpenChange={(o) => { if (!o) setAskExit(false); }}>
           <DialogContent className="max-w-xs p-6">
-            <DialogHeader><DialogTitle>{t('exit.title')}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t('exit.title', { app: appName })}</DialogTitle></DialogHeader>
             <DialogFooter className="flex-row justify-end gap-2">
               <Button variant="outline" onClick={() => setAskExit(false)}>{t('exit.cancel')}</Button>
               <Button variant="destructive" onClick={exitApp}>{t('exit.confirm')}</Button>

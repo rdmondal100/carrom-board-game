@@ -5,6 +5,8 @@ export const IAP_CONFIG = {
   packs: IAP_PACKS,
   /** Longest purchase token accepted (Google's are a few hundred characters). */
   tokenMax: 4096,
+  /** Longest app package name accepted (HAPP-9). */
+  packageMax: 255,
   /** Play Developer API: base URL and OAuth scope. */
   apiBase: 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications',
   scope: 'https://www.googleapis.com/auth/androidpublisher',

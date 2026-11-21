@@ -1,7 +1,9 @@
-/** Screens that are a running match: back opens the pause menu, bars hide, screen stays on. */
-export const MATCH_PATHS: readonly string[] = ['/local/play', '/online/game'];
+import { gamePageOf } from './gamePage';
 
-export const isMatchPath = (path: string): boolean => MATCH_PATHS.includes(path);
+/** Screens that are a running match (HAPP-2: under `/g/:gameId/`): back opens the pause menu, bars hide, screen stays on. */
+export const MATCH_PATHS: readonly string[] = ['local/play', 'online/game'];
+
+export const isMatchPath = (path: string): boolean => MATCH_PATHS.includes(gamePageOf(path) ?? '');
 
 /** What the screen looks like when the hardware back button is pressed. */
 export interface BackState {

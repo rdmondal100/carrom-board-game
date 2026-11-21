@@ -1,48 +1,28 @@
-import { useId, type ReactNode } from 'react';
+import { Suspense, useId } from 'react';
 import { Link } from 'react-router';
-import { RULES } from '@carrom/rules';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
+import { Row, ToggleRow } from '@/components/SettingsRows';
+import { useGames } from '@/games/GamesContext';
 import { LANGS, t, useLang, type Lang } from '@/i18n/t';
 import { playSound } from '@/lib/sound';
-import {
-  resetSettings, setDefaultShotClock, setHaptics, setLanguage, setViewRotation, setVolume,
-} from '@/store/settingsSlice';
+import { resetSettings, setHaptics, setLanguage, setVolume } from '@/store/settingsSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
-const MS_PER_S = 1000;
 const PERCENT = 100;
 const VOLUME_STEP = 0.05;
 
-function Row({ label, hint, control, id }: { label: string; hint?: string; control: ReactNode; id: string }) {
-  return (
-    <div className="flex items-center gap-4">
-      <div className="flex flex-1 flex-col">
-        <label htmlFor={id} className="font-medium">{label}</label>
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
-      </div>
-      {control}
-    </div>
-  );
-}
-
-function ToggleRow({ label, hint, checked, onChange }: {
-  label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void;
-}) {
-  const id = useId();
-  return <Row id={id} label={label} hint={hint} control={<Switch id={id} checked={checked} onCheckedChange={onChange} />} />;
-}
-
-/** UI-2: language, view rotation, volume, haptics, default shot clock. */
+/** UI-2: language, volume, haptics; then each game's own card (HAPP-1). */
 export function Settings() {
   useLang();
   const s = useAppSelector((st) => st.settings);
   const dispatch = useAppDispatch();
   const langId = useId();
   const volId = useId();
+  const { games } = useGames();
+  const dev = games.flatMap((g) => g.devRoutes ?? []);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -83,28 +63,18 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle>{t('settings.game')}</CardTitle></CardHeader>
-        <CardContent className="gap-5">
-          <ToggleRow label={t('settings.rotate')} hint={t('settings.rotateHint')} checked={s.viewRotation} onChange={(v) => dispatch(setViewRotation(v))} />
-          <ToggleRow
-            label={t('settings.clock')}
-            hint={t('settings.clockHint', { s: RULES.SHOT_CLOCK_MS / MS_PER_S })}
-            checked={s.defaultShotClock}
-            onChange={(v) => dispatch(setDefaultShotClock(v))}
-          />
-        </CardContent>
-      </Card>
+      {games.map((g) => g.SettingsCard && <Suspense key={g.id}><g.SettingsCard /></Suspense>)}
 
       <Button variant="outline" onClick={() => dispatch(resetSettings())}>{t('settings.reset')}</Button>
 
-      <details className="text-sm text-muted-foreground">
-        <summary className="cursor-pointer py-1">{t('settings.dev')}</summary>
-        <div className="flex gap-3 pt-2">
-          <Link to="/dev/sandbox" className="underline">{t('nav.sandbox')}</Link>
-          <Link to="/dev/determinism" className="underline">{t('nav.determinism')}</Link>
-        </div>
-      </details>
+      {dev.length > 0 && (
+        <details className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer py-1">{t('settings.dev')}</summary>
+          <div className="flex gap-3 pt-2">
+            {dev.map((d) => <Link key={d.path} to={`/${d.path}`} className="underline">{t(d.labelKey)}</Link>)}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

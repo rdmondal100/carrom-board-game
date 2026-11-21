@@ -17,7 +17,7 @@ describe('i18n', () => {
 
   it('BRD-9 default language is bn', () => {
     expect(getLang()).toBe('bn');
-    expect(t('app.title')).toBe(bn['app.title']);
+    expect(t('games.carrom.name')).toBe(bn['games.carrom.name']);
   });
 
   it('BRD-9 t fills {vars}; UI-2 language comes from the store and is saved', () => {

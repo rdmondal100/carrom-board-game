@@ -11,10 +11,11 @@
     "test:quiet": "vitest run --reporter=dot --silent",
     "typecheck": "tsc --noEmit",
     "build:android": "tsc --noEmit && vite build --mode android",
-    "android:sync": "pnpm build:android && cap sync android",
+    "android:sync": "node scripts/androidBuild.mjs carrom sync",
     "android:open": "cap open android",
-    "android:build": "pnpm android:sync && node scripts/androidBuild.mjs assembleDebug",
-    "android:assets": "capacitor-assets generate --android"
+    "android:build": "node scripts/androidBuild.mjs carrom assembleDebug",
+    "android:assets": "capacitor-assets generate --android",
+    "android": "node scripts/androidBuild.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "8.2.1",
@@ -31,6 +32,7 @@
     "@carrom/rules": "workspace:*",
     "@colyseus/sdk": "^0.18.10",
     "@hookform/resolvers": "^7.0.7",
+    "@hub/game-kit": "workspace:*",
     "@react-oauth/google": "^0.13.5",
     "@reduxjs/toolkit": "^2.15.0",
     "axios": "^1.21.1",

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_EQUIPPED, type PublicUser } from '@carrom/protocol';
+import { DEFAULT_SLOTS, type PublicUser } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { setToken } from '@/lib/auth';
 import { buyItem, claimBotReward, claimDailyBonus, equipItems, shopErrorKey } from './shopSlice';
@@ -16,7 +16,7 @@ const patch = vi.mocked(axios.patch);
 const user = (over: Partial<PublicUser> = {}): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false,
   avatar: 0, rating: 1000, ratings: {}, coins: 500,
-  cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: ['classic-striker', 'classic-coins', 'classic-board'] },
+  cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: ['classic-striker', 'classic-coins', 'classic-board'] },
   createdAt: '2026-11-20T00:00:00.000Z',
   ...over,
 });
@@ -35,7 +35,7 @@ describe('shopSlice', () => {
 
   it('COS-7 buy posts the item with the token; the new balance reaches the header (auth user)', async () => {
     const store = makeStore();
-    const after = user({ coins: 100, cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: ['gold-striker'] } });
+    const after = user({ coins: 100, cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: ['gold-striker'] } });
     post.mockResolvedValueOnce({ data: { user: after } });
     await store.dispatch(buyItem('gold-striker'));
     expect(post).toHaveBeenCalledWith(`${API_BASE}/shop/buy`, { itemId: 'gold-striker' },
@@ -57,11 +57,11 @@ describe('shopSlice', () => {
 
   it('COS-7 equip patches /me/equip and stores the user', async () => {
     const store = makeStore();
-    const eq = { ...DEFAULT_EQUIPPED, striker: 'gold-striker' };
+    const eq = { ...DEFAULT_SLOTS, carrom: { ...DEFAULT_SLOTS.carrom, striker: 'gold-striker' } };
     patch.mockResolvedValueOnce({ data: { user: user({ cosmetics: { equipped: eq, owned: [] } }) } });
     await store.dispatch(equipItems({ striker: 'gold-striker' }));
     expect(patch.mock.calls[0]?.slice(0, 2)).toEqual([`${API_BASE}/me/equip`, { striker: 'gold-striker' }]);
-    expect(store.getState().auth.user?.cosmetics.equipped.striker).toBe('gold-striker');
+    expect(store.getState().auth.user?.cosmetics.equipped.carrom.striker).toBe('gold-striker');
   });
 
   it('COS-2 daily bonus and bot reward resolve to the coins given', async () => {

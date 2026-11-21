@@ -2,7 +2,7 @@ import axios from 'axios';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_EQUIPPED, type PublicUser } from '@carrom/protocol';
+import { DEFAULT_SLOTS, type PublicUser } from '@carrom/protocol';
 import { setLang } from '@/i18n/t';
 import { userUpdated } from '@/store/authSlice';
 import { makeStore } from '@/store/store';
@@ -23,7 +23,7 @@ const post = vi.mocked(axios.post);
 
 const user = (coins: number): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false, avatar: 0, rating: 1000, ratings: {}, coins,
-  cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: [] }, createdAt: '2026-11-20T00:00:00.000Z',
+  cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [] }, createdAt: '2026-11-20T00:00:00.000Z',
 });
 
 function Recovery() {

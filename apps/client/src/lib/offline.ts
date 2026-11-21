@@ -1,13 +1,18 @@
 import { useSyncExternalStore } from 'react';
+import { gamePageOf } from './gamePage';
 
 /**
  * APP-9: screens that can't work without the server. Same-device and Vs-bot
  * need no network. A running online lobby or game is left alone: a short drop
  * there is handled by the room's own reconnect, not by swapping the screen.
  */
-const NEEDS_NETWORK: readonly string[] = ['/online', '/ranked', '/leaderboard', '/login', '/register', '/shop'];
+const NEEDS_NETWORK: readonly string[] = ['/login', '/register', '/shop'];
+/** HAPP-2 a game's pages that need the server: `/g/:gameId/<page>`. */
+const GAME_NEEDS_NETWORK: readonly string[] = ['online', 'ranked', 'leaderboard'];
 
 export function needsNetwork(path: string): boolean {
+  const page = gamePageOf(path);
+  if (page !== null) return GAME_NEEDS_NETWORK.includes(page);
   return NEEDS_NETWORK.includes(path) || path.startsWith('/join/');
 }
 

@@ -1,52 +1,69 @@
-import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, type RouteObject } from 'react-router';
+import { GameLayout, GamePage, GameRoot } from './games/GameLayout';
+import { GamesProvider } from './games/GamesContext';
+import { BUILD_GAMES } from './games/registry';
+import type { ClientGame } from './games/types';
 import { RootLayout } from './roots/RootLayout';
-import { DevDeterminism } from './roots/pages/DevDeterminism';
 import { Home } from './roots/pages/Home';
-import { HowToPlay } from './roots/pages/HowToPlay';
 import { JoinByCode } from './roots/pages/JoinByCode';
 import { Leaderboard } from './roots/pages/Leaderboard';
-import { Lobby } from './roots/pages/Lobby';
-import { LocalGame } from './roots/pages/LocalGame';
-import { LocalSetup } from './roots/pages/LocalSetup';
 import { Login } from './roots/pages/Login';
-import { OnlineGame } from './roots/pages/OnlineGame';
-import { OnlineMenu } from './roots/pages/OnlineMenu';
 import { PlayMenu } from './roots/pages/PlayMenu';
-import { Queue } from './roots/pages/Queue';
 import { Profile } from './roots/pages/Profile';
+import { Queue } from './roots/pages/Queue';
 import { Register } from './roots/pages/Register';
-import { Sandbox } from './roots/pages/Sandbox';
 import { Settings } from './roots/pages/Settings';
 import { Shop } from './roots/pages/Shop';
 
-/** UI-1: every screen sits under RootLayout; unknown paths go home. */
-export const routes: RouteObject[] = [
-  {
-    path: '/',
-    element: <RootLayout />,
-    children: [
-      { index: true, element: <Home /> },
-      { path: 'play', element: <PlayMenu /> },
-      { path: 'local/setup', element: <LocalSetup /> },
-      { path: 'local/play', element: <LocalGame /> },
-      { path: 'online', element: <OnlineMenu /> },
-      { path: 'online/lobby', element: <Lobby /> },
-      { path: 'online/game', element: <OnlineGame /> },
-      { path: 'join/:code', element: <JoinByCode /> },
-      { path: 'ranked', element: <Queue /> },
-      { path: 'leaderboard', element: <Leaderboard /> },
-      { path: 'shop', element: <Shop /> },
-      { path: 'settings', element: <Settings /> },
-      { path: 'how-to-play', element: <HowToPlay /> },
-      { path: 'login', element: <Login /> },
-      { path: 'register', element: <Register /> },
-      { path: 'profile', element: <Profile /> },
-      { path: 'dev/sandbox', element: <Sandbox /> },
-      { path: 'dev/determinism', element: <DevDeterminism /> },
-      { path: '*', element: <Navigate to="/" replace /> },
-    ],
-  },
+/** HAPP-2 paths from before the hub: they were carrom's; keep the rest of the path and the query. */
+const LEGACY_PATHS = ['play', 'local/*', 'online', 'online/*', 'ranked', 'leaderboard', 'how-to-play'] as const;
+
+function LegacyRedirect() {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={`/g/carrom${pathname}${search}${hash}`} replace />;
+}
+
+/** HAPP-2 `/g/:gameId/...`: shared pages plus the game's own (lazy) pages. */
+const gameChildren: RouteObject[] = [
+  { index: true, element: <Navigate to="play" replace /> },
+  { path: 'play', element: <PlayMenu /> },
+  { path: 'local/setup', element: <GamePage page="setup" /> },
+  { path: 'local/play', element: <GamePage page="localGame" /> },
+  { path: 'online', element: <GamePage page="online" mode="online" /> },
+  { path: 'online/lobby', element: <GamePage page="lobby" mode="online" /> },
+  { path: 'online/game', element: <GamePage page="onlineGame" /> },
+  { path: 'ranked', element: <GameRoot mode="ranked"><Queue /></GameRoot> },
+  { path: 'leaderboard', element: <GameRoot mode="ranked"><Leaderboard /></GameRoot> },
+  { path: 'how-to-play', element: <GamePage page="howToPlay" /> },
+  { path: '*', element: <Navigate to="play" replace /> },
 ];
+
+/** UI-1 / HAPP-2: every screen sits under RootLayout; unknown paths go home. */
+export function makeRoutes(games: readonly ClientGame[]): RouteObject[] {
+  const legacy = games.some((g) => g.id === 'carrom') ? LEGACY_PATHS.map((path) => ({ path, element: <LegacyRedirect /> })) : [];
+  const dev = games.flatMap((g) => (g.devRoutes ?? []).map((d) => ({ path: d.path, element: <GamePage dev={d.element} /> })));
+  return [
+    {
+      path: '/',
+      element: <GamesProvider games={games}><RootLayout /></GamesProvider>,
+      children: [
+        { index: true, element: <Home /> },
+        { path: 'g/:gameId', element: <GameLayout />, children: gameChildren },
+        { path: 'join/:code', element: <JoinByCode /> },
+        { path: 'shop', element: <Shop /> },
+        { path: 'settings', element: <Settings /> },
+        { path: 'login', element: <Login /> },
+        { path: 'register', element: <Register /> },
+        { path: 'profile', element: <Profile /> },
+        ...dev,
+        ...legacy,
+        { path: '*', element: <Navigate to="/" replace /> },
+      ],
+    },
+  ];
+}
+
+export const routes = makeRoutes(BUILD_GAMES);
 
 const router = createBrowserRouter(routes);
 

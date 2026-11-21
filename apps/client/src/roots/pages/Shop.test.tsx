@@ -3,14 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { Provider } from 'react-redux';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_EQUIPPED, type PublicUser } from '@carrom/protocol';
+import { DEFAULT_SLOTS, type PublicUser } from '@carrom/protocol';
 import { routes } from '@/App';
 import en from '@/i18n/en.json';
 import { setLang } from '@/i18n/t';
 import { userUpdated } from '@/store/authSlice';
 import { makeStore } from '@/store/store';
 
-vi.mock('@/game/useBoardCanvas', () => ({ useBoardCanvas: () => ({ current: {} }) }));
+vi.mock('@/games/carrom/useBoardCanvas', () => ({ useBoardCanvas: () => ({ current: {} }) }));
 vi.mock('axios', async (orig) => {
   const real = await orig<typeof import('axios')>();
   return { default: { ...real.default, post: vi.fn(), get: vi.fn(), patch: vi.fn() } };
@@ -21,7 +21,7 @@ const patch = vi.mocked(axios.patch);
 const DEFAULTS = ['classic-striker', 'classic-coins', 'classic-board'];
 const user = (over: Partial<PublicUser> = {}): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false,
-  avatar: 0, rating: 1000, ratings: {}, coins: 500, cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: DEFAULTS },
+  avatar: 0, rating: 1000, ratings: {}, coins: 500, cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: DEFAULTS },
   createdAt: '2026-11-20T00:00:00.000Z', ...over,
 });
 
@@ -63,7 +63,19 @@ describe('COS-7 shop page', () => {
     expect(screen.queryByTestId('shop-item-jade-coins')).toBeNull();
     fireEvent.click(screen.getByTestId('shop-tab-coins'));
     expect(screen.getByTestId('shop-item-jade-coins')).toBeTruthy();
-    expect(screen.getAllByTestId('skin-preview').length).toBeGreaterThan(1);
+    expect((await screen.findAllByTestId('skin-preview')).length).toBeGreaterThan(1);
+  });
+
+  it('HAPP-5 a tab per game in the build plus All games; coming-soon games have no tab', async () => {
+    show(user());
+    expect(await screen.findByTestId('shop-game-carrom')).toBeTruthy();
+    expect(screen.getByTestId('shop-game-any').textContent).toBe(en['shop.allGames']);
+    expect(screen.queryByTestId('shop-game-ludo')).toBeNull();
+    fireEvent.click(screen.getByTestId('shop-game-any'));
+    expect(screen.getByTestId('shop-empty')).toBeTruthy();
+    expect(screen.queryByTestId('shop-tab-striker')).toBeNull();
+    fireEvent.click(screen.getByTestId('shop-game-carrom'));
+    expect(screen.getByTestId('shop-item-gold-striker')).toBeTruthy();
   });
 
   it('COS-7 too expensive: buy is disabled', async () => {
@@ -74,7 +86,7 @@ describe('COS-7 shop page', () => {
 
   it('COS-7 buy then equip; the header balance follows', async () => {
     show(user());
-    const bought = user({ coins: 100, cosmetics: { equipped: { ...DEFAULT_EQUIPPED }, owned: [...DEFAULTS, 'gold-striker'] } });
+    const bought = user({ coins: 100, cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [...DEFAULTS, 'gold-striker'] } });
     post.mockImplementation(async (url: string) => {
       if (url.endsWith('/shop/buy')) return { data: { user: bought } };
       return { data: { reward: 0, user: user() } };
@@ -85,10 +97,10 @@ describe('COS-7 shop page', () => {
     expect(post).toHaveBeenCalledWith(expect.stringContaining('/shop/buy'), { itemId: 'gold-striker' }, expect.anything());
 
     patch.mockResolvedValueOnce({
-      data: { user: { ...bought, cosmetics: { ...bought.cosmetics, equipped: { ...DEFAULT_EQUIPPED, striker: 'gold-striker' } } } },
+      data: { user: { ...bought, cosmetics: { ...bought.cosmetics, equipped: { ...DEFAULT_SLOTS, carrom: { ...DEFAULT_SLOTS.carrom, striker: 'gold-striker' } } } } },
     });
     await act(async () => { fireEvent.click(screen.getByTestId('shop-equip')); });
-    expect(patch).toHaveBeenCalledWith(expect.stringContaining('/me/equip'), { striker: 'gold-striker' }, expect.anything());
+    expect(patch).toHaveBeenCalledWith(expect.stringContaining('/me/equip'), { game: 'carrom', striker: 'gold-striker' }, expect.anything());
     expect(await screen.findAllByText(en['shop.equipped'])).not.toHaveLength(0);
   });
 });

@@ -13,10 +13,15 @@ export const IAP_OFF = 'In-app purchases are not available';
 export const INVALID_PURCHASE = 'Invalid purchase';
 export const CANCELLED_PURCHASE = 'Purchase was cancelled or refunded';
 export const NOT_YOUR_PURCHASE = 'Purchase belongs to another account';
+export const UNKNOWN_APP = 'Unknown app package';
+
+/** IAP-3 / HAPP-9 Play billing (null = off) and the app packages purchases may come from (the first is the default). */
+export interface IapSetup { billing: PlayBilling | null; packages: readonly string[] }
 
 const verifyBody = z.strictObject({
   productId: z.enum(IAP_PRODUCT_IDS),
   purchaseToken: z.string().min(1).max(IAP_CONFIG.tokenMax),
+  packageName: z.string().min(1).max(IAP_CONFIG.packageMax).optional(),
 });
 
 /** The purchase row for this token: created as pending on first sight (parallel calls end up on one row). */
@@ -41,12 +46,12 @@ async function answer(res: Response, http: number, userId: string, body: Omit<Ia
 }
 
 /**
- * IAP-3/4 POST /iap/verify { productId, purchaseToken }: ask Google about the
+ * IAP-3/4 POST /iap/verify { productId, purchaseToken, packageName? }: ask Google about the
  * token, record it, credit the pack once (idempotent by token), then consume
  * it so it can be bought again. Pending payments answer 202 and are credited
  * when the client sends them again after they complete.
  */
-export function verifyPurchase(billing: PlayBilling | null): RequestHandler {
+export function verifyPurchase({ billing, packages }: IapSetup): RequestHandler {
   return async (req, res) => {
     try {
       const userId = userIdOr401(res);
@@ -58,8 +63,14 @@ export function verifyPurchase(billing: PlayBilling | null): RequestHandler {
       const body = parseBody(verifyBody, req, res);
       if (!body) return;
       const { productId, purchaseToken } = body;
+      // HAPP-9 each flavor is its own Play app; a client older than spec 16 sends no package (= the first).
+      const packageName = body.packageName ?? packages[0];
+      if (packageName === undefined || !packages.includes(packageName)) {
+        res.status(400).json({ error: UNKNOWN_APP });
+        return;
+      }
 
-      const info = await billing.getProduct(productId, purchaseToken);
+      const info = await billing.getProduct(packageName, productId, purchaseToken);
       if (!info || (info.purchaseState !== PURCHASED && info.purchaseState !== PENDING && info.purchaseState !== CANCELLED)) {
         res.status(400).json({ error: INVALID_PURCHASE });
         return;
@@ -93,7 +104,7 @@ export function verifyPurchase(billing: PlayBilling | null): RequestHandler {
 
       if (info.consumptionState === 0) {
         // Not fatal: the client sends unconsumed purchases again on the next start.
-        await billing.consume(productId, purchaseToken).catch((err: unknown) => logger.error('iap consume failed', err));
+        await billing.consume(packageName, productId, purchaseToken).catch((err: unknown) => logger.error('iap consume failed', err));
       }
       await answer(res, 200, userId, { status: 'credited', credited });
     } catch (err) {

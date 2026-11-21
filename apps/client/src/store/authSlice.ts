@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, isAnyOf, type PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import type {
-  AuthResponse, GuestRequest, LoginRequest, MeResponse, PublicUser, RegisterRequest, UpdateMeRequest,
+  AuthResponse, GameRating, GuestRequest, LoginRequest, MeResponse, PublicUser, RegisterRequest, UpdateMeRequest,
 } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { clearToken, getAuthHeaders, getToken, setToken } from '@/lib/auth';
@@ -140,4 +140,12 @@ export function authErrorKey(f: AuthFailure): string | null {
   if (f.action === 'google' && f.status === 503) return 'auth.err.googleOff';
   if (f.status >= 500) return 'auth.err.server';
   return null;
+}
+
+/** HUB-7 a game nobody has played ranked yet starts here (the server's START_RATING). */
+export const START_RATING = 1000;
+
+/** HAPP-6 a player's rating and ranked games in one game (1000 / 0 when never played ranked). */
+export function ratingIn(u: Pick<PublicUser, 'ratings'>, gameId: string): GameRating {
+  return u.ratings[gameId] ?? { rating: START_RATING, games: 0 };
 }

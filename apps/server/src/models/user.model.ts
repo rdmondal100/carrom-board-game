@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
-import { ownedItems, resolveEquipped } from '@carrom/protocol';
+import { ownedItems, resolveEquippedMap } from '@carrom/protocol';
 import type { GameRating, PublicUser } from '@carrom/protocol/api';
 import { GAME_IDS } from '@hub/game-kit';
 
@@ -41,7 +41,7 @@ const userSchema = new Schema(
     /** HUB-7 rating per game id; a missing game reads as START_RATING with 0 games. */
     ratings: { type: Map, of: gameRatingSchema, default: () => new Map() },
     coins: { type: Number, required: true, default: 0, min: 0 },
-    /** COS-4 equipped item ids (one per slot); COS-3 bought ids (defaults are not stored, COS-5). */
+    /** COS-4 / HAPP-5 equipped entries (`game:id`, or a bare id from spec 12 = carrom); COS-3 bought ids (defaults are not stored, COS-5). */
     cosmetics: {
       equipped: { type: [String], default: [] },
       owned: { type: [String], default: [] },
@@ -99,7 +99,7 @@ export function toPublicUser(u: UserDoc): PublicUser {
     ratings: Object.fromEntries([...(u.ratings ?? new Map()).keys()].map((g) => [g, ratingOf(u, g)])),
     coins: u.coins,
     cosmetics: {
-      equipped: resolveEquipped(u.cosmetics?.equipped ?? []),
+      equipped: resolveEquippedMap(u.cosmetics?.equipped ?? []),
       owned: ownedItems(u.cosmetics?.owned ?? []),
     },
     createdAt: u.createdAt.toISOString(),

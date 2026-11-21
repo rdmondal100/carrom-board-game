@@ -1,11 +1,21 @@
-# Carrom Adda on Android
+# The Android apps
 
-The Android app is the same client wrapped with Capacitor 8 (`capacitor.config.ts`,
-`android/`). App id `com.carromadda.app`, name "Carrom Adda".
+The Android apps are the same client wrapped with Capacitor 8 (`capacitor.config.ts`,
+`android/`). Since spec 16 one Gradle project builds several apps (**flavors**): one per
+game plus the all-games hub. See §9 for what each flavor needs. App names come from
+`src/constants/brand.ts` (the hub brand is still a placeholder, `HUB_NAME`).
 
-> **Change the app id before the first Play upload if you want another one.**
-> After that upload it can never change. It lives in `capacitor.config.ts`
-> (`appId`) and `android/app/build.gradle` (`namespace`, `applicationId`).
+| Flavor | applicationId | Web build | Release build |
+|---|---|---|---|
+| `carrom` | `com.carromadda.app` (spec 11, already fixed) | `VITE_APP_GAMES=carrom` | yes |
+| `hub` | `com.carromadda.hub` | `VITE_APP_GAMES=all` | yes |
+| `ludo` | `com.carromadda.ludo` | `VITE_APP_GAMES=ludo` | when spec 18 is done |
+| `callbreak` | `com.carromadda.callbreak` | `VITE_APP_GAMES=callbreak` | when spec 19 is done |
+| `nodipar` | `com.carromadda.nodipar` | `VITE_APP_GAMES=nodipar` | when spec 20 is done |
+
+> **Change an app id before that app's first Play upload if you want another one.**
+> After that upload it can never change. They live in `android/app/build.gradle` (`APP_FLAVORS`).
+> The hub id should follow the hub brand once it is picked.
 
 ## 1. One-time setup
 
@@ -28,13 +38,17 @@ The Android app is the same client wrapped with Capacitor 8 (`capacitor.config.t
 
 | Command | What it does |
 |---|---|
-| `pnpm android:sync` | `vite build --mode android` (reads `.env.android`) + copy into `android/` |
-| `pnpm android:build` | sync + debug APK → `android/app/build/outputs/apk/debug/app-debug.apk` |
-| `pnpm android:open` | open `android/` in Android Studio (run on a phone from there) |
-| `pnpm android:assets` | regenerate icons + splash from `assets/` |
+| `pnpm android <flavor> [task]` | HAPP-8: `node scripts/androidBuild.mjs`: flavor resources, web build for that flavor (`.env.android` + `.env.android.<flavor>`), `cap sync`, then Gradle. Task: `assembleDebug` (default), `assembleRelease`, `bundleDebug`, `bundleRelease`, or `sync` (no Gradle) |
+| `pnpm android:sync` | = `pnpm android carrom sync` |
+| `pnpm android:build` | = `pnpm android carrom assembleDebug` → `android/app/build/outputs/apk/carrom/debug/app-carrom-debug.apk` |
+| `pnpm android:open` | open `android/` in Android Studio (pick the variant, e.g. `hubDebug`, in *Build Variants*) |
+| `pnpm android:assets` | regenerate icons + splash from `assets/` (main = carrom's) |
 
-Install the debug APK on a phone with USB debugging on:
-`adb install -r android/app/build/outputs/apk/debug/app-debug.apk`
+Install a debug APK on a phone with USB debugging on:
+`adb install -r android/app/build/outputs/apk/hub/debug/app-hub-debug.apk`
+
+Android Studio's Run button uses whatever web build was synced last: run
+`pnpm android <flavor> sync` first for the flavor you are about to run.
 
 ## 3. Icon and splash
 
@@ -95,14 +109,14 @@ export CARROM_KEYSTORE_FILE=/full/path/to/carrom-upload.jks
 export CARROM_KEYSTORE_PASSWORD=...
 export CARROM_KEY_ALIAS=carrom
 export CARROM_KEY_PASSWORD=...
-pnpm android:sync
-node scripts/androidBuild.mjs bundleRelease
+pnpm android carrom bundleRelease   # or: pnpm android hub bundleRelease
 ```
 
 PowerShell: `$env:CARROM_KEYSTORE_FILE = "C:\keys\carrom-upload.jks"` (and so on).
+One upload key can sign every flavor (each is still its own Play app).
 
-Output: `android/app/build/outputs/bundle/release/app-release.aab`. Check it is
-signed: `jarsigner -verify android/app/build/outputs/bundle/release/app-release.aab`.
+Output: `android/app/build/outputs/bundle/carromRelease/app-carrom-release.aab`. Check it is
+signed: `jarsigner -verify android/app/build/outputs/bundle/carromRelease/app-carrom-release.aab`.
 Upload it in Play Console (internal testing first).
 
 ## 6. Manual check on a real phone (spec 11)
@@ -132,7 +146,7 @@ clicking them is safe.
    consent form (UMP) at start when it is required; no ad is requested before it.
 
 **Release build:**
-- App id for Gradle: `CARROM_ADMOB_APP_ID=ca-app-pub-...~...` (env var, or `-PcarromAdmobAppId=`).
+- App id for Gradle: `CARROM_ADMOB_APP_ID=ca-app-pub-...~...` (env var, or `-PcarromAdmobAppId=`); other apps: §9.
   Without it the build uses Google's test app id.
 - Ad unit ids in `.env.android`: `VITE_ADMOB_REWARDED_ID`, `VITE_ADMOB_INTERSTITIAL_ID`,
   `VITE_ADMOB_BANNER_ID`. All three must be set, or the build falls back to test ids.
@@ -164,9 +178,10 @@ Play Developer API, credits the pack once, then consumes it.
    New permissions can take up to a day to start working.
 5. *Settings → License testing*: add the tester Google accounts (they pay with test cards).
 
-**Server env** (`apps/server/.env`): `PLAY_PACKAGE_NAME=com.carromadda.app` and
-`PLAY_SERVICE_ACCOUNT_JSON=` the key file's JSON on **one line**. Leave both empty to keep
-purchases off (`/iap/verify` → 503). Never commit the key.
+**Server env** (`apps/server/.env`): `PLAY_PACKAGE_NAMES=com.carromadda.app,com.carromadda.hub`
+(every app that sells packs, comma list; spec 16) and `PLAY_SERVICE_ACCOUNT_JSON=` the key file's
+JSON on **one line**. Leave both empty to keep purchases off (`/iap/verify` → 503). Never commit the key.
+The app sends its own package id with each purchase; a package not in the list gets 400.
 
 **Pending payments:** a slow payment method leaves the purchase pending; the server answers 202 and
 credits nothing. On every app start (once signed in) the app sends Play's unfinished purchases again,
@@ -181,3 +196,42 @@ can't be claimed by another (Play's account id = user id).
       closing and reopening the app credits the coins once.
 - [ ] Closing the purchase sheet gives nothing and shows "Purchase not completed".
 - [ ] The web Shop shows the Android-only message.
+
+## 9. One app per game + the hub app (spec 16)
+
+Every flavor is a separate app on Play, so each one needs its own setup. Do it for `carrom`
+and `hub` now; for `ludo`, `callbreak` and `nodipar` when their spec is done (their release
+builds are switched off until then: `RELEASE_FLAVORS` in `build.gradle` and `scripts/androidBuild.mjs`).
+
+Per flavor:
+
+1. **Play listing**: Play Console → *Create app* with the flavor's applicationId (table at the top).
+   Ship the per-game apps first and the hub app later, and give the hub real extra value (all
+   games, one wallet, friends) so it doesn't trip Play's repetitive-content policy.
+2. **Products** (only apps that sell coin packs): create `coins_500`, `coins_1200`, `coins_2600`
+   in that app (§8). Add its package to the server's `PLAY_PACKAGE_NAMES`, and give the service
+   account the same permissions for that app.
+3. **AdMob**: add the app in AdMob and make its rewarded, interstitial and (optional) banner units.
+   - App id → Gradle: env `<FLAVOR>_ADMOB_APP_ID` (e.g. `HUB_ADMOB_APP_ID=ca-app-pub-...~...`)
+     or `-P<flavor>AdmobAppId=`. Unset = Google's test app id.
+   - Unit ids → `apps/client/.env.android.<flavor>` (gitignored; overrides `.env.android`):
+     `VITE_ADMOB_REWARDED_ID`, `VITE_ADMOB_INTERSTITIAL_ID`, `VITE_ADMOB_BANNER_ID`.
+   - The SSV callback URL is the same server for every app.
+4. **Google sign-in**: in the *same* Google Cloud project, add an Android OAuth client with the
+   flavor's package and SHA-1 (debug and upload/Play signing keys). The server needs no change: the
+   app still asks for an ID token for the web client.
+5. **Signing**: the same upload keystore works for all (§5). Enrol each app in Play App Signing.
+6. **Icon and splash**: `src/<flavor>/res/` overrides `main`. For now the non-carrom apps show
+   main's foreground on their own colour (adaptive icon only; pre-Android 8 shows carrom's icon)
+   and carrom's splash. For real art, generate it with `pnpm android:assets` from that app's
+   `assets/` files and move the generated `mipmap-*` / `drawable*` folders from `src/main/res`
+   into `src/<flavor>/res` (then regenerate main from carrom's art).
+7. **Name**: `src/<flavor>/res/values*/strings.xml` are written by the build script from
+   `src/constants/brand.ts` (`values-bn` = the Bangla launcher name). Change names in brand.ts.
+
+**Manual check (spec 16):**
+- [ ] The web hub on a phone browser: game cards, carrom plays, the shop has a Carrom tab and "All games".
+- [ ] The carrom app (`pnpm android carrom assembleDebug`) opens straight into carrom; "More games" links to the web hub.
+- [ ] The hub app (`pnpm android hub assembleDebug`) shows every game (Ludo, Callbreak, Nodi Par as "coming soon"),
+      installs next to the carrom app, and has its own name and icon colour.
+- [ ] A coin pack bought in the hub app is credited (its package is in `PLAY_PACKAGE_NAMES`).

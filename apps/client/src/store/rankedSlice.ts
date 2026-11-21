@@ -23,25 +23,27 @@ export interface QueueState {
 
 export interface RankedState {
   queue: QueueState;
-  leaderboard: { players: LeaderboardEntry[]; me: LeaderboardEntry | null; loading: boolean; error: RoomFailure | null };
-  matches: { list: MatchView[]; loading: boolean; error: RoomFailure | null };
+  /** HAPP-2 `game` = the game the list is for. */
+  leaderboard: { game: string; players: LeaderboardEntry[]; me: LeaderboardEntry | null; loading: boolean; error: RoomFailure | null };
+  /** HAPP-6 `game` = the game the list is for. */
+  matches: { game: string; list: MatchView[]; loading: boolean; error: RoomFailure | null };
 }
 
 const idleQueue = (): QueueState => ({ status: 'idle', waitedMs: 0, window: 0, rating: 0, botOffer: false, error: null });
 
 export const initialRankedState = (): RankedState => ({
   queue: idleQueue(),
-  leaderboard: { players: [], me: null, loading: false, error: null },
-  matches: { list: [], loading: false, error: null },
+  leaderboard: { game: '', players: [], me: null, loading: false, error: null },
+  matches: { game: '', list: [], loading: false, error: null },
 });
 
-/** RANK-6: top players (and my rank when signed in). */
-export const fetchLeaderboard = createAsyncThunk<LeaderboardResponse, number | undefined, { rejectValue: RoomFailure }>(
+/** RANK-6 / HAPP-2: one game's top players (and my rank when signed in). */
+export const fetchLeaderboard = createAsyncThunk<LeaderboardResponse, { game: string; limit?: number }, { rejectValue: RoomFailure }>(
   'ranked/leaderboard',
-  async (limit, { rejectWithValue }) => {
+  async ({ game, limit }, { rejectWithValue }) => {
     try {
       const res = await axios.get<LeaderboardResponse>(`${API_BASE}/leaderboard`, {
-        headers: getAuthHeaders(), params: limit === undefined ? {} : { limit },
+        headers: getAuthHeaders(), params: limit === undefined ? { game } : { game, limit },
       });
       return res.data;
     } catch (err) {
@@ -50,12 +52,12 @@ export const fetchLeaderboard = createAsyncThunk<LeaderboardResponse, number | u
   },
 );
 
-/** RANK-8: my recent games for the Profile page. */
-export const fetchMyMatches = createAsyncThunk<MatchView[], void, { rejectValue: RoomFailure }>(
+/** RANK-8 / HAPP-6: my recent games of one game for the Profile page. */
+export const fetchMyMatches = createAsyncThunk<MatchView[], string, { rejectValue: RoomFailure }>(
   'ranked/matches',
-  async (_, { rejectWithValue }) => {
+  async (game, { rejectWithValue }) => {
     try {
-      const res = await axios.get<MatchesResponse>(`${API_BASE}/matches/me`, { headers: getAuthHeaders() });
+      const res = await axios.get<MatchesResponse>(`${API_BASE}/matches/me`, { headers: getAuthHeaders(), params: { game } });
       return res.data.matches;
     } catch (err) {
       return rejectWithValue(roomFailure(err));
@@ -91,23 +93,28 @@ const rankedSlice = createSlice({
     },
   },
   extraReducers: (b) => {
-    b.addCase(fetchLeaderboard.pending, (s) => {
+    b.addCase(fetchLeaderboard.pending, (s, a) => {
+      // Another game's rows must not show under this game's title.
+      if (s.leaderboard.game !== a.meta.arg.game) Object.assign(s.leaderboard, { game: a.meta.arg.game, players: [], me: null });
       s.leaderboard.loading = true;
       s.leaderboard.error = null;
     });
     b.addCase(fetchLeaderboard.fulfilled, (s, a) => {
-      s.leaderboard = { players: a.payload.players, me: a.payload.me, loading: false, error: null };
+      if (a.meta.arg.game !== s.leaderboard.game) return;
+      s.leaderboard = { game: a.meta.arg.game, players: a.payload.players, me: a.payload.me, loading: false, error: null };
     });
     b.addCase(fetchLeaderboard.rejected, (s, a) => {
       s.leaderboard.loading = false;
       s.leaderboard.error = a.payload ?? { status: 0, error: a.error.message ?? '' };
     });
-    b.addCase(fetchMyMatches.pending, (s) => {
+    b.addCase(fetchMyMatches.pending, (s, a) => {
+      if (s.matches.game !== a.meta.arg) Object.assign(s.matches, { game: a.meta.arg, list: [] });
       s.matches.loading = true;
       s.matches.error = null;
     });
     b.addCase(fetchMyMatches.fulfilled, (s, a) => {
-      s.matches = { list: a.payload, loading: false, error: null };
+      if (a.meta.arg !== s.matches.game) return;
+      s.matches = { game: a.meta.arg, list: a.payload, loading: false, error: null };
     });
     b.addCase(fetchMyMatches.rejected, (s, a) => {
       s.matches.loading = false;

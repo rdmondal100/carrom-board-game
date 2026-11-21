@@ -17,6 +17,7 @@ const plugin = vi.hoisted(() => ({
   purchaseProduct: vi.fn(async (opts: Record<string, unknown>) => fake.buy!(opts)),
   getPurchases: vi.fn(async () => ({ purchases: fake.purchases })),
 }));
+vi.mock('@capacitor/app', () => ({ App: { getInfo: async () => ({ id: 'com.carromadda.app' }) } }));
 vi.mock('@capgo/native-purchases', () => ({ NativePurchases: plugin, PURCHASE_TYPE: { INAPP: 'inapp', SUBS: 'subs' } }));
 
 const { billingSupported, loadPacks, purchasePack, resetBillingForTest, unfinishedPurchases } = await import('./billing');
@@ -28,7 +29,7 @@ describe('billing', () => {
     Object.assign(platform, { native: true, name: 'android' });
     fake.products = [];
     fake.purchases = [];
-    fake.buy = async () => ({ purchaseToken: 'tok-1' });
+    fake.buy = async () => ({ purchaseToken: 'tok-1', packageName: 'com.carromadda.app' });
   });
 
   it('IAP-6 web: billing off, every call a no-op', async () => {
@@ -57,7 +58,7 @@ describe('billing', () => {
   });
 
   it('IAP-2 buying hands back the token; the server, not the plugin, finishes the purchase', async () => {
-    expect(await purchasePack('coins_1200', 'u1')).toEqual({ productId: 'coins_1200', purchaseToken: 'tok-1' });
+    expect(await purchasePack('coins_1200', 'u1')).toEqual({ productId: 'coins_1200', purchaseToken: 'tok-1', packageName: 'com.carromadda.app' });
     expect(plugin.purchaseProduct).toHaveBeenCalledWith(expect.objectContaining({
       productIdentifier: 'coins_1200', productType: 'inapp', appAccountToken: 'u1',
       isConsumable: false, autoAcknowledgePurchases: false,
@@ -66,7 +67,7 @@ describe('billing', () => {
     expect(await purchasePack('coins_1200', 'u1')).toBeNull();
   });
 
-  it('IAP-4 unfinished purchases: this account\'s coin packs with a token', async () => {
+  it('IAP-4 HAPP-9 unfinished purchases: this account\'s coin packs with a token, tagged with the app package', async () => {
     fake.purchases = [
       { productIdentifier: 'coins_500', purchaseToken: 'a' },
       { productIdentifier: 'remove_ads', purchaseToken: 'b' },
@@ -74,8 +75,8 @@ describe('billing', () => {
       { productIdentifier: 'coins_2600', purchaseToken: 'c' },
     ];
     expect(await unfinishedPurchases('u1')).toEqual([
-      { productId: 'coins_500', purchaseToken: 'a' },
-      { productId: 'coins_2600', purchaseToken: 'c' },
+      { productId: 'coins_500', purchaseToken: 'a', packageName: 'com.carromadda.app' },
+      { productId: 'coins_2600', purchaseToken: 'c', packageName: 'com.carromadda.app' },
     ]);
     expect(plugin.getPurchases).toHaveBeenCalledWith({ productType: 'inapp', appAccountToken: 'u1' });
   });

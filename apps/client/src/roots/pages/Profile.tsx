@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, Navigate } from 'react-router';
@@ -7,14 +7,15 @@ import type { PublicUser } from '@carrom/protocol';
 import { AuthError, Field } from '@/components/AuthForm';
 import { Avatar, AVATAR_COLOURS } from '@/components/Avatar';
 import { GoogleButton } from '@/components/GoogleButton';
-import { MatchHistory } from '@/components/RankedParts';
+import { MatchHistory } from '@/components/MatchHistory';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { useGames } from '@/games/GamesContext';
 import { t, useLang } from '@/i18n/t';
 import { getToken } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { profileSchema, type ProfileForm } from '@/schemas/auth';
-import { clearAuthError, loadMe, logout, updateMe } from '@/store/authSlice';
+import { clearAuthError, loadMe, logout, ratingIn, updateMe } from '@/store/authSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -23,6 +24,35 @@ function Stat({ label, value }: { label: string; value: string | number }) {
       <span className="text-xl font-bold">{value}</span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </div>
+  );
+}
+
+/** HAPP-6 each game's rating, ranked games and recent matches (one game at a time). */
+function GameStats({ user }: { user: PublicUser }) {
+  const { games } = useGames();
+  const online = games.filter((g) => g.playModes.online || g.playModes.ranked);
+  const [picked, setPicked] = useState(online[0]?.id);
+  const game = online.find((g) => g.id === picked) ?? online[0];
+  if (!game) return null;
+  const r = ratingIn(user, game.id);
+  return (
+    <section className="flex flex-col gap-3" data-testid="game-stats">
+      {online.length > 1 && (
+        <div role="tablist" aria-label={t('profile.games')} className="flex gap-1 overflow-x-auto">
+          {online.map((g) => (
+            <Button key={g.id} role="tab" aria-selected={g.id === game.id} size="sm"
+              variant={g.id === game.id ? 'default' : 'outline'} onClick={() => setPicked(g.id)}>
+              <g.Icon className="size-4" />{t(g.nameKey)}
+            </Button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-3">
+        <Stat label={t('profile.ratingIn', { game: t(game.nameKey) })} value={r.rating} />
+        <Stat label={t('profile.rankedGames')} value={r.games} />
+      </div>
+      <MatchHistory userId={user.id} game={game.id} />
+    </section>
   );
 }
 
@@ -77,7 +107,7 @@ function ProfileEditor({ user }: { user: PublicUser }) {
   );
 }
 
-/** AUTH-9: name + avatar, rating and coins, keep a guest's progress, sign out. */
+/** AUTH-9 / HAPP-6: name + avatar, coins, each game's rating and matches, keep a guest's progress, sign out. */
 export function Profile() {
   useLang();
   const dispatch = useAppDispatch();
@@ -108,7 +138,6 @@ export function Profile() {
         </div>
       </div>
       <div className="flex gap-3">
-        <Stat label={t('profile.rating')} value={user.rating} />
         <Stat label={t('profile.coins')} value={user.coins} />
       </div>
 
@@ -122,7 +151,7 @@ export function Profile() {
         </Card>
       )}
 
-      <MatchHistory userId={user.id} />
+      <GameStats user={user} />
 
       <Card><ProfileEditor key={user.id} user={user} /></Card>
 

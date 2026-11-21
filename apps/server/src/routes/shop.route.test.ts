@@ -13,8 +13,8 @@ const env: AppEnv = {
 };
 const app = createApp(env, { authRateLimit: 10_000 });
 
-async function player(coins = 0, owned: string[] = []) {
-  const u = await User.create({ name: 'Rina', coins, cosmetics: { owned, equipped: [] } });
+async function player(coins = 0, owned: string[] = [], equipped: string[] = []) {
+  const u = await User.create({ name: 'Rina', coins, cosmetics: { owned, equipped } });
   return { id: u.id as string, auth: { Authorization: `Bearer ${signToken(u.id as string, SECRET)}` } };
 }
 
@@ -83,9 +83,9 @@ describe('shop and wallet routes', () => {
       const p = await player(0, ['gold-striker', 'jade-coins']);
       const res = await request(app).patch('/me/equip').set(p.auth).send({ striker: 'gold-striker', coins: 'jade-coins' });
       expect(res.status).toBe(200);
-      expect(res.body.user.cosmetics.equipped).toEqual({ striker: 'gold-striker', coins: 'jade-coins', board: 'classic-board' });
+      expect(res.body.user.cosmetics.equipped.carrom).toEqual({ striker: 'gold-striker', coins: 'jade-coins', board: 'classic-board' });
       const back = await request(app).patch('/me/equip').set(p.auth).send({ striker: 'classic-striker' });
-      expect(back.body.user.cosmetics.equipped).toEqual({ striker: 'classic-striker', coins: 'jade-coins', board: 'classic-board' });
+      expect(back.body.user.cosmetics.equipped.carrom).toEqual({ striker: 'classic-striker', coins: 'jade-coins', board: 'classic-board' });
     });
 
     it('COS-4 not owned 403, nothing changes', async () => {
@@ -101,6 +101,24 @@ describe('shop and wallet routes', () => {
       expect((await request(app).patch('/me/equip').set(p.auth).send({ striker: 'jade-coins' })).status).toBe(400);
       expect((await request(app).patch('/me/equip').set(p.auth).send({ board: 'nope' })).status).toBe(400);
       expect((await request(app).patch('/me/equip').set(p.auth).send({ hat: 'x' })).status).toBe(400);
+      // HAPP-5 a slot of another game, an item of another game, an unknown game.
+      expect((await request(app).patch('/me/equip').set(p.auth).send({ game: 'ludo', coins: 'jade-coins' })).status).toBe(400);
+      expect((await request(app).patch('/me/equip').set(p.auth).send({ game: 'ludo', board: 'classic-board' })).status).toBe(400);
+      expect((await request(app).patch('/me/equip').set(p.auth).send({ game: 'chess', board: 'classic-board' })).status).toBe(400);
+    });
+
+    it('HAPP-5 old equipped id list resolves to the carrom slots; equipping a ludo item does not touch carrom', async () => {
+      const p = await player(0, ['gold-striker', 'teak-board'], ['gold-striker', 'teak-board']);
+      const me = await request(app).get('/auth/me').set(p.auth);
+      expect(me.body.user.cosmetics.equipped.carrom).toEqual({ striker: 'gold-striker', coins: 'classic-coins', board: 'teak-board' });
+      const res = await request(app).patch('/me/equip').set(p.auth).send({ game: 'ludo', board: 'classic-ludo-board' });
+      expect(res.status).toBe(200);
+      expect(res.body.user.cosmetics.equipped.carrom).toEqual(me.body.user.cosmetics.equipped.carrom);
+      expect(res.body.user.cosmetics.equipped.ludo).toEqual({ tokens: 'classic-tokens', board: 'classic-ludo-board' });
+      // And carrom equips leave ludo alone.
+      const back = await request(app).patch('/me/equip').set(p.auth).send({ board: 'classic-board' });
+      expect(back.body.user.cosmetics.equipped.ludo).toEqual(res.body.user.cosmetics.equipped.ludo);
+      expect(back.body.user.cosmetics.equipped.carrom.striker).toBe('gold-striker');
     });
   });
 

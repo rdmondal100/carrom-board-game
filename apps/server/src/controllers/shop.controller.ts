@@ -1,6 +1,9 @@
 import type { RequestHandler } from 'express';
 import { z } from 'zod';
-import { cosmeticById, COSMETIC_TYPES, ownsItem, resolveEquipped, type Equipped } from '@carrom/protocol';
+import {
+  COSMETIC_GAMES, cosmeticById, equippedEntries, fitsSlot, GAME_SLOTS, isSlotOf, ownsItem, resolveEquippedMap,
+  type CosmeticGame,
+} from '@carrom/protocol';
 import type { MeResponse } from '@carrom/protocol/api';
 import { toPublicUser, User } from '../models/user.model.js';
 import { logger } from '../utils/logger.js';
@@ -13,10 +16,11 @@ export const ALREADY_OWNED = 'You already own this item';
 export const NOT_OWNED = 'You do not own this item';
 
 const buyBody = z.strictObject({ itemId: z.string().min(1, 'itemId is required') });
+/** Every slot name of every game (HAPP-5); each must belong to the body's game. */
+const ALL_SLOTS = [...new Set(COSMETIC_GAMES.flatMap((g) => GAME_SLOTS[g]))];
 const equipBody = z.strictObject({
-  striker: z.string().optional(),
-  coins: z.string().optional(),
-  board: z.string().optional(),
+  game: z.enum(COSMETIC_GAMES as [CosmeticGame, ...CosmeticGame[]]).default('carrom'),
+  ...Object.fromEntries(ALL_SLOTS.map((s) => [s, z.string().optional()])),
 });
 
 /**
@@ -58,23 +62,32 @@ export const buy: RequestHandler = async (req, res) => {
   }
 };
 
-/** COS-4 PATCH /me/equip { striker?, coins?, board? }: only owned items of that slot. */
+/**
+ * COS-4 / HAPP-5 PATCH /me/equip { game? (default carrom), <slot>? }: only owned
+ * items that fit that game's slot. Other games' slots are left as they are.
+ */
 export const equip: RequestHandler = async (req, res) => {
   try {
-    const body = parseBody(equipBody, req, res);
+    const body = parseBody(equipBody, req, res) as ({ game: CosmeticGame } & Record<string, string | undefined>) | null;
     if (!body) return;
     const userId = userIdOr401(res);
     if (!userId) return;
+    const { game } = body;
     const user = await User.findById(userId);
     if (!user) {
       res.status(401).json({ error: 'Account not found' });
       return;
     }
-    const next: Equipped = resolveEquipped(user.cosmetics?.equipped ?? []);
-    for (const slot of COSMETIC_TYPES) {
+    const next = resolveEquippedMap(user.cosmetics?.equipped ?? []);
+    const slots = next[game] as Record<string, string>;
+    for (const slot of ALL_SLOTS) {
       const id = body[slot];
       if (id === undefined) continue;
-      if (cosmeticById(id)?.type !== slot) {
+      if (!isSlotOf(game, slot)) {
+        res.status(400).json({ error: `${slot}: not a ${game} slot` });
+        return;
+      }
+      if (!fitsSlot(cosmeticById(id), game, slot)) {
         res.status(400).json({ error: `${slot}: ${UNKNOWN_ITEM}` });
         return;
       }
@@ -82,11 +95,11 @@ export const equip: RequestHandler = async (req, res) => {
         res.status(403).json({ error: NOT_OWNED });
         return;
       }
-      next[slot] = id;
+      slots[slot] = id;
     }
     const saved = await User.findByIdAndUpdate(
       userId,
-      { $set: { 'cosmetics.equipped': [next.striker, next.coins, next.board] } },
+      { $set: { 'cosmetics.equipped': equippedEntries(next) } },
       { returnDocument: 'after' },
     );
     if (!saved) {

@@ -22,6 +22,24 @@ const origins = z.string().transform((s, ctx) => {
 const clientIds = z.string().default('').transform((s) =>
   s.split(',').map((id) => id.trim()).filter((id) => id.length > 0));
 
+const PACKAGE_NAME = /^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/;
+
+/** HAPP-9 comma list of Android package names (one per app flavor); the first is the default. */
+const packageNames = z.string().transform((s, ctx) => {
+  const list = s.split(',').map((p) => p.trim()).filter((p) => p.length > 0);
+  if (list.length === 0) {
+    ctx.addIssue({ code: 'custom', message: 'must list at least one package name' });
+    return z.NEVER;
+  }
+  for (const p of list) {
+    if (!PACKAGE_NAME.test(p)) {
+      ctx.addIssue({ code: 'custom', message: `"${p}" is not an Android package name` });
+      return z.NEVER;
+    }
+  }
+  return [...new Set(list)];
+});
+
 /** IAP-3 the Play Developer API service account: only the two fields the JWT needs. */
 export interface ServiceAccount { clientEmail: string; privateKey: string }
 
@@ -49,13 +67,13 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(JWT_SECRET_MIN, `must be at least ${JWT_SECRET_MIN} characters`),
   CORS_ORIGIN: origins,
   GOOGLE_CLIENT_IDS: clientIds,
-  /** IAP-3 Play Billing. Both or neither; neither = in-app purchases off (POST /iap/verify answers 503). */
-  PLAY_PACKAGE_NAME: z.string().regex(/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/, 'must be an Android package name').optional(),
+  /** IAP-3 / HAPP-9 Play Billing. Both or neither; neither = in-app purchases off (POST /iap/verify answers 503). */
+  PLAY_PACKAGE_NAMES: packageNames.optional(),
   PLAY_SERVICE_ACCOUNT_JSON: serviceAccount.optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 }).superRefine((e, ctx) => {
-  if ((e.PLAY_PACKAGE_NAME === undefined) !== (e.PLAY_SERVICE_ACCOUNT_JSON === undefined)) {
-    const missing = e.PLAY_PACKAGE_NAME === undefined ? 'PLAY_PACKAGE_NAME' : 'PLAY_SERVICE_ACCOUNT_JSON';
+  if ((e.PLAY_PACKAGE_NAMES === undefined) !== (e.PLAY_SERVICE_ACCOUNT_JSON === undefined)) {
+    const missing = e.PLAY_PACKAGE_NAMES === undefined ? 'PLAY_PACKAGE_NAMES' : 'PLAY_SERVICE_ACCOUNT_JSON';
     ctx.addIssue({ code: 'custom', path: [missing], message: 'must be set together with the other PLAY_ key' });
   }
 });

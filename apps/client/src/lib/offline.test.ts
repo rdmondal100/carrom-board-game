@@ -3,11 +3,14 @@ import { needsNetwork } from './offline';
 
 describe('offline', () => {
   it('APP-9 online entry screens need the network', () => {
-    for (const p of ['/online', '/join/ABCD', '/ranked', '/leaderboard', '/login', '/register', '/shop']) expect(needsNetwork(p)).toBe(true);
+    for (const p of ['/g/carrom/online', '/join/ABCD', '/g/carrom/ranked', '/g/ludo/leaderboard', '/login', '/register', '/shop']) {
+      expect(needsNetwork(p), p).toBe(true);
+    }
   });
 
   it('APP-9 same-device, Vs-bot and menus work offline; a running room is left alone', () => {
-    for (const p of ['/', '/play', '/local/setup', '/local/play', '/settings', '/how-to-play', '/online/lobby', '/online/game']) {
+    const game = ['/g/carrom/play', '/g/carrom/local/setup', '/g/carrom/local/play', '/g/carrom/how-to-play', '/g/carrom/online/lobby', '/g/carrom/online/game'];
+    for (const p of ['/', '/settings', '/profile', ...game]) {
       expect(needsNetwork(p)).toBe(false);
     }
   });

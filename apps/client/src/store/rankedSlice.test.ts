@@ -62,24 +62,25 @@ describe('ranked slice', () => {
     expect(myView(match(), 'stranger')).toBeNull();
   });
 
-  it('RANK-6 leaderboard thunk sends the token and stores players and my rank', async () => {
+  it('RANK-6 HAPP-2 leaderboard thunk sends the token and the game, stores players and my rank', async () => {
     setToken('tok');
     const me = { rank: 7, id: 'me', name: 'Rina', avatar: 1, rating: 1010 };
     get.mockResolvedValueOnce({ data: { players: [{ ...me, rank: 1 }], me } });
     const store = makeStore();
-    await store.dispatch(fetchLeaderboard(50));
-    expect(get).toHaveBeenCalledWith(`${API_BASE}/leaderboard`, { headers: { Authorization: 'Bearer tok' }, params: { limit: 50 } });
-    expect(store.getState().ranked.leaderboard).toMatchObject({ loading: false, me, error: null });
+    await store.dispatch(fetchLeaderboard({ game: 'carrom', limit: 50 }));
+    expect(get).toHaveBeenCalledWith(`${API_BASE}/leaderboard`, { headers: { Authorization: 'Bearer tok' }, params: { game: 'carrom', limit: 50 } });
+    expect(store.getState().ranked.leaderboard).toMatchObject({ game: 'carrom', loading: false, me, error: null });
   });
 
-  it('RANK-8 match history thunk; a failure keeps the error', async () => {
+  it('RANK-8 HAPP-6 match history thunk asks for one game; a failure keeps the error', async () => {
     setToken('tok');
     get.mockResolvedValueOnce({ data: { matches: [match()] } });
     const store = makeStore();
-    await store.dispatch(fetchMyMatches());
+    await store.dispatch(fetchMyMatches('carrom'));
     expect(store.getState().ranked.matches.list).toHaveLength(1);
+    expect(get).toHaveBeenLastCalledWith(`${API_BASE}/matches/me`, { headers: { Authorization: 'Bearer tok' }, params: { game: 'carrom' } });
     get.mockRejectedValueOnce(new Error('offline'));
-    await store.dispatch(fetchMyMatches());
+    await store.dispatch(fetchMyMatches('carrom'));
     expect(store.getState().ranked.matches.error).toMatchObject({ status: 0 });
   });
 });
