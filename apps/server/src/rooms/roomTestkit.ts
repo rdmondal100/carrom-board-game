@@ -26,7 +26,7 @@ export const carromMatchOf = (room: GameRoom): CarromMatch => room.match as Carr
 /** Short waits so room tests run in seconds. Tests may change fields per case. */
 export const fastTiming = (): RoomTiming => ({
   shotClockMs: 60_000, graceMs: 20, reconnectS: 60,
-  botMinMs: 5, botMaxMs: 10, aimGapMs: 100, emoteGapMs: 2000,
+  botMinMs: 5, botMaxMs: 10, aimGapMs: 100, emoteGapMs: 2000, replayScale: 1,
 });
 
 /** A guest user in the DB and its token. */

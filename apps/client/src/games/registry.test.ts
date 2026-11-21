@@ -14,8 +14,12 @@ describe('HAPP-1 / HAPP-3 game registry', () => {
     expect(BUILD_GAMES).toHaveLength(ALL_GAMES.length);
   });
 
-  it('HAPP-1 LUDO-6 carrom and ludo are playable with every page; the others are coming-soon stubs', () => {
-    const [carrom, ludo, ...rest] = ALL_GAMES;
+  it('HAPP-1 LUDO-6 CB-7 carrom and ludo have every mode, callbreak vs bot and online; the others are coming-soon stubs', () => {
+    const [carrom, ludo, callbreak, ...rest] = ALL_GAMES;
+    expect(callbreak!.id).toBe('callbreak');
+    expect(callbreak!.playModes).toEqual({ local: false, bot: true, online: true, ranked: false });
+    expect(Object.keys(callbreak!.routes).sort()).toEqual(Object.keys(carrom!.routes).sort());
+    expect(callbreak!.CosmeticPreview).toBeDefined();
     expect(ludo!.id).toBe('ludo');
     expect(Object.values(ludo!.playModes).every(Boolean)).toBe(true);
     expect(Object.keys(ludo!.routes).sort()).toEqual(Object.keys(carrom!.routes).sort());

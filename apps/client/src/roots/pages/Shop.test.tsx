@@ -71,7 +71,8 @@ describe('COS-7 shop page', () => {
     expect(await screen.findByTestId('shop-game-carrom')).toBeTruthy();
     expect(screen.getByTestId('shop-game-any').textContent).toBe(en['shop.allGames']);
     expect(screen.getByTestId('shop-game-ludo')).toBeTruthy();
-    expect(screen.queryByTestId('shop-game-callbreak')).toBeNull();
+    expect(screen.getByTestId('shop-game-callbreak')).toBeTruthy();
+    expect(screen.queryByTestId('shop-game-nodipar')).toBeNull();
     fireEvent.click(screen.getByTestId('shop-game-any'));
     expect(screen.getByTestId('shop-empty')).toBeTruthy();
     expect(screen.queryByTestId('shop-tab-striker')).toBeNull();

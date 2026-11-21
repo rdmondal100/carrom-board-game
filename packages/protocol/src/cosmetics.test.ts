@@ -73,6 +73,10 @@ describe('COS-5 defaults', () => {
     expect(itemsForGame('ludo').filter((c) => c.price > 0).length).toBeGreaterThanOrEqual(6);
     // A carrom board never fits ludo's board slot.
     expect(fitsSlot(cosmeticById('teak-board'), 'ludo', 'board')).toBe(false);
+    // CB-9 callbreak's items: card backs and tables, for callbreak only.
+    expect(itemsForGame('callbreak').filter((c) => c.price > 0).map((c) => c.type).sort()).toEqual(['cardBack', 'cardBack', 'cardBack', 'table', 'table', 'table']);
+    expect(itemsForGame('callbreak').every((c) => c.game === 'callbreak')).toBe(true);
+    expect(fitsSlot(cosmeticById('night-ludo-board'), 'callbreak', 'table')).toBe(false);
   });
 
   it('COS-5 everyone owns the defaults; bought ids count only if known', () => {

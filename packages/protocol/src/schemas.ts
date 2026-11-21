@@ -61,6 +61,7 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.union([
   z.object({ type: z.literal('rematch') }),
   z.object({ type: z.literal('start') }),
   z.object({ type: z.literal('swap'), a: seat, b: seat }),
+  z.object({ type: z.literal('seatBot'), seat, on: z.boolean() }),
   z.object({ type: z.literal('voice'), to: SessionIdSchema, signal: VoiceSignalSchema }),
   z.object({ type: z.literal('voiceState'), on: z.boolean(), muted: z.boolean() }),
 ]);

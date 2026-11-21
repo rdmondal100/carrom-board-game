@@ -29,10 +29,12 @@ describe('room protocol', () => {
     expect(CreateRoomOptionsSchema.safeParse({ gameId: 'carrom' }).success).toBe(false);
   });
 
-  it('ROOM-3 start and swap parse; a seat out of range does not', () => {
+  it('ROOM-3 start, swap and (CB-8) seatBot parse; a seat out of range does not', () => {
     expect(parseClientMessage({ type: 'start' })).toEqual({ type: 'start' });
     expect(parseClientMessage({ type: 'swap', a: 0, b: 2 })).toEqual({ type: 'swap', a: 0, b: 2 });
     expect(parseClientMessage({ type: 'swap', a: 0, b: 4 })).toBeNull();
+    expect(parseClientMessage({ type: 'seatBot', seat: 3, on: true })).toEqual({ type: 'seatBot', seat: 3, on: true });
+    expect(parseClientMessage({ type: 'seatBot', seat: 4, on: true })).toBeNull();
   });
 
   it('ROOM-7 HUB-5 server game, timeout, clock and moveResult with durationMs parse', () => {

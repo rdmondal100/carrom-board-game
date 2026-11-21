@@ -40,6 +40,21 @@ export const LobbyState = schema({
 }, 'LobbyState');
 export type LobbyState = SchemaType<typeof LobbyState>;
 
+/**
+ * CB-8 a seat the host gave to a bot: nobody's session (`id` is made up), no
+ * user, and `left` like a seat whose player is gone for good, so the room
+ * treats it the same way (the bot plays it; no coins, no rematch vote).
+ */
+export function botPlayer(id: string, seat: number): PlayerState {
+  return new PlayerState({
+    sessionId: id, userId: '', name: '', avatar: 0, seat, ready: true, bot: true, left: true, rematch: false,
+    striker: '', coinSet: '', voiceOn: false, voiceMuted: true,
+  });
+}
+
+/** A seat filled by the host's bot (CB-8), not a person. */
+export const isFilledBot = (p: Pick<PlayerState, 'userId' | 'bot'>): boolean => p.bot && p.userId === '';
+
 /** ROOM-3: seats fill in join order (the game's seat order); null when the room is full. */
 export function freeSeat(taken: readonly number[], seats: readonly number[]): number | null {
   return seats.find((s) => !taken.includes(s)) ?? null;

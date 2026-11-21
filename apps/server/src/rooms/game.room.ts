@@ -3,7 +3,7 @@ import { ServerError, type Client, type Delayed } from '@colyseus/core';
 import { CreateRoomOptionsSchema, MSG, parseClientMessage, type ClientMessage, type ServerMessage } from '@carrom/protocol';
 import { uniqueInviteCode } from '../utils/inviteCode.js';
 import { gameEntry } from './games.js';
-import { canSwap, freeSeat, PlayerState, swapped } from './lobbyState.js';
+import { botPlayer, canSwap, freeSeat, isFilledBot, PlayerState, swapped } from './lobbyState.js';
 import { RoomBase, type RoomUser } from './roomBase.js';
 import { rewardPlayers } from './roomRewards.js';
 import { DEFAULT_TIMING, ROOM_BOT_LEVEL, throttled, type RoomTiming } from './roomTiming.js';
@@ -22,6 +22,7 @@ export class GameRoom extends RoomBase {
   pendingRewards: Promise<void> | null = null;
   private readonly lastHint = new Map<string, number>();
   private readonly lastEmote = new Map<string, number>();
+  private botIds = 0;
 
   messages = {
     [MSG]: (client: Client, raw: unknown) => this.receive(client, raw),
@@ -74,7 +75,7 @@ export class GameRoom extends RoomBase {
     if (!p) return;
     if (this.state.phase === 'lobby') {
       this.state.players.delete(client.sessionId);
-      if (this.state.hostId === client.sessionId) this.state.hostId = [...this.state.players.keys()][0] ?? '';
+      if (this.state.hostId === client.sessionId) this.state.hostId = [...this.state.players.values()].find((x) => !x.left)?.sessionId ?? '';
       return;
     }
     // ROOM-8: the bot keeps the seat for good.
@@ -122,6 +123,8 @@ export class GameRoom extends RoomBase {
         }
         for (const x of this.state.players.values()) x.seat = swapped(x.seat, msg.a, msg.b);
         return;
+      case 'seatBot':
+        return this.seatBot(client, isHost, msg.seat, msg.on);
       case 'move': {
         const move = this.game.moveSchema.safeParse(msg.move);
         if (!move.success) return this.fail(client, 'BAD_MOVE', 'Move not understood');
@@ -145,6 +148,15 @@ export class GameRoom extends RoomBase {
     }
   }
 
+  /** CB-8 the host puts a bot in an empty seat of the lobby, or takes one out. */
+  private seatBot(client: Client, isHost: boolean, seat: number, on: boolean): void {
+    const at = [...this.state.players.values()].find((x) => x.seat === seat);
+    const ok = isHost && this.state.phase === 'lobby' && this.seats().includes(seat) && (on ? !at : at !== undefined && isFilledBot(at));
+    if (!ok) return this.fail(client, 'NOT_ALLOWED', on ? 'That seat is not free' : 'No bot in that seat');
+    if (on) this.state.players.set(`bot-${++this.botIds}`, botPlayer(`bot-${this.botIds}`, seat));
+    else this.state.players.delete(at!.sessionId);
+  }
+
   /** Run a move for `seat`. False when refused (the client, if any, is told why). */
   private play(client: Client | null, seat: number, turnId: number, move: unknown): boolean {
     if (this.match === null || this.state.phase !== 'playing') {
@@ -157,11 +169,12 @@ export class GameRoom extends RoomBase {
       return false;
     }
     this.match = out.state;
-    const hash = this.game.hash(out.state);
+    // CB-5 a hidden-information game's hash covers the hands, so it never leaves the server.
+    const hash = this.game.hasHiddenInfo ? '' : this.game.hash(out.state);
     this.toViews((view) => ({
       type: 'moveResult', turnId, seat, move, events: out.events, hash, view, durationMs: out.durationMs,
     }));
-    this.nextTurn(out.durationMs);
+    this.nextTurn(out.durationMs * this.timing.replayScale);
     return true;
   }
 
@@ -170,7 +183,10 @@ export class GameRoom extends RoomBase {
   protected startMatch(m: unknown): void {
     this.match = m;
     this.state.phase = 'playing';
-    for (const p of this.state.players.values()) p.rematch = false;
+    for (const p of this.state.players.values()) {
+      p.rematch = false;
+      if (p.left) this.botSeats.add(p.seat); // CB-8 seats the host gave to bots
+    }
     void this.lock();
     const turnId = this.game.turnId(m);
     this.toViews((view) => ({ type: 'game', view, turnId }));
@@ -251,6 +267,8 @@ export class GameRoom extends RoomBase {
 
   /** COS-2 coins for everyone still in the game (not `skip`, a session that just abandoned it). */
   protected rewardGame(winner: string, skip = ''): void {
+    // CB-8 a game against the host's bots alone pays nothing online (Vs bot has its own daily cap).
+    if ([...this.state.players.values()].filter((p) => !isFilledBot(p)).length < 2) return;
     this.pendingRewards = rewardPlayers(this.state.players.values(), (seat) => this.teamOf(seat), winner, skip,
       (id, msg) => this.clients.getById(id)?.send(MSG, msg));
   }

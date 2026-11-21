@@ -16,6 +16,8 @@ export interface RoomTiming {
   aimGapMs: number;
   /** ROOM-10 at most one emote per this many ms per player. */
   emoteGapMs: number;
+  /** Share of a move's replay time the room waits before the next turn (1; tests may use 0). */
+  replayScale: number;
 }
 
 export const DEFAULT_TIMING: RoomTiming = {
@@ -26,6 +28,7 @@ export const DEFAULT_TIMING: RoomTiming = {
   botMaxMs: BOT_MAX_THINK_MS,
   aimGapMs: 100,
   emoteGapMs: 2000,
+  replayScale: 1,
 };
 
 /** ROOM-7: the server bot plays taken-over seats at this level. */

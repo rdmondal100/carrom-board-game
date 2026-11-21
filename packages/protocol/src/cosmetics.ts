@@ -84,6 +84,13 @@ export const COSMETICS: readonly CosmeticItem[] = [
   { id: 'gold-dice', game: 'ludo', type: 'dice', price: 450, rarity: 'epic', assetKey: 'ludo.dice.gold' },
   { id: 'classic-card-back', game: 'callbreak', type: 'cardBack', price: 0, rarity: 'common', assetKey: 'callbreak.cardBack.classic' },
   { id: 'classic-table', game: 'callbreak', type: 'table', price: 0, rarity: 'common', assetKey: 'callbreak.table.classic' },
+  // CB-9 card backs and table themes: looks only.
+  { id: 'nakshi-card-back', game: 'callbreak', type: 'cardBack', price: 150, rarity: 'rare', assetKey: 'callbreak.cardBack.nakshi' },
+  { id: 'jamdani-card-back', game: 'callbreak', type: 'cardBack', price: 400, rarity: 'epic', assetKey: 'callbreak.cardBack.jamdani' },
+  { id: 'royal-card-back', game: 'callbreak', type: 'cardBack', price: 800, rarity: 'legendary', assetKey: 'callbreak.cardBack.royal' },
+  { id: 'rosewood-table', game: 'callbreak', type: 'table', price: 250, rarity: 'rare', assetKey: 'callbreak.table.rosewood' },
+  { id: 'tea-garden-table', game: 'callbreak', type: 'table', price: 500, rarity: 'epic', assetKey: 'callbreak.table.teaGarden' },
+  { id: 'night-table', game: 'callbreak', type: 'table', price: 800, rarity: 'legendary', assetKey: 'callbreak.table.night' },
   { id: 'classic-boat', game: 'nodipar', type: 'boat', price: 0, rarity: 'common', assetKey: 'nodipar.boat.classic' },
   { id: 'classic-river', game: 'nodipar', type: 'river', price: 0, rarity: 'common', assetKey: 'nodipar.river.classic' },
 ];

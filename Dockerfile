@@ -13,11 +13,17 @@ WORKDIR /repo
 
 # ---- install all workspace dependencies (cached on the lockfile) ----
 FROM base AS deps
+# Every workspace package needs its package.json line here (add nodipar when it lands).
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/engine/package.json packages/engine/
 COPY packages/rules/package.json packages/rules/
 COPY packages/bot/package.json packages/bot/
 COPY packages/protocol/package.json packages/protocol/
+COPY packages/carrom/package.json packages/carrom/
+COPY packages/game-kit/package.json packages/game-kit/
+COPY packages/cards/package.json packages/cards/
+COPY packages/callbreak/package.json packages/callbreak/
+COPY packages/ludo/package.json packages/ludo/
 COPY apps/server/package.json apps/server/
 COPY apps/client/package.json apps/client/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile

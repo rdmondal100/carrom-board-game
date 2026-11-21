@@ -19,6 +19,8 @@ export type ClientMessage<M = unknown, H = unknown> =
   | { type: 'start' }
   /** ROOM-3 host only: swap whoever sits at seats a and b (either may be empty). */
   | { type: 'swap'; a: number; b: number }
+  /** CB-8 host only, in the lobby: put a bot in an empty seat (on) or take it out again (off). */
+  | { type: 'seatBot'; seat: number; on: boolean }
   /** VOICE-2 WebRTC signalling for the session `to` in this room (relayed to that session only). */
   | { type: 'voice'; to: string; signal: VoiceSignal }
   /** VOICE-2 / VOICE-4 this player's voice: `on` = takes part (ranked: opted in), `muted` = mic off. */

@@ -18,6 +18,8 @@
     "@carrom/protocol": "workspace:*",
     "@carrom/rules": "workspace:*",
     "@hub/game-kit": "workspace:*",
+    "@hub/callbreak": "workspace:*",
+    "@hub/cards": "workspace:*",
     "@hub/ludo": "workspace:*",
     "@colyseus/core": "^0.18.29",
     "@colyseus/schema": "^5.0.50",

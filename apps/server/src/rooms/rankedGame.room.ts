@@ -77,7 +77,7 @@ export class RankedGameRoom extends GameRoom {
   }
 
   protected allows(msg: ClientMessage): boolean {
-    return msg.type !== 'start' && msg.type !== 'swap' && msg.type !== 'rematch';
+    return msg.type !== 'start' && msg.type !== 'swap' && msg.type !== 'seatBot' && msg.type !== 'rematch';
   }
 
   protected onGameEnd(winner: string): void {

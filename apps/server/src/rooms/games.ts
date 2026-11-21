@@ -1,4 +1,5 @@
 import { carromModule } from '@carrom/game';
+import { callbreakModule } from '@hub/callbreak';
 import { ludoModule } from '@hub/ludo';
 import type { AnyGameModule } from '@hub/game-kit';
 import { RANKED_CONFIGS } from '../utils/rankedConfig.js';
@@ -24,6 +25,8 @@ export function unregisterGame(id: string): void {
 
 registerGame(carromModule, RANKED_CONFIGS.carrom);
 registerGame(ludoModule, RANKED_CONFIGS.ludo);
+// CB-8 no ranked Callbreak yet (a 4-player rating comes later).
+registerGame(callbreakModule);
 
 /** HUB-4 the registered game with this id, or null. */
 export function gameEntry(id: unknown): GameEntry | null {
