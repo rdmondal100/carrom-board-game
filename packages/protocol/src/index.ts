@@ -21,9 +21,11 @@ export type {
 } from './api';
 export { AVATAR_COUNT, NAME_MAX, NAME_MIN, PASSWORD_MIN } from './api';
 export type {
-  AdStatusResponse, BotRewardRequest, BuyRequest, EquipRequest, IapProductId, IapVerifyRequest, IapVerifyResponse,
-  RewardResponse,
+  AdStatusResponse, BlockRequest, BotRewardRequest, BuyRequest, EquipRequest, IapProductId, IapVerifyRequest,
+  IapVerifyResponse, IceResponse, IceServer, ReportRequest, RewardResponse,
 } from './api';
+export type { ReportReason, VoiceSignal } from './voice';
+export { CANDIDATE_MAX, REPORT_REASONS, SDP_MAX, SESSION_ID_MAX, SessionIdSchema, VoiceSignalSchema } from './voice';
 export { IAP_PACKS } from './api';
 export type {
   CosmeticGame, CosmeticItem, CosmeticType, Equipped, EquippedMap, GameSlots, Rarity, SlotOf,

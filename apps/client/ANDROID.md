@@ -235,3 +235,78 @@ Per flavor:
 - [ ] The hub app (`pnpm android hub assembleDebug`) shows every game (Ludo, Callbreak, Nodi Par as "coming soon"),
       installs next to the carrom app, and has its own name and icon colour.
 - [ ] A coin pack bought in the hub app is credited (its package is in `PLAY_PACKAGE_NAMES`).
+
+## 10. Voice chat (spec 17)
+
+Voice is WebRTC audio inside the WebView: Opus mono at about 24 kbps, peer to peer between the
+people in a room (max 3 links each). Signalling rides on the room connection; the server never
+hears or records any audio.
+
+### 10.1 Android
+
+- `AndroidManifest.xml` declares `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` (+ an optional
+  microphone feature, so phones without one can still install). Nothing is asked at start: the
+  first mic tap calls `getUserMedia`, the WebView asks Capacitor, and Capacitor shows Android's
+  permission dialog. "Don't allow" → one toast, mic stays off, the game goes on.
+- Audio follows Android's call routing: speaker, or the wired / Bluetooth headset when one is
+  connected (that is what `MODIFY_AUDIO_SETTINGS` is for).
+- When the app goes to the background the mic is muted and other players' audio is silenced; it
+  comes back when the app returns. Leaving the room (or closing the page) closes every link and
+  stops the mic.
+- Play Console → *App content*: declare the microphone use (voice chat between players; not
+  recorded) and keep the in-game block and report buttons — Play's user-generated content policy.
+
+### 10.2 TURN server (coturn)
+
+Most Bangladeshi mobile networks put phones behind carrier NAT, where peer to peer fails without a
+relay. Run coturn on a small VPS with a public IP (1 vCPU is plenty to start; a relayed voice link
+costs ~3 kB/s each way).
+
+1. Install: `sudo apt install coturn`, and set `TURNSERVER_ENABLED=1` in `/etc/default/coturn`.
+2. `/etc/turnserver.conf` (REST shared-secret scheme; the server makes 1-hour credentials):
+   ```
+   listening-port=3478
+   tls-listening-port=5349
+   fingerprint
+   use-auth-secret
+   static-auth-secret=<long random string, the same as the API's TURN_SECRET>
+   realm=turn.example.com
+   total-quota=300
+   stale-nonce=600
+   no-multicast-peers
+   no-cli
+   # Your certificate for turns: (e.g. from certbot for turn.example.com)
+   cert=/etc/letsencrypt/live/turn.example.com/fullchain.pem
+   pkey=/etc/letsencrypt/live/turn.example.com/privkey.pem
+   # Never relay to private networks.
+   denied-peer-ip=10.0.0.0-10.255.255.255
+   denied-peer-ip=172.16.0.0-172.31.255.255
+   denied-peer-ip=192.168.0.0-192.168.255.255
+   denied-peer-ip=127.0.0.0-127.255.255.255
+   ```
+   Behind a cloud NAT (AWS, GCP…) also set `external-ip=<public ip>/<private ip>`.
+3. Firewall: open 3478 UDP+TCP, 5349 TCP, and the relay range UDP 49152–65535.
+4. `sudo systemctl restart coturn`.
+5. API env (`apps/server/.env`):
+   ```
+   TURN_URLS=turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp,turns:turn.example.com:5349?transport=tcp
+   TURN_SECRET=<the same static-auth-secret>
+   ```
+   Both or neither; the server refuses to start with only one. `GET /voice/ice` (signed in) then
+   returns STUN + TURN with `username = <expiry>:<userId>` and an HMAC-SHA1 password. The secret
+   itself never reaches a client.
+6. Check: open <https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/>, paste
+   the TURN URL with a username/password from `/voice/ice`, *Gather candidates*: a `relay`
+   candidate means TURN works.
+
+**Manual check (spec 17):**
+- [ ] Two phones on **different mobile networks** (e.g. Grameenphone and Robi, Wi-Fi off) join a
+      private carrom room by invite link. Both tap the mic: they hear each other in the lobby and
+      during the game. In `chrome://webrtc-internals` (desktop) or the coturn log, the link is relayed.
+- [ ] The first mic tap shows Android's permission dialog; "Don't allow" → one toast, the game goes on.
+- [ ] Speaking rings light up; per-player mute silences only that player.
+- [ ] Wired headset and a Bluetooth headset: audio switches to them and back to the speaker.
+- [ ] App to the background: the other phone hears nothing; back to the app: voice returns.
+- [ ] Ranked game: no voice until both tap "Turn on voice".
+- [ ] Block a player: their voice stops at once and stays off in the next room; report → toast.
+- [ ] Settings → Voice chat → Off: no mic button and no voice in any room; Push to talk works by holding.

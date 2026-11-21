@@ -45,6 +45,7 @@ export class GameRoom extends RoomBase {
     this.state.players.set(client.sessionId, new PlayerState({
       sessionId: client.sessionId, userId: auth.userId, name: auth.name, avatar: auth.avatar, seat,
       ready: true, bot: false, left: false, rematch: false, striker: auth.striker, coinSet: auth.coinSet,
+      voiceOn: false, voiceMuted: true,
     }));
     if (this.state.hostId === '' && !this.state.ranked) this.state.hostId = client.sessionId;
   }
@@ -57,7 +58,7 @@ export class GameRoom extends RoomBase {
   /** ROOM-8: keep the seat for a while; the seat's turns keep running on the clock. */
   onDrop(client: Client): void {
     const p = this.state.players.get(client.sessionId);
-    if (p) p.ready = false;
+    if (p) Object.assign(p, { ready: false, voiceOn: false, voiceMuted: true });
     void this.allowReconnection(client, this.timing.reconnectS).catch(() => {});
   }
 
@@ -77,7 +78,7 @@ export class GameRoom extends RoomBase {
       return;
     }
     // ROOM-8: the bot keeps the seat for good.
-    Object.assign(p, { ready: false, left: true, rematch: false });
+    Object.assign(p, { ready: false, left: true, rematch: false, voiceOn: false, voiceMuted: true });
     if (![...this.state.players.values()].some((x) => !x.left)) {
       void this.disconnect();
       return;
@@ -98,6 +99,8 @@ export class GameRoom extends RoomBase {
     const msg = parseClientMessage(raw);
     if (!msg) return this.fail(client, 'BAD_MESSAGE', 'Message not understood');
     if (!this.allows(msg)) return this.fail(client, 'NOT_ALLOWED', 'Not in this room');
+    // VOICE-2: voice is not a move, so it never ends a bot takeover.
+    if (msg.type === 'voice' || msg.type === 'voiceState') return this.voice(client, p, msg);
     // ROOM-7: any message from a person ends a bot takeover of their seat.
     if (p.bot && !p.left) this.setBot(p.seat, false);
     this.handle(client, p, msg);

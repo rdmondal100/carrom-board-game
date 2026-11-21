@@ -11,6 +11,7 @@ export const PASSWORD_MIN = 8;
 export const AVATAR_COUNT = 12;
 
 import type { CosmeticGame, CosmeticType, EquippedMap } from './cosmetics';
+import type { ReportReason } from './voice';
 
 /** COS-5: `owned` already includes the default items. HAPP-5 `equipped` = one item id per slot, per game. */
 export interface Cosmetics {
@@ -33,6 +34,8 @@ export interface PublicUser {
   ratings: Record<string, GameRating>;
   coins: number;
   cosmetics: Cosmetics;
+  /** VOICE-6 user ids this player blocked (their voice is never played for them). */
+  blocked: string[];
   createdAt: string;
 }
 
@@ -120,3 +123,14 @@ export interface IapVerifyRequest { productId: string; purchaseToken: string; pa
  * pending). 200 credited, 202 pending (retry later).
  */
 export interface IapVerifyResponse { status: 'credited' | 'pending'; credited: number; user: PublicUser }
+
+// ---- voice (spec 17) -------------------------------------------------------
+
+/** VOICE-3 one ICE server as RTCPeerConnection takes it. */
+export interface IceServer { urls: string[]; username?: string; credential?: string }
+/** VOICE-3 GET /voice/ice: STUN, plus TURN with credentials valid for `ttl` seconds (≤ 1 h). */
+export interface IceResponse { iceServers: IceServer[]; ttl: number }
+/** VOICE-6 POST /reports. `matchId` = the room id the player was met in. */
+export interface ReportRequest { userId: string; matchId: string; reason: ReportReason }
+/** VOICE-6 POST /me/block. DELETE /me/block/:userId unblocks. */
+export interface BlockRequest { userId: string }

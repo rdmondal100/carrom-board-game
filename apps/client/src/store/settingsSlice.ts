@@ -12,7 +12,12 @@ export interface Settings {
   haptics: boolean;
   /** The shot clock switch's starting value on the setup screen. */
   defaultShotClock: boolean;
+  /** VOICE-4 voice in online rooms: open mic (tap to talk), push-to-talk (hold), or off entirely. */
+  voiceMode: VoiceMode;
 }
+
+export type VoiceMode = 'open' | 'ptt' | 'off';
+export const VOICE_MODES: readonly VoiceMode[] = ['open', 'ptt', 'off'];
 
 export const SETTINGS_KEY = 'carrom.settings';
 /** Keys written before spec 05; read once when no settings are saved yet. */
@@ -21,7 +26,7 @@ const LEGACY_ROTATE_KEY = 'carrom.rotateView';
 const DEFAULT_VOLUME = 0.8;
 
 export const DEFAULT_SETTINGS: Settings = {
-  language: 'bn', viewRotation: true, volume: DEFAULT_VOLUME, haptics: true, defaultShotClock: true,
+  language: 'bn', viewRotation: true, volume: DEFAULT_VOLUME, haptics: true, defaultShotClock: true, voiceMode: 'open',
 };
 
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
@@ -39,6 +44,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     volume: typeof r.volume === 'number' && Number.isFinite(r.volume) ? clamp01(r.volume) : d.volume,
     haptics: bool(r.haptics, d.haptics),
     defaultShotClock: bool(r.defaultShotClock, d.defaultShotClock),
+    voiceMode: VOICE_MODES.includes(r.voiceMode as VoiceMode) ? r.voiceMode as VoiceMode : d.voiceMode,
   };
 }
 
@@ -66,11 +72,12 @@ const settingsSlice = createSlice({
     setVolume: (s, a: PayloadAction<number>) => { s.volume = clamp01(a.payload); },
     setHaptics: (s, a: PayloadAction<boolean>) => { s.haptics = a.payload; },
     setDefaultShotClock: (s, a: PayloadAction<boolean>) => { s.defaultShotClock = a.payload; },
+    setVoiceMode: (s, a: PayloadAction<VoiceMode>) => { s.voiceMode = a.payload; },
     resetSettings: () => ({ ...DEFAULT_SETTINGS }),
   },
 });
 
 export const {
-  setLanguage, setViewRotation, setVolume, setHaptics, setDefaultShotClock, resetSettings,
+  setLanguage, setViewRotation, setVolume, setHaptics, setDefaultShotClock, setVoiceMode, resetSettings,
 } = settingsSlice.actions;
 export const settingsReducer = settingsSlice.reducer;

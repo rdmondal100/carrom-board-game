@@ -9,6 +9,7 @@ import { EmoteBar, EMOTE_ICONS } from '@/components/EmoteBar';
 import { GameEndScreen } from '@/games/carrom/components/GameEndScreen';
 import { Hud } from '@/games/carrom/components/Hud';
 import { useOnlineRoom } from '@/components/OnlineParts';
+import { VoiceBar } from '@/components/VoiceParts';
 import { RankedResultScreen } from '@/games/carrom/components/RankedParts';
 import { ShotClock } from '@/games/carrom/components/ShotClock';
 import { Button } from '@/components/ui/button';
@@ -226,6 +227,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
           <ShotClock key={clock.turnId} startMs={clock.ms} running onTick={(f) => board.current.setClock(f)} onExpire={() => {}} />
         ) : null}
       />
+      <VoiceBar />
       <div ref={host} data-testid="board-host" className="flex min-h-0 flex-1 items-center justify-center overflow-hidden select-none" />
       <p className="min-h-5 text-center text-sm text-muted-foreground">
         {playing ? t('hud.playing')

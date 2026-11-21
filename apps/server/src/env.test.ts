@@ -90,4 +90,17 @@ describe('env play billing', () => {
     expect(problems({ ...good, PLAY_PACKAGE_NAMES: ' , ', PLAY_SERVICE_ACCOUNT_JSON: account })[0])
       .toMatch(/^PLAY_PACKAGE_NAMES must list at least one/);
   });
+
+  it('VOICE-3 TURN keys: both or neither; STUN defaults to Google; URL schemes checked', () => {
+    const env = loadEnv(good);
+    expect(env.TURN_URLS).toBeUndefined();
+    expect(env.STUN_URLS).toEqual(['stun:stun.l.google.com:19302']);
+    const turn = loadEnv({ ...good, TURN_URLS: 'turn:t.example:3478, turns:t.example:5349', TURN_SECRET: 's'.repeat(16) });
+    expect(turn.TURN_URLS).toEqual(['turn:t.example:3478', 'turns:t.example:5349']);
+    expect(problems({ ...good, TURN_URLS: 'turn:t.example:3478' })).toEqual(['TURN_SECRET is required']);
+    expect(problems({ ...good, TURN_SECRET: 's'.repeat(16) })).toEqual(['TURN_URLS is required']);
+    expect(problems({ ...good, TURN_URLS: 'http://t', TURN_SECRET: 's'.repeat(16) })[0]).toMatch(/^TURN_URLS "http:\/\/t" must start with turn:/);
+    expect(problems({ ...good, TURN_URLS: 'turn:t', TURN_SECRET: 'short' })[0]).toMatch(/^TURN_SECRET must be at least 16/);
+    expect(problems({ ...good, STUN_URLS: 'turn:x' })[0]).toMatch(/^STUN_URLS/);
+  });
 });

@@ -8,19 +8,20 @@ import { Row, ToggleRow } from '@/components/SettingsRows';
 import { useGames } from '@/games/GamesContext';
 import { LANGS, t, useLang, type Lang } from '@/i18n/t';
 import { playSound } from '@/lib/sound';
-import { resetSettings, setHaptics, setLanguage, setVolume } from '@/store/settingsSlice';
+import { resetSettings, setHaptics, setLanguage, setVoiceMode, setVolume, VOICE_MODES, type VoiceMode } from '@/store/settingsSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
 const PERCENT = 100;
 const VOLUME_STEP = 0.05;
 
-/** UI-2: language, volume, haptics; then each game's own card (HAPP-1). */
+/** UI-2: language, volume, haptics, VOICE-4 voice; then each game's own card (HAPP-1). */
 export function Settings() {
   useLang();
   const s = useAppSelector((st) => st.settings);
   const dispatch = useAppDispatch();
   const langId = useId();
   const volId = useId();
+  const voiceId = useId();
   const { games } = useGames();
   const dev = games.flatMap((g) => g.devRoutes ?? []);
 
@@ -60,6 +61,19 @@ export function Settings() {
             />
           </div>
           <ToggleRow label={t('settings.haptics')} hint={t('settings.hapticsHint')} checked={s.haptics} onChange={(v) => dispatch(setHaptics(v))} />
+          <Row
+            id={voiceId}
+            label={t('settings.voice')}
+            hint={t('settings.voiceHint')}
+            control={(
+              <Select value={s.voiceMode} onValueChange={(v) => dispatch(setVoiceMode(v as VoiceMode))}>
+                <SelectTrigger id={voiceId} className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {VOICE_MODES.map((m) => <SelectItem key={m} value={m}>{t(`settings.voiceMode.${m}`)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </CardContent>
       </Card>
 

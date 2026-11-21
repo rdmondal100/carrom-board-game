@@ -56,6 +56,13 @@ export function onHardwareBack(cb: () => void): () => void {
   return () => { void handle.then((h) => h.remove()); };
 }
 
+/** VOICE-7: the app went to the background (false) or came back (true). Native only. */
+export function onAppActive(cb: (active: boolean) => void): () => void {
+  if (!isNative()) return () => {};
+  const handle = App.addListener('appStateChange', ({ isActive }) => cb(isActive));
+  return () => { void handle.then((h) => h.remove()); };
+}
+
 export function exitApp(): void {
   if (isNative()) quiet(App.exitApp());
 }

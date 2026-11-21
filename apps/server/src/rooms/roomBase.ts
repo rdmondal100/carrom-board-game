@@ -1,10 +1,13 @@
 import { Room, ServerError, type AuthContext, type Client } from '@colyseus/core';
-import { MSG, resolveEquipped, type ServerMessage } from '@carrom/protocol';
+import { MSG, resolveEquipped, type ClientMessage, type ServerMessage } from '@carrom/protocol';
 import type { AnyGameModule } from '@hub/game-kit';
 import { User } from '../models/user.model.js';
 import { verifyToken } from '../utils/jwt.js';
-import { LobbyState } from './lobbyState.js';
+import { LobbyState, type PlayerState } from './lobbyState.js';
 import { DEFAULT_TIMING, type RoomTiming } from './roomTiming.js';
+import { mayRelay } from './voiceRelay.js';
+
+type VoiceMessage = Extract<ClientMessage, { type: 'voice' | 'voiceState' }>;
 
 export interface RoomUser { userId: string; name: string; avatar: number; striker: string; coinSet: string } // COS-6 item ids
 
@@ -80,6 +83,22 @@ export class RoomBase extends Room<{ state: LobbyState; metadata: { code: string
       const seat = this.state.players.get(c.sessionId)?.seat ?? null;
       c.send(MSG, build(this.game.view(m, seat)));
     }
+  }
+
+  /**
+   * VOICE-2: `voiceState` updates the player's synced voice fields (everyone
+   * sees them); `voice` signalling goes to the addressed session only, and
+   * is dropped quietly when it may not go there (VOICE-4, other room, gone).
+   */
+  protected voice(client: Client, p: PlayerState, msg: VoiceMessage): void {
+    if (msg.type === 'voiceState') {
+      if (p.left) return;
+      p.voiceOn = msg.on;
+      p.voiceMuted = !msg.on || msg.muted;
+      return;
+    }
+    if (!mayRelay(this.state.players, this.state.ranked, client.sessionId, msg.to)) return;
+    this.clients.getById(msg.to)?.send(MSG, { type: 'voice', from: client.sessionId, signal: msg.signal } satisfies ServerMessage);
   }
 
   protected toAll(msg: ServerMessage): void {

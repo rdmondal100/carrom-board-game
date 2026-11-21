@@ -15,6 +15,10 @@ export const PlayerState = schema({
   striker: t.string(),
   /** COS-6 equipped coin-set item id. */
   coinSet: t.string(),
+  /** VOICE-2 takes part in voice (ranked: opted in, VOICE-4). */
+  voiceOn: t.boolean(),
+  /** VOICE-5 mic off. */
+  voiceMuted: t.boolean(),
 }, 'PlayerState');
 export type PlayerState = SchemaType<typeof PlayerState>;
 

@@ -35,4 +35,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- VOICE-7: voice chat. Capacitor's WebChromeClient asks for these at run time when the page first calls
+         getUserMedia (the first mic tap), never at start. MODIFY_AUDIO_SETTINGS lets the WebView route the call
+         to the speaker, a wired headset or a Bluetooth headset. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>

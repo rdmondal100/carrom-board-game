@@ -54,6 +54,8 @@ const userSchema = new Schema(
     /** AD-3 UTC day of the counted rewarded ads, and how many paid that day. */
     adRewardDay: { type: String, default: '' },
     adRewards: { type: Number, default: 0, min: 0 },
+    /** VOICE-6 user ids this player blocked (never hears them again). */
+    blocked: { type: [String], default: [] },
   },
   { timestamps: true },
 );
@@ -102,6 +104,7 @@ export function toPublicUser(u: UserDoc): PublicUser {
       equipped: resolveEquippedMap(u.cosmetics?.equipped ?? []),
       owned: ownedItems(u.cosmetics?.owned ?? []),
     },
+    blocked: [...(u.blocked ?? [])],
     createdAt: u.createdAt.toISOString(),
   };
 }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { buy, equip } from '../controllers/shop.controller.js';
+import { block, unblock } from '../controllers/report.controller.js';
 import { botReward, dailyBonus } from '../controllers/wallet.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 
@@ -10,12 +11,14 @@ export function shopRouter(jwtSecret: string): Router {
   return r;
 }
 
-/** COS-2 / COS-4: /me/* (equip, daily bonus, Vs-bot rewards). */
+/** COS-2 / COS-4 / VOICE-6: /me/* (equip, daily bonus, Vs-bot rewards, blocks). */
 export function meRouter(jwtSecret: string): Router {
   const r = Router();
   r.use(requireAuth(jwtSecret));
   r.patch('/equip', equip);
   r.post('/daily-bonus', dailyBonus);
   r.post('/bot-reward', botReward);
+  r.post('/block', block);
+  r.delete('/block/:userId', unblock);
   return r;
 }

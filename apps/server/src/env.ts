@@ -40,6 +40,25 @@ const packageNames = z.string().transform((s, ctx) => {
   return [...new Set(list)];
 });
 
+/** VOICE-3 Google's public STUN server, used when STUN_URLS is not set. */
+export const DEFAULT_STUN_URLS = ['stun:stun.l.google.com:19302'];
+export const TURN_SECRET_MIN = 16;
+
+/** VOICE-3 comma list of ICE server URLs, each with one of the given schemes. */
+const iceUrls = (schemes: readonly string[]) => z.string().transform((s, ctx) => {
+  const list = s.split(',').map((u) => u.trim()).filter((u) => u.length > 0);
+  if (list.length === 0) {
+    ctx.addIssue({ code: 'custom', message: 'must list at least one URL' });
+    return z.NEVER;
+  }
+  const bad = list.find((u) => !schemes.some((p) => u.startsWith(`${p}:`)));
+  if (bad !== undefined) {
+    ctx.addIssue({ code: 'custom', message: `"${bad}" must start with ${schemes.map((p) => `${p}:`).join(' or ')}` });
+    return z.NEVER;
+  }
+  return [...new Set(list)];
+});
+
 /** IAP-3 the Play Developer API service account: only the two fields the JWT needs. */
 export interface ServiceAccount { clientEmail: string; privateKey: string }
 
@@ -70,11 +89,19 @@ const EnvSchema = z.object({
   /** IAP-3 / HAPP-9 Play Billing. Both or neither; neither = in-app purchases off (POST /iap/verify answers 503). */
   PLAY_PACKAGE_NAMES: packageNames.optional(),
   PLAY_SERVICE_ACCOUNT_JSON: serviceAccount.optional(),
+  /** VOICE-3 coturn (REST shared-secret scheme). Both or neither; neither = STUN only. */
+  TURN_URLS: iceUrls(['turn', 'turns']).optional(),
+  TURN_SECRET: z.string().min(TURN_SECRET_MIN, `must be at least ${TURN_SECRET_MIN} characters`).optional(),
+  STUN_URLS: iceUrls(['stun', 'stuns']).default(DEFAULT_STUN_URLS),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 }).superRefine((e, ctx) => {
   if ((e.PLAY_PACKAGE_NAMES === undefined) !== (e.PLAY_SERVICE_ACCOUNT_JSON === undefined)) {
     const missing = e.PLAY_PACKAGE_NAMES === undefined ? 'PLAY_PACKAGE_NAMES' : 'PLAY_SERVICE_ACCOUNT_JSON';
     ctx.addIssue({ code: 'custom', path: [missing], message: 'must be set together with the other PLAY_ key' });
+  }
+  if ((e.TURN_URLS === undefined) !== (e.TURN_SECRET === undefined)) {
+    const missing = e.TURN_URLS === undefined ? 'TURN_URLS' : 'TURN_SECRET';
+    ctx.addIssue({ code: 'custom', path: [missing], message: 'must be set together with the other TURN_ key' });
   }
 });
 

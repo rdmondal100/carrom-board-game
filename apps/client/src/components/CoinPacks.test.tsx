@@ -23,7 +23,7 @@ const post = vi.mocked(axios.post);
 
 const user = (coins: number): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false, avatar: 0, rating: 1000, ratings: {}, coins,
-  cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [] }, createdAt: '2026-11-20T00:00:00.000Z',
+  cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [] }, blocked: [], createdAt: '2026-11-20T00:00:00.000Z',
 });
 
 function Recovery() {

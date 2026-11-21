@@ -7,6 +7,7 @@ import type { LobbyView } from '@carrom/protocol';
 import { seatsFor, teamOf } from '@carrom/rules';
 import { Avatar } from '@/components/Avatar';
 import { useOnlineRoom } from '@/components/OnlineParts';
+import { SpeakingRing, VoiceBar } from '@/components/VoiceParts';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { carromConfigOf, playerAt } from '@/games/carrom/onlineGame';
@@ -50,7 +51,7 @@ function SeatCard({ lobby, seat, me, picked, onPick }: SeatProps) {
   const { format } = carromConfigOf(lobby);
   const body = (
     <Card className={cn('flex-row items-center gap-3 p-3', picked && 'ring-2 ring-amber-400', onPick && 'cursor-pointer hover:bg-accent')}>
-      {p ? <Avatar index={p.avatar} name={p.name} /> : <span className="size-10 rounded-full border border-dashed border-border" />}
+      {p ? <SpeakingRing sessionId={p.sessionId}><Avatar index={p.avatar} name={p.name} /></SpeakingRing> : <span className="size-10 rounded-full border border-dashed border-border" />}
       <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">
           {t('lobby.seat', { n: (seatsFor(format) as number[]).indexOf(seat) + 1 })}
@@ -111,6 +112,8 @@ export function Lobby() {
           </Button>
         </div>
       </Card>
+
+      <VoiceBar />
 
       <div className="flex flex-col gap-2">
         {seats.map((s) => (

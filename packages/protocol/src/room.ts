@@ -55,6 +55,10 @@ export interface PlayerView {
   striker: string;
   /** COS-6 equipped coin-set item id; the board's breaker's set is drawn. */
   coinSet: string;
+  /** VOICE-2 takes part in voice (ranked: tapped "Turn on voice", VOICE-4). */
+  voiceOn: boolean;
+  /** VOICE-5 mic off (always true while `voiceOn` is false). */
+  voiceMuted: boolean;
 }
 
 /** ROOM-3: the synced lobby state as plain data (`room.state.toJSON()`). */

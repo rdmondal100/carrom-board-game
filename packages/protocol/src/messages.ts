@@ -1,4 +1,5 @@
 import type { EmoteId } from './room';
+import type { VoiceSignal } from './voice';
 
 /**
  * HUB-5: the room protocol is the same for every game. Game-specific parts
@@ -17,7 +18,11 @@ export type ClientMessage<M = unknown, H = unknown> =
   /** ROOM-3 host only: start once every seat is filled. */
   | { type: 'start' }
   /** ROOM-3 host only: swap whoever sits at seats a and b (either may be empty). */
-  | { type: 'swap'; a: number; b: number };
+  | { type: 'swap'; a: number; b: number }
+  /** VOICE-2 WebRTC signalling for the session `to` in this room (relayed to that session only). */
+  | { type: 'voice'; to: string; signal: VoiceSignal }
+  /** VOICE-2 / VOICE-4 this player's voice: `on` = takes part (ranked: opted in), `muted` = mic off. */
+  | { type: 'voiceState'; on: boolean; muted: boolean };
 
 /** Messages a match room sends to its clients. */
 export type ServerMessage<V = unknown, E = unknown, M = unknown, H = unknown> =
@@ -43,7 +48,9 @@ export type ServerMessage<V = unknown, E = unknown, M = unknown, H = unknown> =
   /** RANK-4 a ranked game is over and ratings are saved (also on abandon). */
   | { type: 'rankedResult'; winner: string; abandoned: boolean; players: RatingChange[] }
   /** COS-2 coins this player just earned for the finished game. */
-  | { type: 'reward'; coins: number };
+  | { type: 'reward'; coins: number }
+  /** VOICE-2 signalling from the session `from` (voice state itself is synced per seat in the lobby state). */
+  | { type: 'voice'; from: string; signal: VoiceSignal };
 
 /** RANK-4 one player's rating before and after a ranked game. */
 export interface RatingChange { seat: number; userId: string; ratingBefore: number; ratingAfter: number }

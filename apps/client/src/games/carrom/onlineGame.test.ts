@@ -105,7 +105,7 @@ describe('online game', () => {
     const p = (seat: number, name: string, bot = false) =>
       ({
         sessionId: name, userId: name, name, avatar: 0, seat, ready: true, bot, left: false, rematch: false,
-        striker: 'classic-striker', coinSet: 'classic-coins',
+        striker: 'classic-striker', coinSet: 'classic-coins', voiceOn: false, voiceMuted: true,
       });
     const lobby: LobbyView = {
       code: 'ABCDEF', phase: 'playing', gameId: 'carrom', config: '{"format":"1v1","preset":"colour","length":{"kind":"board"}}',

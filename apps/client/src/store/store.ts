@@ -6,10 +6,13 @@ import { rankedReducer } from './rankedSlice';
 import { lobbyChanged, roomReducer } from './roomSlice';
 import { saveSettings, settingsReducer } from './settingsSlice';
 import { shopReducer } from './shopSlice';
+import { voiceReducer } from './voiceSlice';
 
 export function makeStore() {
   const s = configureStore({
-    reducer: { settings: settingsReducer, auth: authReducer, room: roomReducer, ranked: rankedReducer, shop: shopReducer },
+    reducer: {
+      settings: settingsReducer, auth: authReducer, room: roomReducer, ranked: rankedReducer, shop: shopReducer, voice: voiceReducer,
+    },
   });
   // UI-2: every settings change is written back to localStorage.
   let last = s.getState().settings;

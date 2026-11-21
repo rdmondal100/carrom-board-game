@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { usePurchaseRecovery } from '@/components/CoinPacks';
 import { Header } from '@/components/Header';
 import { OfflineNotice } from '@/components/OfflineNotice';
+import { VoiceController } from '@/components/VoiceController';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
@@ -82,6 +83,7 @@ export function RootLayout() {
         </div>
       </main>
       <Toaster />
+      <VoiceController />
       {askExit && (
         <Dialog open onOpenChange={(o) => { if (!o) setAskExit(false); }}>
           <DialogContent className="max-w-xs p-6">

@@ -4,7 +4,7 @@ import express from 'express';
 import { matchMaker, Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { GAME_ROOM, QUEUE_ROOM, RANKED_ROOM } from '@carrom/protocol';
-import { loadEnv, type Env } from './env.js';
+import { DEFAULT_STUN_URLS, loadEnv, type Env } from './env.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { authRateLimit } from './middleware/rateLimit.middleware.js';
 import { gameRoomFor } from './rooms/game.room.js';
@@ -22,11 +22,13 @@ import { iapRouter } from './routes/iap.route.js';
 import { googleKeys, type KeySource } from './utils/admobSsv.js';
 import { playBillingFromEnv, type PlayBilling } from './utils/playBilling.js';
 import { roomRouter } from './routes/room.route.js';
+import { reportRouter } from './routes/report.route.js';
+import { voiceRouter } from './routes/voice.route.js';
 import type { RankedTiming } from './utils/rankedConfig.js';
 import type { Redis } from './utils/redis.js';
 
 export type AppEnv = Pick<Env, 'CORS_ORIGIN' | 'NODE_ENV' | 'JWT_SECRET' | 'GOOGLE_CLIENT_IDS'>
-  & Partial<Pick<Env, 'PLAY_PACKAGE_NAMES' | 'PLAY_SERVICE_ACCOUNT_JSON'>>;
+  & Partial<Pick<Env, 'PLAY_PACKAGE_NAMES' | 'PLAY_SERVICE_ACCOUNT_JSON' | 'TURN_URLS' | 'TURN_SECRET' | 'STUN_URLS'>>;
 
 /** IAP-3 the Play Developer API from the env, or null (purchases off) without its keys. */
 function billingFrom(env: AppEnv): PlayBilling | null {
@@ -66,6 +68,10 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
     billing: opts.playBilling === undefined ? billingFrom(env) : opts.playBilling,
     packages: env.PLAY_PACKAGE_NAMES ?? [],
   }));
+  app.use('/voice', voiceRouter(env.JWT_SECRET, {
+    stunUrls: env.STUN_URLS ?? DEFAULT_STUN_URLS, turnUrls: env.TURN_URLS, turnSecret: env.TURN_SECRET,
+  }));
+  app.use('/reports', reportRouter(env.JWT_SECRET));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),

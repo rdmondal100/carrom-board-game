@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, setHaptics, setLanguage, setVolume,
+  DEFAULT_SETTINGS, SETTINGS_KEY, loadSettings, sanitizeSettings, setHaptics, setLanguage, setVoiceMode, setVolume,
 } from './settingsSlice';
 import { makeStore } from './store';
 
@@ -32,6 +32,15 @@ describe('settings', () => {
     const s = makeStore();
     s.dispatch(setVolume(-2));
     expect(s.getState().settings.volume).toBe(0);
+  });
+
+  it('VOICE-4 voice mode: open by default, kept when valid, off is a choice', () => {
+    expect(DEFAULT_SETTINGS.voiceMode).toBe('open');
+    expect(sanitizeSettings({ voiceMode: 'ptt' }).voiceMode).toBe('ptt');
+    expect(sanitizeSettings({ voiceMode: 'loud' }).voiceMode).toBe('open');
+    const s = makeStore();
+    s.dispatch(setVoiceMode('off'));
+    expect(s.getState().settings.voiceMode).toBe('off');
   });
 
   it('UI-2 reads the pre-05 language and rotation keys once', () => {

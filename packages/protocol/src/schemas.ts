@@ -2,6 +2,7 @@ import { config, type Seat, type ShotInput } from '@carrom/engine';
 import { z } from 'zod';
 import type { ClientMessage, ServerMessage } from './messages';
 import { EMOTES } from './room';
+import { SessionIdSchema, VoiceSignalSchema } from './voice';
 
 /** A direction counts as a unit vector when its length is within this of 1. */
 export const UNIT_TOLERANCE = 1e-6;
@@ -60,6 +61,8 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.union([
   z.object({ type: z.literal('rematch') }),
   z.object({ type: z.literal('start') }),
   z.object({ type: z.literal('swap'), a: seat, b: seat }),
+  z.object({ type: z.literal('voice'), to: SessionIdSchema, signal: VoiceSignalSchema }),
+  z.object({ type: z.literal('voiceState'), on: z.boolean(), muted: z.boolean() }),
 ]);
 
 const events = z.array(z.unknown());
@@ -91,6 +94,7 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
     })),
   }),
   z.object({ type: z.literal('reward'), coins: z.number().int().min(0) }),
+  z.object({ type: z.literal('voice'), from: SessionIdSchema, signal: VoiceSignalSchema }),
 ]);
 
 /** Parse an unknown payload; null when it is not a valid client message. */
