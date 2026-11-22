@@ -1,8 +1,27 @@
-import { config, type Config } from './config';
+import { config, TABLES, type Config } from './config';
 import { placeStriker } from './rack';
 import { baselinePoint, seatToWorld } from './seats';
 import { advanceInPlace, cloneState, isAtRest } from './step';
-import type { BoardState, Piece, ShotEvent, ShotInput } from './types';
+import type { BoardState, Piece, ShotEvent, ShotInput, Table } from './types';
+
+export interface ShotResult {
+  final: BoardState;
+  events: ShotEvent[];
+  durationMs: number;
+}
+
+/** Run steps until every piece rests (or MAX_SHOT_MS passes). `board` is changed in place. */
+function runToRest(board: BoardState, cfg: Config, table: Table): ShotResult {
+  const events: ShotEvent[] = [];
+  const stepMs = cfg.DT * 1000;
+  const maxSteps = Math.ceil(cfg.MAX_SHOT_MS / stepMs);
+  let n = 0;
+  while (n < maxSteps && !isAtRest(board)) {
+    advanceInPlace(board, n * stepMs, cfg, events, table);
+    n++;
+  }
+  return { final: board, events, durationMs: n * stepMs };
+}
 
 /**
  * Put the striker on the seat's baseline, shoot it, and run steps until
@@ -10,8 +29,8 @@ import type { BoardState, Piece, ShotEvent, ShotInput } from './types';
  * Throws RangeError on an aim past MAX_AIM_ANGLE_DEG or a blocked baseline.
  */
 export function simulateShot(
-  state: BoardState, input: ShotInput, cfg: Config = config,
-): { final: BoardState; events: ShotEvent[]; durationMs: number } {
+  state: BoardState, input: ShotInput, cfg: Config = config, table: Table = TABLES.carrom,
+): ShotResult {
   const len = Math.sqrt(input.dirX * input.dirX + input.dirY * input.dirY);
   if (len === 0) throw new RangeError('Shot direction is zero');
   const dirX = input.dirX / len;
@@ -36,18 +55,24 @@ export function simulateShot(
   striker.vx = dir.x * speed;
   striker.vy = dir.y * speed;
   striker.pocketed = false;
-
-  const events: ShotEvent[] = [];
-  const stepMs = cfg.DT * 1000;
-  const maxSteps = Math.ceil(cfg.MAX_SHOT_MS / stepMs);
-  let n = 0;
-  while (n < maxSteps && !isAtRest(board)) {
-    advanceInPlace(board, n * stepMs, cfg, events);
-    n++;
-  }
-  return { final: board, events, durationMs: n * stepMs };
+  return runToRest(board, cfg, table);
 }
 
+/**
+ * NODI-1 give one piece (already placed on the board) a world velocity and run
+ * until everything rests. Returns a new state; throws RangeError on an unknown
+ * or pocketed piece.
+ */
+export function simulateFlick(
+  state: BoardState, id: string, vx: number, vy: number, table: Table, cfg: Config = config,
+): ShotResult {
+  const board = cloneState(state);
+  const p = board.pieces.find((q: Piece) => q.id === id);
+  if (!p || p.pocketed) throw new RangeError(`No piece ${id} on the board`);
+  p.vx = vx;
+  p.vy = vy;
+  return runToRest(board, cfg, table);
+}
 function fnv1a(text: string, seed: number): string {
   let h = seed >>> 0;
   for (let i = 0; i < text.length; i++) {

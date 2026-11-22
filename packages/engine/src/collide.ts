@@ -1,5 +1,5 @@
 import type { Config } from './config';
-import type { Piece } from './types';
+import type { Circle, Piece, Table } from './types';
 
 export type FrameAxis = 'x' | 'y';
 
@@ -42,17 +42,17 @@ function axisTime(pos: number, vel: number, limit: number, maxT: number): number
 
 /** When a piece first touches a frame, within maxT, and which axis it hits. */
 export function timeToFrameHit(
-  p: Piece, maxT: number, cfg: Config,
+  p: Piece, maxT: number, table: Table,
 ): { t: number; axis: FrameAxis } {
-  const limit = cfg.HALF_L - p.r;
+  const limit = table.halfL - p.r;
   const tx = axisTime(p.x, p.vx, limit, maxT);
   const ty = axisTime(p.y, p.vy, limit, maxT);
   return tx <= ty ? { t: tx, axis: 'x' } : { t: ty, axis: 'y' };
 }
 
 /** Bounce a piece off a frame. The piece must already be touching it. */
-export function resolveFrameHit(p: Piece, axis: FrameAxis, cfg: Config): void {
-  const limit = cfg.HALF_L - p.r;
+export function resolveFrameHit(p: Piece, axis: FrameAxis, table: Table, cfg: Config): void {
+  const limit = table.halfL - p.r;
   if (axis === 'x') {
     p.x = p.x > 0 ? Math.min(p.x, limit) : Math.max(p.x, -limit);
     p.vx = -p.vx * cfg.FRAME_RESTITUTION;
@@ -81,5 +81,29 @@ export function resolvePieceHit(a: Piece, b: Piece, cfg: Config): boolean {
   a.vy -= (j / a.m) * ny;
   b.vx += (j / b.m) * nx;
   b.vy += (j / b.m) * ny;
+  return true;
+}
+
+/** NODI-1 when a moving piece first touches a fixed rock, within maxT. */
+export function timeToRockHit(p: Piece, rock: Circle, maxT: number): number {
+  return sweptTime(rock.x - p.x, rock.y - p.y, -p.vx, -p.vy, p.r + rock.r, maxT);
+}
+
+/**
+ * NODI-1 bounce a touching piece off a rock: the same impulse as a hit on a
+ * piece of infinite mass, with the table's rock restitution.
+ */
+export function resolveRockHit(p: Piece, rock: Circle, table: Table): boolean {
+  const dx = rock.x - p.x;
+  const dy = rock.y - p.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist === 0) return false;
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const closing = -(p.vx * nx + p.vy * ny);
+  if (closing >= 0) return false;
+  const j = -(1 + table.rockRestitution) * closing;
+  p.vx -= j * nx;
+  p.vy -= j * ny;
   return true;
 }

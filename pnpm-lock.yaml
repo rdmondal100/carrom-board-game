@@ -83,6 +83,9 @@ importers:
       '@hub/ludo':
         specifier: workspace:*
         version: link:../../packages/ludo
+      '@hub/nodipar':
+        specifier: workspace:*
+        version: link:../../packages/nodipar
       '@react-oauth/google':
         specifier: ^0.13.5
         version: 0.13.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -210,6 +213,9 @@ importers:
       '@hub/ludo':
         specifier: workspace:*
         version: link:../../packages/ludo
+      '@hub/nodipar':
+        specifier: workspace:*
+        version: link:../../packages/nodipar
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -387,6 +393,28 @@ importers:
 
   packages/ludo:
     dependencies:
+      '@hub/game-kit':
+        specifier: workspace:*
+        version: link:../game-kit
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.6)(jsdom@31.0.1(@noble/hashes@2.4.0))(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/nodipar:
+    dependencies:
+      '@carrom/bot':
+        specifier: workspace:*
+        version: link:../bot
+      '@carrom/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@hub/game-kit':
         specifier: workspace:*
         version: link:../game-kit

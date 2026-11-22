@@ -14,8 +14,8 @@ describe('HAPP-1 / HAPP-3 game registry', () => {
     expect(BUILD_GAMES).toHaveLength(ALL_GAMES.length);
   });
 
-  it('HAPP-1 LUDO-6 CB-7 carrom and ludo have every mode, callbreak vs bot and online; the others are coming-soon stubs', () => {
-    const [carrom, ludo, callbreak, ...rest] = ALL_GAMES;
+  it('HAPP-1 LUDO-6 CB-7 NODI-5 carrom and ludo have every mode, callbreak vs bot and online, nodi par all but ranked', () => {
+    const [carrom, ludo, callbreak, nodipar, ...rest] = ALL_GAMES;
     expect(callbreak!.id).toBe('callbreak');
     expect(callbreak!.playModes).toEqual({ local: false, bot: true, online: true, ranked: false });
     expect(Object.keys(callbreak!.routes).sort()).toEqual(Object.keys(carrom!.routes).sort());
@@ -27,10 +27,11 @@ describe('HAPP-1 / HAPP-3 game registry', () => {
     expect(isPlayable(carrom!)).toBe(true);
     expect(Object.keys(carrom!.routes).sort()).toEqual(['howToPlay', 'lobby', 'localGame', 'onlineGame', 'online', 'setup'].sort());
     expect(carrom!.CosmeticPreview).toBeDefined();
-    for (const g of rest) {
-      expect(isPlayable(g), g.id).toBe(false);
-      expect(g.routes).toEqual({});
-    }
+    expect(nodipar!.id).toBe('nodipar');
+    expect(nodipar!.playModes).toEqual({ local: true, bot: true, online: true, ranked: false });
+    expect(Object.keys(nodipar!.routes).sort()).toEqual(Object.keys(carrom!.routes).sort());
+    expect(nodipar!.CosmeticPreview).toBeDefined();
+    expect(rest).toEqual([]);
   });
 
   it('HAPP-2 paths', () => {

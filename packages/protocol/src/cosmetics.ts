@@ -93,6 +93,13 @@ export const COSMETICS: readonly CosmeticItem[] = [
   { id: 'night-table', game: 'callbreak', type: 'table', price: 800, rarity: 'legendary', assetKey: 'callbreak.table.night' },
   { id: 'classic-boat', game: 'nodipar', type: 'boat', price: 0, rarity: 'common', assetKey: 'nodipar.boat.classic' },
   { id: 'classic-river', game: 'nodipar', type: 'river', price: 0, rarity: 'common', assetKey: 'nodipar.river.classic' },
+  // NODI-6 boat skins and river themes: looks only.
+  { id: 'nouka-boat', game: 'nodipar', type: 'boat', price: 150, rarity: 'rare', assetKey: 'nodipar.boat.nouka' },
+  { id: 'lotus-boat', game: 'nodipar', type: 'boat', price: 400, rarity: 'epic', assetKey: 'nodipar.boat.lotus' },
+  { id: 'golden-boat', game: 'nodipar', type: 'boat', price: 800, rarity: 'legendary', assetKey: 'nodipar.boat.golden' },
+  { id: 'sundarban-river', game: 'nodipar', type: 'river', price: 250, rarity: 'rare', assetKey: 'nodipar.river.sundarban' },
+  { id: 'dusk-river', game: 'nodipar', type: 'river', price: 500, rarity: 'epic', assetKey: 'nodipar.river.dusk' },
+  { id: 'moonlit-river', game: 'nodipar', type: 'river', price: 800, rarity: 'legendary', assetKey: 'nodipar.river.moonlit' },
 ];
 
 const BY_ID = new Map(COSMETICS.map((c) => [c.id, c]));

@@ -1,6 +1,6 @@
 import {
-  baselinePoint, cloneState, config, isAtRest, placeStriker, seatToWorld, step,
-  type BoardState, type ShotEvent, type ShotInput,
+  baselinePoint, cloneState, config, isAtRest, placeStriker, seatToWorld, step, TABLES,
+  type BoardState, type ShotEvent, type ShotInput, type Table,
 } from '@carrom/engine';
 import { MAX_FRAME_MS } from '@/constants/view';
 
@@ -34,11 +34,12 @@ function launch(state: BoardState, input: ShotInput): BoardState {
 }
 
 /**
- * Plays a shot in real time: frame time goes into an accumulator and the
- * engine runs whole DT steps. The end state equals simulateShot(...).final.
+ * Plays any board whose pieces already move, in real time, on `table`: frame
+ * time goes into an accumulator and the engine runs whole DT steps. The end
+ * state equals the engine's run to rest (simulateShot / simulateFlick) bit for bit.
  */
-export function createPlayback(state: BoardState, input: ShotInput): Playback {
-  let board = launch(state, input);
+export function createBoardPlayback(start: BoardState, table: Table = TABLES.carrom): Playback {
+  let board = start;
   const stepMs = config.DT * 1000;
   const maxSteps = Math.ceil(config.MAX_SHOT_MS / stepMs);
   let n = 0;
@@ -52,7 +53,7 @@ export function createPlayback(state: BoardState, input: ShotInput): Playback {
       elapsedMs += Math.min(MAX_FRAME_MS, Math.max(0, ms));
       const target = Math.floor(elapsedMs / stepMs);
       while (n < target && n < maxSteps && !isAtRest(board)) {
-        const out = step(board, n * stepMs);
+        const out = step(board, n * stepMs, config, table);
         board = out.state;
         events.push(...out.events);
         n++;
@@ -61,4 +62,9 @@ export function createPlayback(state: BoardState, input: ShotInput): Playback {
       return { state: board, events, done };
     },
   };
+}
+
+/** Plays a carrom shot in real time. The end state equals simulateShot(...).final. */
+export function createPlayback(state: BoardState, input: ShotInput): Playback {
+  return createBoardPlayback(launch(state, input));
 }

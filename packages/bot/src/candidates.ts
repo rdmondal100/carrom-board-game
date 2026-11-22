@@ -4,6 +4,7 @@ import {
 } from '@carrom/engine';
 import { RULES, teamOf, type GameState } from '@carrom/rules';
 import { BOT, type LevelConfig } from './config';
+import { blockers, ghostPoint } from './search';
 
 export interface Candidate {
   input: ShotInput;
@@ -42,28 +43,6 @@ export function targetCoins(g: GameState): Piece[] {
 
 function dot(a: Vec, b: Vec): number {
   return a.x * b.x + a.y * b.y;
-}
-
-/** Distance² from point p to segment a→b. */
-function segDist2(p: Vec, a: Vec, b: Vec): number {
-  const abx = b.x - a.x;
-  const aby = b.y - a.y;
-  const len2 = abx * abx + aby * aby;
-  let t = len2 === 0 ? 0 : ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
-  t = Math.min(1, Math.max(0, t));
-  const dx = a.x + abx * t - p.x;
-  const dy = a.y + aby * t - p.y;
-  return dx * dx + dy * dy;
-}
-
-/** How many pieces sit in the way of a disc of radius r sliding a→b. */
-function blockers(a: Vec, b: Vec, r: number, others: Piece[]): number {
-  let n = 0;
-  for (const o of others) {
-    const reach = r + o.r;
-    if (segDist2(o, a, b) < reach * reach) n++;
-  }
-  return n;
 }
 
 /** Baseline spot from which the striker, coin and pocket line up, or null. */
@@ -109,12 +88,9 @@ function ghostAims(g: GameState, seat: Seat): { x: number; dir: Vec; rank: numbe
     const others = on.filter((p) => p !== coin);
     for (const k of POCKETS) {
       const pc = pocketCentre(k, engine);
-      const cpx = pc.x - coin.x;
-      const cpy = pc.y - coin.y;
-      const cpLen = Math.sqrt(cpx * cpx + cpy * cpy);
-      if (cpLen === 0) continue;
-      const u = { x: cpx / cpLen, y: cpy / cpLen };
-      const ghost = { x: coin.x - u.x * (coin.r + rs), y: coin.y - u.y * (coin.r + rs) };
+      const aim = ghostPoint(coin, pc, rs);
+      if (aim === null) continue;
+      const { ghost, u, dist: cpLen } = aim;
       const line = straightX(seat, coin, u);
       const spots = strikerSpots(g, seat, line === null ? grid : [line, ...grid]);
       const coinBlocked = blockers(coin, pc, coin.r, others);

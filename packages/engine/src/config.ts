@@ -1,6 +1,7 @@
 // Every engine constant lives here. Units: board inner side L = 1.0,
 // time in seconds unless a name ends in _MS. Origin at board centre.
 
+import type { Table, Vec } from './types';
 export interface Config {
   /** Inner board side. */
   L: number;
@@ -83,4 +84,94 @@ export const config: Config = {
   MAX_EVENTS_PER_STEP: 2000,
   PLACE_GAP: 1e-9,
   PLACE_GRID_STEP: COIN_D / 8,
+};
+
+// ---- NODI-1 tables as data -------------------------------------------------
+
+/**
+ * Nodi Par numbers (spec 20). The river is the same L × L square; banks are
+ * at seat outward sides like carrom seats. Island rings are rules data
+ * (`@hub/nodipar` config), not physics: boats slide over them.
+ */
+export const NODI = {
+  BOAT_D: 0.06,
+  BOAT_MASS: 1,
+  /** Boat speed at power 1.0, L/s. */
+  MAX_SPEED: 1.5,
+  /** Boat centre distance in from the bank's frame when launched. */
+  BANK_INSET: 0.1,
+  /** Launch spot ±BANK_HALF along the bank, 1v1 river. */
+  BANK_HALF: 0.4,
+  /** The same on the cross-shaped 2v2 river (bank corners narrow it). */
+  BANK_HALF_4: 0.24,
+  WHIRLPOOL_D: 0.08,
+  ROCK_R: 0.03,
+  /** Land at the four corners that turns the 2v2 square into a cross. */
+  CORNER_R: 0.22,
+  /** Borsha (monsoon) current, L/s². Below FRICTION_DECEL so boats still stop. */
+  BORSHA: 0.08,
+  /** BORSHA / √2, written out: the 2v2 current runs along the x = y diagonal. */
+  BORSHA_DIAG: 0.05656854249,
+} as const;
+
+const POCKET_AT = L / 2 - config.POCKET_INSET;
+
+export const TABLES = {
+  /** Carrom: the four corner pockets, no rocks, no current (results unchanged since spec 01). */
+  carrom: {
+    halfL: config.HALF_L,
+    pockets: [
+      { x: -POCKET_AT, y: POCKET_AT },
+      { x: -POCKET_AT, y: -POCKET_AT },
+      { x: POCKET_AT, y: -POCKET_AT },
+      { x: POCKET_AT, y: POCKET_AT },
+    ],
+    pocketD: config.POCKET_D,
+    pocketMaxDropSpeed: config.POCKET_MAX_DROP_SPEED,
+    pocketRestitution: config.POCKET_RESTITUTION,
+    rocks: [],
+    rockRestitution: config.PIECE_RESTITUTION,
+    current: { x: 0, y: 0 },
+  },
+  /** 1v1 river, banks at +y (seat 0) and -y (seat 2); symmetric under y → -y. */
+  nodiPar: {
+    halfL: config.HALF_L,
+    pockets: [{ x: -0.42, y: 0 }, { x: 0.42, y: 0 }],
+    pocketD: NODI.WHIRLPOOL_D,
+    pocketMaxDropSpeed: config.POCKET_MAX_DROP_SPEED,
+    pocketRestitution: config.POCKET_RESTITUTION,
+    rocks: [
+      { x: 0, y: 0, r: NODI.ROCK_R },
+      { x: 0, y: 0.3, r: NODI.ROCK_R },
+      { x: 0, y: -0.3, r: NODI.ROCK_R },
+    ],
+    rockRestitution: config.PIECE_RESTITUTION,
+    current: { x: 0, y: 0 },
+  },
+  /** 2v2 cross-shaped river (land at the corners), four banks; symmetric under x ↔ y. */
+  nodiPar4: {
+    halfL: config.HALF_L,
+    pockets: [{ x: 0.27, y: 0.27 }, { x: -0.27, y: -0.27 }],
+    pocketD: NODI.WHIRLPOOL_D,
+    pocketMaxDropSpeed: config.POCKET_MAX_DROP_SPEED,
+    pocketRestitution: config.POCKET_RESTITUTION,
+    rocks: [
+      { x: 0, y: 0, r: NODI.ROCK_R },
+      { x: -0.5, y: 0.5, r: NODI.CORNER_R },
+      { x: -0.5, y: -0.5, r: NODI.CORNER_R },
+      { x: 0.5, y: -0.5, r: NODI.CORNER_R },
+      { x: 0.5, y: 0.5, r: NODI.CORNER_R },
+    ],
+    rockRestitution: config.PIECE_RESTITUTION,
+    current: { x: 0, y: 0 },
+  },
+} as const satisfies Record<string, Table>;
+
+export type TableId = keyof typeof TABLES;
+
+/** NODI-1 Borsha (monsoon) current per table: the river runs across, bank to bank stays fair. */
+export const BORSHA_CURRENT: Record<TableId, Vec> = {
+  carrom: { x: 0, y: 0 },
+  nodiPar: { x: NODI.BORSHA, y: 0 },
+  nodiPar4: { x: NODI.BORSHA_DIAG, y: NODI.BORSHA_DIAG },
 };

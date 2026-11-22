@@ -77,6 +77,9 @@ describe('COS-5 defaults', () => {
     expect(itemsForGame('callbreak').filter((c) => c.price > 0).map((c) => c.type).sort()).toEqual(['cardBack', 'cardBack', 'cardBack', 'table', 'table', 'table']);
     expect(itemsForGame('callbreak').every((c) => c.game === 'callbreak')).toBe(true);
     expect(fitsSlot(cosmeticById('night-ludo-board'), 'callbreak', 'table')).toBe(false);
+    // NODI-6 nodi par's items: boat skins and river themes, for nodi par only.
+    expect(itemsForGame('nodipar').filter((c) => c.price > 0).map((c) => c.type).sort()).toEqual(['boat', 'boat', 'boat', 'river', 'river', 'river']);
+    expect(itemsForGame('nodipar').every((c) => c.game === 'nodipar')).toBe(true);
   });
 
   it('COS-5 everyone owns the defaults; bought ids count only if known', () => {

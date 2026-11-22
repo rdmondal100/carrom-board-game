@@ -66,13 +66,13 @@ describe('COS-7 shop page', () => {
     expect((await screen.findAllByTestId('skin-preview')).length).toBeGreaterThan(1);
   });
 
-  it('HAPP-5 a tab per game in the build plus All games; coming-soon games have no tab', async () => {
+  it('HAPP-5 NODI-6 a tab per game in the build plus All games', async () => {
     show(user());
     expect(await screen.findByTestId('shop-game-carrom')).toBeTruthy();
     expect(screen.getByTestId('shop-game-any').textContent).toBe(en['shop.allGames']);
     expect(screen.getByTestId('shop-game-ludo')).toBeTruthy();
     expect(screen.getByTestId('shop-game-callbreak')).toBeTruthy();
-    expect(screen.queryByTestId('shop-game-nodipar')).toBeNull();
+    expect(screen.getByTestId('shop-game-nodipar')).toBeTruthy();
     fireEvent.click(screen.getByTestId('shop-game-any'));
     expect(screen.getByTestId('shop-empty')).toBeTruthy();
     expect(screen.queryByTestId('shop-tab-striker')).toBeNull();

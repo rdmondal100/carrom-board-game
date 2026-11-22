@@ -174,7 +174,8 @@ export function useBoardCanvas(
       syncPieces(pieces, {
         state: c.board, viewSeat: c.view, boardPx: c.layout.boardPx, nowMs: now,
         pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
-        styleOf: (kind) => (kind === 'striker' ? strikerStyle(c.skins.strikers[c.seat]) : coinSkin(c.skins.coins)[kind]),
+        // A carrom board has no boats (spec 20 kind); draw one as a white coin if it ever shows up.
+        styleOf: (kind) => (kind === 'striker' ? strikerStyle(c.skins.strikers[c.seat]) : coinSkin(c.skins.coins)[kind === 'boat' ? 'white' : kind]),
       });
       const d = c.drag;
       // A bot's preview or ROOM-6 another player's aim is drawn like a drag.

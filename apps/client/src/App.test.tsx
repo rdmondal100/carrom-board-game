@@ -42,13 +42,13 @@ describe('routes', () => {
   });
   afterEach(cleanup);
 
-  it('UI-1 HAPP-2 / renders the hub: a card per game, coming-soon games disabled, daily bonus', async () => {
+  it('UI-1 HAPP-2 NODI-5 / renders the hub: a card per game (every game playable), daily bonus', async () => {
     show('/');
     expect(await screen.findByText(en['hub.tagline'])).toBeTruthy();
     expect(screen.getByTestId('game-carrom').getAttribute('href')).toBe('/g/carrom/play');
     expect(screen.getByTestId('game-ludo').getAttribute('href')).toBe('/g/ludo/play');
     expect(screen.getByTestId('game-callbreak').getAttribute('href')).toBe('/g/callbreak/play');
-    for (const id of ['nodipar']) expect(screen.getByTestId(`game-${id}`).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByTestId('game-nodipar').getAttribute('href')).toBe('/g/nodipar/play');
     expect(screen.getByTestId('daily-bonus')).toBeTruthy();
     expect(screen.queryByTestId('game-home')).toBeNull();
   });
@@ -100,11 +100,11 @@ describe('routes', () => {
     expect(at(router)).toBe('/');
   });
 
-  it('HAPP-1 a coming-soon game: every mode "coming soon"; its pages go to its play menu', async () => {
-    const router = show('/g/nodipar/local/setup');
+  it('HAPP-1 NODI-5 a mode a game has not got (Nodi Par ranked) is "coming soon" and its page goes to the play menu', async () => {
+    const router = show('/g/nodipar/ranked');
     expect(await heading(new RegExp(en['play.title']))).toBeTruthy();
     expect(at(router)).toBe('/g/nodipar/play');
-    expect(screen.getAllByText(en['play.soon'])).toHaveLength(4);
+    expect(screen.getAllByText(en['play.soon'])).toHaveLength(1);
   });
 
   it('UI-1 BOT-6 ROOM-11 HAPP-2 /g/carrom/play renders the play menu; every mode is enabled', async () => {

@@ -13,7 +13,7 @@ function describe(line: LogLine): string {
   const { ev } = line;
   const ms = Math.round(ev.t);
   if (ev.type === 'hit') return t('event.hit', { t: ms, a: ev.a, b: ev.b });
-  if (ev.type === 'frame') return t('event.frame', { t: ms, id: ev.id });
+  if (ev.type === 'frame' || ev.type === 'rock') return t('event.frame', { t: ms, id: ev.id });
   if (ev.type === 'pocketBounce') return t('event.pocketBounce', { t: ms, id: ev.id, pocket: ev.pocket });
   return t('event.pocket', { t: ms, id: ev.id, pocket: ev.pocket });
 }

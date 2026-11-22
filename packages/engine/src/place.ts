@@ -1,6 +1,6 @@
 import { config, type Config } from './config';
 import { POCKET_IDS, pocketCentre } from './pockets';
-import type { BoardState, Piece } from './types';
+import type { BoardState, Piece, Table } from './types';
 
 // Only + - * / and comparisons, so every platform picks the same spot.
 
@@ -76,4 +76,36 @@ export function placeCoin(state: BoardState, id: string, cfg: Config = config): 
   coin.vy = 0;
   coin.pocketed = false;
   return next;
+}
+
+/**
+ * NODI-1 true when a disc of radius r centred at (x, y) fits on `table`: inside
+ * the frames, clear of every pocket rim, rock and other piece on the board
+ * (touching is fine). `ignore` skips one piece id (the one being moved).
+ */
+export function spotIsFree(
+  state: BoardState, x: number, y: number, r: number, table: Table, ignore = '', cfg: Config = config,
+): boolean {
+  const edge = table.halfL - r;
+  if (x < -edge || x > edge || y < -edge || y > edge) return false;
+  const rim = table.pocketD / 2;
+  for (const c of table.pockets) {
+    const dx = x - c.x;
+    const dy = y - c.y;
+    if (dx * dx + dy * dy < rim * rim) return false;
+  }
+  for (const k of table.rocks) {
+    const dx = x - k.x;
+    const dy = y - k.y;
+    const reach = r + k.r - cfg.PLACE_GAP;
+    if (dx * dx + dy * dy < reach * reach) return false;
+  }
+  for (const o of state.pieces) {
+    if (o.pocketed || o.id === ignore) continue;
+    const dx = x - o.x;
+    const dy = y - o.y;
+    const reach = r + o.r - cfg.PLACE_GAP;
+    if (dx * dx + dy * dy < reach * reach) return false;
+  }
+  return true;
 }

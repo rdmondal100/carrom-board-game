@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { config } from './config';
+import { config, TABLES } from './config';
 import {
   resolveFrameHit, resolvePieceHit, sweptTime, timeToFrameHit, timeToPieceHit,
 } from './collide';
@@ -35,18 +35,18 @@ describe('swept collision', () => {
 describe('frame bounce', () => {
   it('finds the frame hit and reflects with FRAME_RESTITUTION', () => {
     const p = coin(0.4, 0, 1, 0);
-    const hit = timeToFrameHit(p, 1, config);
+    const hit = timeToFrameHit(p, 1, TABLES.carrom);
     expect(hit.axis).toBe('x');
     expect(hit.t).toBeCloseTo(0.5 - p.r - 0.4, 12);
     p.x += p.vx * hit.t;
-    resolveFrameHit(p, hit.axis, config);
+    resolveFrameHit(p, hit.axis, TABLES.carrom, config);
     expect(p.vx).toBeCloseTo(-config.FRAME_RESTITUTION, 12);
     expect(p.x).toBeLessThanOrEqual(0.5 - p.r);
   });
 
   it('keeps the tangent speed', () => {
     const p = coin(0, 0.5 - config.COIN_D / 2, 0.3, 1);
-    resolveFrameHit(p, 'y', config);
+    resolveFrameHit(p, 'y', TABLES.carrom, config);
     expect(p.vx).toBe(0.3);
     expect(p.vy).toBeCloseTo(-config.FRAME_RESTITUTION, 12);
   });
