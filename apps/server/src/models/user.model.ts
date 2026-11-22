@@ -56,12 +56,15 @@ const userSchema = new Schema(
     adRewards: { type: Number, default: 0, min: 0 },
     /** VOICE-6 user ids this player blocked (never hears them again). */
     blocked: { type: [String], default: [] },
+    /** ADDA-1 the code friends type to add this player (given on first use). */
+    playerCode: { type: String },
   },
   { timestamps: true },
 );
 
 // Unique only among users that have the field (guests have neither).
 userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: onlyStrings } });
+userSchema.index({ playerCode: 1 }, { unique: true, partialFilterExpression: { playerCode: onlyStrings } });
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: onlyStrings } });
 // RANK-6 / HUB-7 each game's leaderboard order: rating, then the older account first.
 for (const g of RATED_GAMES) {

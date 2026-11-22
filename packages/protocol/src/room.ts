@@ -72,6 +72,8 @@ export interface LobbyView {
   hostId: string;
   /** RANK-2 a ranked game: no host, no invite, no rematch; starts when both players are in. */
   ranked: boolean;
+  /** ADDA-3 the group this room was started for ('' or missing = none); its games are recorded for the group. */
+  groupId?: string;
   players: Record<string, PlayerView>;
 }
 

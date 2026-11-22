@@ -3,6 +3,7 @@ import { isValidObjectId } from 'mongoose';
 import { z } from 'zod';
 import { REPORT_REASONS } from '@carrom/protocol';
 import type { MeResponse } from '@carrom/protocol/api';
+import { Friendship, pairOf } from '../models/friendship.model.js';
 import { Report } from '../models/report.model.js';
 import { isDuplicateKey, toPublicUser, User } from '../models/user.model.js';
 import { logger } from '../utils/logger.js';
@@ -47,7 +48,7 @@ export const report: RequestHandler = async (req, res) => {
   }
 };
 
-/** VOICE-6 POST /me/block { userId } → { user } (blocking twice is fine). */
+/** VOICE-6 / ADDA-1 POST /me/block { userId } → { user } (blocking twice is fine; ends a friendship). */
 export const block: RequestHandler = async (req, res) => {
   try {
     const body = parseBody(blockBody, req, res);
@@ -69,6 +70,8 @@ export const block: RequestHandler = async (req, res) => {
       res.status(exists ? 400 : 401).json({ error: exists ? 'Too many blocked players' : 'Account not found' });
       return;
     }
+    // ADDA-1 blocking ends any friendship or request between the two.
+    await Friendship.deleteOne(pairOf(userId, body.userId));
     res.status(200).json({ user: toPublicUser(user) } satisfies MeResponse);
   } catch (err) {
     logger.error('block failed', err);

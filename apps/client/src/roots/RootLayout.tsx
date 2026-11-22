@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { usePurchaseRecovery } from '@/components/CoinPacks';
+import { AddaController, NextGameBar } from '@/components/AddaController';
 import { Header } from '@/components/Header';
 import { OfflineNotice } from '@/components/OfflineNotice';
 import { VoiceController } from '@/components/VoiceController';
@@ -84,6 +85,8 @@ export function RootLayout() {
       </main>
       <Toaster />
       <VoiceController />
+      <AddaController />
+      <NextGameBar />
       {askExit && (
         <Dialog open onOpenChange={(o) => { if (!o) setAskExit(false); }}>
           <DialogContent className="max-w-xs p-6">

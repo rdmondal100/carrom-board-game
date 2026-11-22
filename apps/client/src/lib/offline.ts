@@ -13,7 +13,8 @@ const GAME_NEEDS_NETWORK: readonly string[] = ['online', 'ranked', 'leaderboard'
 export function needsNetwork(path: string): boolean {
   const page = gamePageOf(path);
   if (page !== null) return GAME_NEEDS_NETWORK.includes(page);
-  return NEEDS_NETWORK.includes(path) || path.startsWith('/join/');
+  // ADDA-1..3 friends, groups and group invites are online-only too.
+  return NEEDS_NETWORK.includes(path) || ['/join/', '/a/', '/groups', '/friends'].some((p) => path.startsWith(p));
 }
 
 function subscribe(cb: () => void): () => void {

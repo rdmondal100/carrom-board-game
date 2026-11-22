@@ -4,6 +4,10 @@ import { GamesProvider } from './games/GamesContext';
 import { BUILD_GAMES } from './games/registry';
 import type { ClientGame } from './games/types';
 import { RootLayout } from './roots/RootLayout';
+import { Friends } from './roots/pages/Friends';
+import { Group } from './roots/pages/Group';
+import { GroupInvite } from './roots/pages/GroupInvite';
+import { Groups } from './roots/pages/Groups';
 import { Home } from './roots/pages/Home';
 import { JoinByCode } from './roots/pages/JoinByCode';
 import { Leaderboard } from './roots/pages/Leaderboard';
@@ -50,6 +54,11 @@ export function makeRoutes(games: readonly ClientGame[]): RouteObject[] {
         { index: true, element: <Home /> },
         { path: 'g/:gameId', element: <GameLayout />, children: gameChildren },
         { path: 'join/:code', element: <JoinByCode /> },
+        // ADDA-1..3 friends and groups (one account across every game).
+        { path: 'friends', element: <Friends /> },
+        { path: 'groups', element: <Groups /> },
+        { path: 'groups/:id', element: <Group /> },
+        { path: 'a/:code', element: <GroupInvite /> },
         { path: 'shop', element: <Shop /> },
         { path: 'settings', element: <Settings /> },
         { path: 'login', element: <Login /> },

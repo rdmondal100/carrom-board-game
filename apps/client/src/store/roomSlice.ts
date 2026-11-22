@@ -60,6 +60,19 @@ export const joinByCode = createAsyncThunk<Joined, string, { rejectValue: RoomFa
   },
 );
 
+/** ADDA-4 the group moved on: leave this room and join the next one by id. */
+export const moveToRoom = createAsyncThunk<Joined, string, { rejectValue: RoomFailure }>(
+  'room/move',
+  async (roomId, { rejectWithValue }) => {
+    try {
+      await leaveGameRoom();
+      return joined(await joinGameRoom(roomId));
+    } catch (err) {
+      return rejectWithValue(roomFailure(err));
+    }
+  },
+);
+
 /** RANK-2: take the seat the matchmaker reserved in a ranked room. */
 export const joinRanked = createAsyncThunk<Joined, SeatReservation, { rejectValue: RoomFailure }>(
   'room/ranked',
@@ -100,16 +113,16 @@ const roomSlice = createSlice({
   },
   extraReducers: (b) => {
     b.addCase(leaveRoom.fulfilled, () => initialRoomState());
-    b.addMatcher(isAnyOf(createRoom.pending, joinByCode.pending, joinRanked.pending, resumeRoom.pending), (s) => {
+    b.addMatcher(isAnyOf(createRoom.pending, joinByCode.pending, joinRanked.pending, resumeRoom.pending, moveToRoom.pending), (s) => {
       s.connecting = true;
       s.error = null;
     });
-    b.addMatcher(isAnyOf(createRoom.fulfilled, joinByCode.fulfilled, joinRanked.fulfilled, resumeRoom.fulfilled), (s, a) => {
+    b.addMatcher(isAnyOf(createRoom.fulfilled, joinByCode.fulfilled, joinRanked.fulfilled, resumeRoom.fulfilled, moveToRoom.fulfilled), (s, a) => {
       s.connecting = false;
       s.sessionId = a.payload.sessionId;
       s.lobby = a.payload.lobby ?? s.lobby;
     });
-    b.addMatcher(isAnyOf(createRoom.rejected, joinByCode.rejected, joinRanked.rejected, resumeRoom.rejected), (s, a) => {
+    b.addMatcher(isAnyOf(createRoom.rejected, joinByCode.rejected, joinRanked.rejected, resumeRoom.rejected, moveToRoom.rejected), (s, a) => {
       s.connecting = false;
       const f = a.payload ?? { status: 0, error: a.error.message ?? '' };
       s.error = f.error === '' ? null : f;

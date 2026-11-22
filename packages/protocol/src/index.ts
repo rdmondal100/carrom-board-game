@@ -35,3 +35,13 @@ export {
   GAME_SLOTS, isCosmeticGame, isDefaultItem, isSlotOf, itemOrDefault, itemsForGame, ownedItems, ownsItem, resolveEquipped,
   resolveEquippedMap, resolveGameSlots,
 } from './cosmetics';
+export type {
+  CreateGroupRequest, FriendRequestBody, FriendRequestResponse, FriendsResponse, FriendView, GroupInvitePreview,
+  GroupLeaderboardResponse, GroupLeaderRow, GroupMemberView, GroupPlayers, GroupReportRequest, GroupResponse, GroupRole,
+  GroupsResponse, GroupSummary, GroupView, Notice, PlayerSummary, Presence, PresenceRequest, PresenceResponse,
+  StartGroupRoomRequest, StartGroupRoomResponse, UpdateGroupRequest,
+} from './adda';
+export {
+  FRIENDS_MAX, GROUP_CODE_LENGTH, GROUP_MATCHES_MAX, GROUP_MAX_MEMBERS, GROUP_NAME_MAX, GROUP_NAME_MIN, GroupPlayersSchema,
+  GROUPS_PER_USER_MAX, LOUNGE_MAX, LOUNGE_ROOM, NOTICES_MAX, PLAYER_CODE_LENGTH, PRESENCE_BEAT_MS, PRESENCE_TTL_S,
+} from './adda';

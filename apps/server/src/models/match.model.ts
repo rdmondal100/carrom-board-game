@@ -28,12 +28,15 @@ const matchSchema = new Schema(
     boards: { type: Number, required: true, min: 1 },
     ranked: { type: Boolean, required: true },
     abandoned: { type: Boolean, required: true, default: false },
+    /** ADDA-3 played in a room started for this group. */
+    groupId: { type: String },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
 
 matchSchema.index({ matchId: 1 }, { unique: true });
 matchSchema.index({ game: 1, 'players.userId': 1, createdAt: -1 });
+matchSchema.index({ groupId: 1, game: 1, createdAt: -1 }, { partialFilterExpression: { groupId: { $type: 'string' } } });
 
 export type MatchFields = InferSchemaType<typeof matchSchema>;
 export type MatchDoc = HydratedDocument<MatchFields>;

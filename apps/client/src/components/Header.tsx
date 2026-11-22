@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BookOpen, Coins, Home, LogIn, Play, Settings, Store, type LucideIcon } from 'lucide-react';
+import { BookOpen, Coins, Home, LogIn, Play, Settings, Store, Users, type LucideIcon } from 'lucide-react';
 import { Link, NavLink } from 'react-router';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/Avatar';
@@ -14,10 +14,11 @@ import { useAppDispatch, useAppSelector } from '@/store/store';
 
 interface NavItem { to: string; key: string; Icon: LucideIcon; end: boolean }
 
-/** HAPP-3 the hub: home, shop, settings. A one-game app adds its play menu and how-to-play. */
+/** HAPP-3 the hub: home, adda (ADDA-2), shop, settings. A one-game app adds its play menu and how-to-play. */
 function navLinks(single: ClientGame | null): NavItem[] {
   const links: NavItem[] = [{ to: '/', key: 'nav.home', Icon: Home, end: true }];
   if (single) links.push({ to: gamePath(single.id), key: 'nav.play', Icon: Play, end: false });
+  links.push({ to: '/groups', key: 'nav.adda', Icon: Users, end: false });
   links.push({ to: '/shop', key: 'nav.shop', Icon: Store, end: false });
   if (single?.routes.howToPlay) links.push({ to: gamePath(single.id, 'how-to-play'), key: 'nav.howTo', Icon: BookOpen, end: false });
   links.push({ to: '/settings', key: 'nav.settings', Icon: Settings, end: false });

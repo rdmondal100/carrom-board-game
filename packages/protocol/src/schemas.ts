@@ -1,5 +1,6 @@
 import { config, type Seat, type ShotInput } from '@carrom/engine';
 import { z } from 'zod';
+import { GroupPlayersSchema } from './adda';
 import type { ClientMessage, ServerMessage } from './messages';
 import { EMOTES } from './room';
 import { SessionIdSchema, VoiceSignalSchema } from './voice';
@@ -64,6 +65,7 @@ export const ClientMessageSchema: z.ZodType<ClientMessage> = z.union([
   z.object({ type: z.literal('seatBot'), seat, on: z.boolean() }),
   z.object({ type: z.literal('voice'), to: SessionIdSchema, signal: VoiceSignalSchema }),
   z.object({ type: z.literal('voiceState'), on: z.boolean(), muted: z.boolean() }),
+  z.object({ type: z.literal('nextGame'), gameId: z.string().min(1).max(32), players: GroupPlayersSchema }),
 ]);
 
 const events = z.array(z.unknown());
@@ -96,6 +98,9 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
   }),
   z.object({ type: z.literal('reward'), coins: z.number().int().min(0) }),
   z.object({ type: z.literal('voice'), from: SessionIdSchema, signal: VoiceSignalSchema }),
+  z.object({
+    type: z.literal('nextRoom'), roomId: z.string().min(1).max(64), code: z.string().max(16), gameId: z.string().min(1).max(32),
+  }),
 ]);
 
 /** Parse an unknown payload; null when it is not a valid client message. */

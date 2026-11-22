@@ -62,6 +62,20 @@ export const blockPlayer = createAsyncThunk<PublicUser, string, { rejectValue: s
   },
 );
 
+/** VOICE-6 / ADDA-1 unblock a player again. */
+export const unblockPlayer = createAsyncThunk<PublicUser, string, { rejectValue: string }>(
+  'voice/unblock',
+  async (userId, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await axios.delete<MeResponse>(`${API_BASE}/me/block/${encodeURIComponent(userId)}`, { headers: getAuthHeaders() });
+      dispatch(userUpdated(res.data.user));
+      return res.data.user;
+    } catch (err) {
+      return rejectWithValue(failText(err));
+    }
+  },
+);
+
 /** VOICE-6 report a player met in this room. */
 export const reportPlayer = createAsyncThunk<void, ReportRequest, { rejectValue: string }>(
   'voice/report',

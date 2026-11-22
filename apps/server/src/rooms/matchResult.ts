@@ -19,6 +19,8 @@ export interface MatchResult {
   /** RANK-4 the loser left and did not come back. */
   abandoned: boolean;
   players: ResultPlayer[];
+  /** ADDA-3 played in a room made for this group. */
+  groupId?: string;
 }
 
 const changesOf = (m: MatchDoc): RatingChange[] => m.players.map((p) => ({
@@ -69,6 +71,7 @@ export async function recordMatch(r: MatchResult): Promise<RatingChange[]> {
   try {
     doc = await Match.create({
       matchId: r.matchId, game: r.game, ranked: r.ranked, winner: r.winner, boards: r.boards, abandoned: r.abandoned,
+      ...(r.groupId ? { groupId: r.groupId } : {}),
       players: r.players.map((p) => ({
         userId: p.userId, name: p.name, seat: p.seat, team: p.team,
         ratingBefore: before.get(p.userId) ?? START_RATING, ratingAfter: after.get(p.userId) ?? START_RATING,

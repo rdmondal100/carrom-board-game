@@ -3,11 +3,12 @@ import cors from 'cors';
 import express from 'express';
 import { matchMaker, Server } from '@colyseus/core';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { GAME_ROOM, QUEUE_ROOM, RANKED_ROOM } from '@carrom/protocol';
+import { GAME_ROOM, LOUNGE_ROOM, QUEUE_ROOM, RANKED_ROOM } from '@carrom/protocol';
 import { DEFAULT_STUN_URLS, loadEnv, type Env } from './env.js';
 import { errorHandler, notFound } from './middleware/error.middleware.js';
 import { authRateLimit } from './middleware/rateLimit.middleware.js';
 import { gameRoomFor } from './rooms/game.room.js';
+import { loungeRoomFor } from './rooms/lounge.room.js';
 import { PingRoom } from './rooms/ping.room.js';
 import { queueRoomFor } from './rooms/queue.room.js';
 import { rankedRoomFor } from './rooms/rankedGame.room.js';
@@ -24,6 +25,9 @@ import { playBillingFromEnv, type PlayBilling } from './utils/playBilling.js';
 import { roomRouter } from './routes/room.route.js';
 import { reportRouter } from './routes/report.route.js';
 import { voiceRouter } from './routes/voice.route.js';
+import { friendsRouter, presenceRouter } from './routes/friends.route.js';
+import { groupsRouter } from './routes/groups.route.js';
+import { memoryPresence, redisPresence, type PresenceStore } from './utils/presence.js';
 import type { RankedTiming } from './utils/rankedConfig.js';
 import type { Redis } from './utils/redis.js';
 
@@ -48,6 +52,8 @@ export interface AppOptions {
   ssvKeys?: KeySource;
   /** IAP-3 Play Developer API (tests use a fake; null = purchases off). Default: from the env. */
   playBilling?: PlayBilling | null;
+  /** ADDA-1 / ADDA-6 presence and notices. Default: in Redis when `redis` is given, else in memory. */
+  presence?: PresenceStore;
 }
 
 /** Express app with every route and middleware; no listening (supertest uses it directly). */
@@ -72,6 +78,10 @@ export function createApp(env: AppEnv = loadEnv(), opts: AppOptions = {}): expre
     stunUrls: env.STUN_URLS ?? DEFAULT_STUN_URLS, turnUrls: env.TURN_URLS, turnSecret: env.TURN_SECRET,
   }));
   app.use('/reports', reportRouter(env.JWT_SECRET));
+  const presence = opts.presence ?? (opts.redis ? redisPresence(opts.redis) : memoryPresence());
+  app.use('/friends', friendsRouter(env.JWT_SECRET, presence));
+  app.use('/groups', groupsRouter(env.JWT_SECRET, presence));
+  app.use('/presence', presenceRouter(env.JWT_SECRET, presence));
   app.use('/auth', authRouter(
     { jwtSecret: env.JWT_SECRET, googleClientIds: env.GOOGLE_CLIENT_IDS },
     authRateLimit(opts.authRateLimit),
@@ -100,6 +110,8 @@ export function createServer(
   });
   gameServer.define('ping', PingRoom);
   gameServer.define(GAME_ROOM, gameRoomFor(env.JWT_SECRET, opts.roomTiming));
+  // ADDA-5 one voice lounge per group: joinOrCreate with { groupId } finds that group's lounge.
+  gameServer.define(LOUNGE_ROOM, loungeRoomFor(env.JWT_SECRET)).filterBy(['groupId']);
   gameServer.define(RANKED_ROOM, rankedRoomFor(env.JWT_SECRET, opts.roomTiming, opts.rankedTiming));
   // HUB-6 one queue room per game: joinOrCreate with { gameId } finds that game's room.
   if (opts.redis) gameServer.define(QUEUE_ROOM, queueRoomFor(env.JWT_SECRET, opts.redis, opts.rankedTiming)).filterBy(['gameId']);

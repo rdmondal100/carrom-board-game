@@ -1,4 +1,5 @@
 import type { EmoteId } from './room';
+import type { GroupPlayers } from './adda';
 import type { VoiceSignal } from './voice';
 
 /**
@@ -24,7 +25,9 @@ export type ClientMessage<M = unknown, H = unknown> =
   /** VOICE-2 WebRTC signalling for the session `to` in this room (relayed to that session only). */
   | { type: 'voice'; to: string; signal: VoiceSignal }
   /** VOICE-2 / VOICE-4 this player's voice: `on` = takes part (ranked: opted in), `muted` = mic off. */
-  | { type: 'voiceState'; on: boolean; muted: boolean };
+  | { type: 'voiceState'; on: boolean; muted: boolean }
+  /** ADDA-4 a group member, after the game ended: move everyone to a new room of `gameId` (`players` = seats wanted). */
+  | { type: 'nextGame'; gameId: string; players: GroupPlayers };
 
 /** Messages a match room sends to its clients. */
 export type ServerMessage<V = unknown, E = unknown, M = unknown, H = unknown> =
@@ -52,7 +55,9 @@ export type ServerMessage<V = unknown, E = unknown, M = unknown, H = unknown> =
   /** COS-2 coins this player just earned for the finished game. */
   | { type: 'reward'; coins: number }
   /** VOICE-2 signalling from the session `from` (voice state itself is synced per seat in the lobby state). */
-  | { type: 'voice'; from: string; signal: VoiceSignal };
+  | { type: 'voice'; from: string; signal: VoiceSignal }
+  /** ADDA-4 the group moves on: leave this room and join `roomId` (invite `code`, game `gameId`). */
+  | { type: 'nextRoom'; roomId: string; code: string; gameId: string };
 
 /** RANK-4 one player's rating before and after a ranked game. */
 export interface RatingChange { seat: number; userId: string; ratingBefore: number; ratingAfter: number }

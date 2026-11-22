@@ -3,6 +3,8 @@ import { ServerError, type Client, type Delayed } from '@colyseus/core';
 import { CreateRoomOptionsSchema, MSG, parseClientMessage, type ClientMessage, type ServerMessage } from '@carrom/protocol';
 import { uniqueInviteCode } from '../utils/inviteCode.js';
 import { gameEntry } from './games.js';
+import { GroupLink } from './groupFlow.js';
+import { groupIdOf } from './groupRoom.js';
 import { botPlayer, canSwap, freeSeat, isFilledBot, PlayerState, swapped } from './lobbyState.js';
 import { RoomBase, type RoomUser } from './roomBase.js';
 import { rewardPlayers } from './roomRewards.js';
@@ -20,6 +22,8 @@ export class GameRoom extends RoomBase {
   protected turnTimer: Delayed | null = null;
   /** COS-2 the last game's coin rewards (tests await it). */
   pendingRewards: Promise<void> | null = null;
+  /** ADDA-3 / ADDA-4 the group this room was made for (does nothing without one). */
+  readonly group = new GroupLink();
   private readonly lastHint = new Map<string, number>();
   private readonly lastEmote = new Map<string, number>();
   private botIds = 0;
@@ -35,6 +39,7 @@ export class GameRoom extends RoomBase {
     this.setGame(entry.module, opts.data.config);
     const code = await uniqueInviteCode();
     this.state = this.lobby(code, false);
+    this.state.groupId = this.group.id = groupIdOf(options);
     await this.setMetadata({ code });
     await this.setPrivate(true);
   }
@@ -141,6 +146,9 @@ export class GameRoom extends RoomBase {
       case 'emote':
         if (throttled(this.lastEmote, client.sessionId, this.timing.emoteGapMs)) return this.fail(client, 'TOO_FAST', 'One emote every 2 s');
         return this.toAll({ type: 'emote', seat: p.seat, id: msg.id });
+      case 'nextGame':
+        return void this.group.next(p.userId, msg.gameId, msg.players, this.state.phase === 'ended')
+          .then((out) => (out.ok ? this.toAll({ type: 'nextRoom', ...out.room }) : this.fail(client, out.code, out.message)));
       case 'rematch':
         if (this.state.phase !== 'ended') return this.fail(client, 'NOT_ALLOWED', 'The game is not over');
         p.rematch = true;
@@ -262,8 +270,11 @@ export class GameRoom extends RoomBase {
     this.startMatch(this.game.rematch(this.match));
   }
 
-  /** A game just ended with a winning team. Private rooms keep no record; they only give coins. */
-  protected onGameEnd(winner: string): void { this.rewardGame(winner); }
+  /** A game just ended with a winning team. Private rooms give coins; ADDA-3 a group room also records the game. */
+  protected onGameEnd(winner: string): void {
+    this.rewardGame(winner);
+    this.group.gameEnded(this.roomId, this.game.id, winner, this.game.rounds(this.match), this.state.players.values(), (s) => this.teamOf(s));
+  }
 
   /** COS-2 coins for everyone still in the game (not `skip`, a session that just abandoned it). */
   protected rewardGame(winner: string, skip = ''): void {

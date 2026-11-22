@@ -36,6 +36,8 @@ export const LobbyState = schema({
   hostId: t.string(),
   /** RANK-2 a ranked room: no host, starts when both matched players are in. */
   ranked: t.boolean(),
+  /** ADDA-3 the group this room was made for ('' = none). */
+  groupId: t.string(),
   players: t.map(PlayerState),
 }, 'LobbyState');
 export type LobbyState = SchemaType<typeof LobbyState>;

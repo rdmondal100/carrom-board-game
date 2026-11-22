@@ -39,7 +39,7 @@ export class RoomBase extends Room<{ state: LobbyState; metadata: { code: string
 
   protected lobby(code: string, ranked: boolean): LobbyState {
     return new LobbyState({
-      code, phase: 'lobby', gameId: this.game.id, config: JSON.stringify(this.gameConfig), hostId: '', ranked,
+      code, phase: 'lobby', gameId: this.game.id, config: JSON.stringify(this.gameConfig), hostId: '', ranked, groupId: '',
     });
   }
 
