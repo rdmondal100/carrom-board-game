@@ -1,4 +1,4 @@
-const DEV_API_BASE = 'http://localhost:8080';
+const DEV_API_BASE = 'http://localhost:5000';
 
 function readBase(): string {
   const raw: unknown = import.meta.env.VITE_API_BASE_URL;

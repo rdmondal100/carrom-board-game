@@ -5,6 +5,7 @@ import { legalTokens, ludoResult, seatsOf, type LudoEvent, type LudoMove } from 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dice } from '@/games/ludo/components/Dice';
+import { DiceDock } from '@/games/ludo/components/DiceDock';
 import { LudoBoard } from '@/games/ludo/components/LudoBoard';
 import { LudoClock, LudoEndDialog, PlayerStrip, standingsOf } from '@/games/ludo/components/LudoParts';
 import {
@@ -109,27 +110,34 @@ function Play({ initial }: { initial: LocalLudo }) {
         <div className="flex-1"><PlayerStrip view={state} seats={seats} names={game.names} bots={seats.filter((s) => game.takeover.includes(s) || game.players[s] !== 'human')} /></div>
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('pause.title')}</Button>
       </div>
-      <LudoBoard seats={seats} tokens={frame?.tokens ?? state.tokens} board={look.board} tokenSkinOf={() => look.tokens}
-        viewSeat={viewSeat} turnSeat={state.turnSeat} legal={legal} onPick={(token) => move({ token })} label={t('ludo.board')} className="self-center" />
-      <div className="flex items-center justify-center gap-4">
-        <Dice value={shownDice?.value ?? null} skin={look.dice} rolling={frame?.cue === 'roll'} label={t('ludo.dice', { n: shownDice?.value ?? '?' })}
-          onRoll={human && state.phase === 'roll' ? () => move({ roll: true }) : undefined} />
-        <div className="flex flex-col items-start gap-1">
-          <p className="text-sm" role="status">
-            {state.winner !== null ? '' : busy ? t('ludo.moving')
-              : botTurn(game) ? t('online.botTurn', { name: seatName(game.names, me) })
-                : state.phase === 'roll' ? t('ludo.tapRoll', { name: seatName(game.names, me) }) : t('ludo.pick', { name: seatName(game.names, me) })}
-          </p>
-          {clockRuns(game) && !busy && (
-            <LudoClock key={`${state.turnId}`} running={!leaving} onExpire={() => apply(game, timeoutLocal(game))} />
-          )}
-          {game.takeover.length > 0 && game.takeover.map((s) => (
-            <Button key={s} size="sm" variant="outline" onClick={() => { const g = takeBack(game, s); setGame(g); saveLudo(g); }}>
-              {t('ludo.takeBack', { name: seatName(game.names, s) })}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <DiceDock seat={busy && frame?.dice ? frame.dice.seat : state.turnSeat} viewSeat={viewSeat} face={humanSeats(game).length >= 2}
+        board={(
+          <LudoBoard seats={seats} tokens={frame?.tokens ?? state.tokens} board={look.board} tokenSkinOf={() => look.tokens}
+            viewSeat={viewSeat} turnSeat={state.turnSeat} legal={legal} onPick={(token) => move({ token })} label={t('ludo.board')} />
+        )}
+        die={(
+          <>
+            <Dice value={shownDice?.value ?? null} skin={look.dice} rolling={frame?.cue === 'roll'} label={t('ludo.dice', { n: shownDice?.value ?? '?' })}
+              onRoll={human && state.phase === 'roll' ? () => move({ roll: true }) : undefined} />
+            <p className="max-w-36 truncate rounded-full bg-white/10 px-3 py-1 text-xs font-semibold empty:hidden" role="status">
+              {state.winner !== null ? '' : busy ? t('ludo.moving')
+                : botTurn(game) ? t('online.botTurn', { name: seatName(game.names, me) })
+                  : state.phase === 'roll' ? t('ludo.tapRoll', { name: seatName(game.names, me) }) : t('ludo.pick', { name: seatName(game.names, me) })}
+            </p>
+          </>
+        )}
+        extra={(
+          <>
+            {clockRuns(game) && !busy && (
+              <LudoClock key={`${state.turnId}`} running={!leaving} onExpire={() => apply(game, timeoutLocal(game))} />
+            )}
+            {game.takeover.length > 0 && game.takeover.map((s) => (
+              <Button key={s} size="sm" variant="outline" onClick={() => { const g = takeBack(game, s); setGame(g); saveLudo(g); }}>
+                {t('ludo.takeBack', { name: seatName(game.names, s) })}
+              </Button>
+            ))}
+          </>
+        )} />
       {leaving && (
         <Dialog open onOpenChange={(o) => { if (!o) setLeaving(false); }}>
           <DialogContent className="p-6">

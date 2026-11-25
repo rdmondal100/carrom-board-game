@@ -1,6 +1,6 @@
 # Full stack: MongoDB + Redis + server (Express/Colyseus) + web client.
 #   docker compose up --build
-# Web: http://localhost:3000   API/WebSocket: http://localhost:8080
+# Web: http://localhost:3000   API/WebSocket: http://localhost:5000
 # Settings come from ./.env (JWT_SECRET, GOOGLE_CLIENT_ID); see .env.example.
 
 services:
@@ -37,7 +37,7 @@ services:
       target: server
     restart: unless-stopped
     environment:
-      PORT: 8080
+      PORT: 5000
       NODE_ENV: production
       MONGODB_URL: mongodb://mongo:27017/carrom-adda
       REDIS_URL: redis://redis:6379
@@ -45,7 +45,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:5173,capacitor://localhost,https://localhost}
       GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_ID:-}
     ports:
-      - "8080:8080"
+      - "5000:5000"
     depends_on:
       mongo:
         condition: service_healthy
@@ -57,7 +57,7 @@ services:
       context: .
       target: client
       args:
-        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:8080}
+        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:5000}
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     ports:

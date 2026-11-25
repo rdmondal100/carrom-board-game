@@ -57,9 +57,10 @@ export function PlayerStrip({ view, seats, names, bots, me = null }: StripProps)
         const home = (view.tokens[s] ?? []).filter((p) => p === LUDO.HOME).length;
         const turn = view.winner === null && view.turnSeat === s;
         return (
-          <div key={s} className={cn('flex items-center gap-2 rounded-md border px-2 py-1 text-sm', turn ? 'border-amber-400 bg-amber-400/10' : 'border-border')}
+          <div key={s} className={cn('flex items-center gap-2 rounded-xl border px-2 py-1.5 text-sm transition', turn ? 'scale-[1.03] font-semibold' : 'border-white/10 bg-white/5')}
+            style={turn ? { borderColor: seatColor(s), background: `${seatColor(s)}33`, boxShadow: `0 0 18px -4px ${seatColor(s)}` } : undefined}
             aria-current={turn ? 'true' : undefined}>
-            <span className="size-3 shrink-0 rounded-full" style={{ background: seatColor(s) }} />
+            <span className="size-4 shrink-0 rounded-full ring-2 ring-white/40" style={{ background: seatColor(s) }} />
             <span className="min-w-0 flex-1 truncate">{names[s]}{me === s && ` (${t('lobby.you')})`}</span>
             {bots.includes(s) && <Bot className="size-3.5 opacity-70" aria-label={t('ludo.bot')} />}
             <span className="tabular-nums text-xs opacity-70">{t('ludo.home', { n: home })}</span>

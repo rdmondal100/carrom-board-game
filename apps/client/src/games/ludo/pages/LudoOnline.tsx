@@ -9,6 +9,7 @@ import { VoiceBar } from '@/components/VoiceParts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dice } from '@/games/ludo/components/Dice';
+import { DiceDock } from '@/games/ludo/components/DiceDock';
 import { LudoBoard } from '@/games/ludo/components/LudoBoard';
 import { LudoClock, LudoEndDialog, LudoRankedResult, PlayerStrip, standingsOf } from '@/games/ludo/components/LudoParts';
 import { seatName, winnerLabel } from '@/games/ludo/localLudo';
@@ -170,23 +171,30 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('online.leave')}</Button>
       </div>
       <VoiceBar />
-      <LudoBoard seats={seats} tokens={frame?.tokens ?? shown.tokens} board={look.board}
-        tokenSkinOf={(s) => (s === me ? look.tokens : classic)} viewSeat={me ?? seats[0]!} turnSeat={shown.turnSeat}
-        legal={legal} onPick={(token) => send({ token })} label={t('ludo.board')} className="self-center" />
-      <div className="flex items-center justify-center gap-4">
-        <Dice value={shownDice?.value ?? null} skin={look.dice} rolling={frame?.cue === 'roll'} label={t('ludo.dice', { n: shownDice?.value ?? '?' })}
-          onRoll={myTurn && shown.phase === 'roll' ? () => send({ roll: true }) : undefined} />
-        <div className="flex flex-col items-start gap-1">
-          <p className="text-sm" role="status">
-            {over ? '' : busy ? t('ludo.moving') : myTurn ? (shown.phase === 'roll' ? t('ludo.yourRoll') : t('online.yourTurn'))
-              : botTurn ? t('online.botTurn', { name: seatName(names, shown.turnSeat) }) : t('online.waitTurn', { name: seatName(names, shown.turnSeat) })}
-          </p>
-          {clockOn && <LudoClock key={clock.turnId} startMs={clock.ms} running onExpire={() => {}} />}
-          {mine?.bot && !mine.left && (
-            <Button size="sm" variant="outline" onClick={() => sendToRoom({ type: 'hint', data: null })}>{t('online.takeBack')}</Button>
-          )}
-        </div>
-      </div>
+      <DiceDock seat={busy && frame?.dice ? frame.dice.seat : shown.turnSeat} viewSeat={me ?? seats[0]!} face={false}
+        board={(
+          <LudoBoard seats={seats} tokens={frame?.tokens ?? shown.tokens} board={look.board}
+            tokenSkinOf={(s) => (s === me ? look.tokens : classic)} viewSeat={me ?? seats[0]!} turnSeat={shown.turnSeat}
+            legal={legal} onPick={(token) => send({ token })} label={t('ludo.board')} />
+        )}
+        die={(
+          <>
+            <Dice value={shownDice?.value ?? null} skin={look.dice} rolling={frame?.cue === 'roll'} label={t('ludo.dice', { n: shownDice?.value ?? '?' })}
+              onRoll={myTurn && shown.phase === 'roll' ? () => send({ roll: true }) : undefined} />
+            <p className="max-w-36 truncate rounded-full bg-white/10 px-3 py-1 text-xs font-semibold empty:hidden" role="status">
+              {over ? '' : busy ? t('ludo.moving') : myTurn ? (shown.phase === 'roll' ? t('ludo.yourRoll') : t('online.yourTurn'))
+                : botTurn ? t('online.botTurn', { name: seatName(names, shown.turnSeat) }) : t('online.waitTurn', { name: seatName(names, shown.turnSeat) })}
+            </p>
+          </>
+        )}
+        extra={(
+          <>
+            {clockOn && <LudoClock key={clock.turnId} startMs={clock.ms} running onExpire={() => {}} />}
+            {mine?.bot && !mine.left && (
+              <Button size="sm" variant="outline" onClick={() => sendToRoom({ type: 'hint', data: null })}>{t('online.takeBack')}</Button>
+            )}
+          </>
+        )} />
       <EmoteBar disabled={false} onSend={(id) => sendToRoom({ type: 'emote', id })} />
       {leaving && (
         <Dialog open onOpenChange={(o) => { if (!o) setLeaving(false); }}>

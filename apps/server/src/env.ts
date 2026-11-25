@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const DEFAULT_PORT = 8080;
+export const DEFAULT_PORT = 5000;
 export const JWT_SECRET_MIN = 32;
 
 const origins = z.string().transform((s, ctx) => {

@@ -151,7 +151,7 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
       <VoiceBar />
       <CbPlayArea view={shown} frame={frame} me={me ?? 0} names={names} bots={bots} canAct={myTurn} look={look}
         onBid={(bid) => send({ bid })} onPlay={(card) => send({ card })}>
-        <p className="text-sm" role="status">{statusLine(shown, names, shown.turnSeat === me, busy || !settled, botTurn)}</p>
+        <p className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold empty:hidden" role="status">{statusLine(shown, names, shown.turnSeat === me, busy || !settled, botTurn)}</p>
         {clockOn && <CbClock key={clock.turnId} startMs={clock.ms} running onExpire={() => {}} />}
         {mine?.bot && !mine.left && (
           <Button size="sm" variant="outline" onClick={() => sendToRoom({ type: 'hint', data: null })}>{t('online.takeBack')}</Button>

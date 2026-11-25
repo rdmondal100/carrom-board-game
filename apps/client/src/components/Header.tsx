@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BookOpen, Coins, Home, LogIn, Play, Settings, Store, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, Coins, Home, LogIn, Play, Settings, Sparkles, Store, Users, type LucideIcon } from 'lucide-react';
 import { Link, NavLink } from 'react-router';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/Avatar';
@@ -47,9 +47,14 @@ export function Header() {
       .catch(() => { bonusAsked.delete(userId); });
   }, [dispatch, userId]);
   return (
-    <header className="flex items-center gap-1 border-b border-border px-3 py-2 pt-[max(0.5rem,var(--inset-top))]">
-      <Link to="/" className="mr-auto text-lg font-bold tracking-tight">{appName}</Link>
-      <nav className="flex gap-0.5 text-sm">
+    <header className="sticky top-0 z-30 flex items-center gap-1 border-b border-white/10 bg-background/60 px-3 py-2 pt-[max(0.5rem,var(--inset-top))] backdrop-blur-xl">
+      <Link to="/" className="group mr-auto flex min-w-0 items-center gap-2">
+        <span className="grid size-8 shrink-0 sm:size-9 place-items-center rounded-xl bg-linear-to-br from-amber-300 via-orange-500 to-fuchsia-600 shadow-[0_3px_0_#7c2d12] transition group-hover:rotate-6">
+          <Sparkles className="size-5 text-white" />
+        </span>
+        <span className="truncate bg-linear-to-r from-amber-200 via-orange-200 to-pink-200 bg-clip-text font-display text-lg font-extrabold sm:text-xl tracking-tight text-transparent">{appName}</span>
+      </Link>
+      <nav className="flex gap-0 text-sm sm:gap-0.5">
         {links.map(({ to, key, Icon, end }) => (
           <NavLink
             key={to}
@@ -58,8 +63,8 @@ export function Header() {
             aria-label={t(key)}
             title={t(key)}
             className={({ isActive }) => cn(
-              'flex items-center gap-1.5 rounded-md px-2 py-2 hover:bg-accent',
-              isActive && 'bg-accent text-accent-foreground',
+              'flex items-center gap-1.5 rounded-xl px-1.5 py-2 text-white/75 sm:px-2 transition hover:bg-white/10 hover:text-white',
+              isActive && 'bg-white/10 text-amber-200',
             )}
           >
             <Icon className="size-5" />
@@ -73,9 +78,9 @@ export function Header() {
           data-testid="nav-coins"
           aria-label={t('header.coins', { coins: user.coins })}
           title={t('header.coins', { coins: user.coins })}
-          className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-semibold tabular-nums hover:bg-accent"
+          className="ml-1 flex items-center gap-1 rounded-full bg-linear-to-b from-amber-300/25 to-orange-500/20 py-1 pr-2.5 pl-1 text-sm font-bold text-amber-100 tabular-nums ring-1 ring-amber-300/40 transition hover:ring-amber-300"
         >
-          <Coins className="size-4 text-amber-400" />{user.coins}
+          <span className="grid size-6 place-items-center rounded-full bg-linear-to-b from-amber-300 to-amber-500 shadow-inner"><Coins className="size-3.5 text-amber-900" /></span>{user.coins}
         </Link>
       )}
       <NavLink
@@ -84,14 +89,14 @@ export function Header() {
         title={account}
         data-testid="nav-account"
         className={({ isActive }) => cn(
-          'flex items-center rounded-md p-1.5 hover:bg-accent',
-          isActive && 'bg-accent text-accent-foreground',
+          'flex items-center rounded-full p-1 transition hover:bg-white/10',
+          isActive && 'ring-2 ring-amber-300',
         )}
       >
         {user ? <Avatar index={user.avatar} name={user.name} size="sm" /> : <LogIn className="size-5" />}
       </NavLink>
-      <Button variant="outline" size="sm" onClick={() => setLang(other)} lang={other}>
-        {t(`lang.${other}`)}
+      <Button variant="outline" size="sm" className="ml-1 rounded-full px-2.5" onClick={() => setLang(other)} lang={other} aria-label={t(`lang.${other}`)} title={t(`lang.${other}`)}>
+        {t(`lang.short.${other}`)}
       </Button>
     </header>
   );

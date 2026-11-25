@@ -14,13 +14,15 @@ function cueSound(f: Frame, me: number | null): void {
 }
 
 interface Job { frames: Frame[]; me: number | null; onDone?: () => void }
-interface Player { queue: Job[]; running: boolean; timer: ReturnType<typeof setTimeout> | null; show: (f: Frame | null) => void; setBusy: (b: boolean) => void }
+interface Player { queue: Job[]; running: boolean; timer: ReturnType<typeof setTimeout> | null; shown: Frame | null; show: (f: Frame | null) => void; setBusy: (b: boolean) => void }
 
 /** Shows each frame of the first job, then the next job, until none are left (outside React state per frame). */
 function pump(p: Player): void {
   const job = p.queue[0];
   if (!job) {
     p.running = false;
+    p.timer = null;
+    p.shown = null;
     p.setBusy(false);
     p.show(null);
     return;
@@ -32,6 +34,7 @@ function pump(p: Player): void {
     pump(p);
     return;
   }
+  p.shown = f;
   p.show(f);
   cueSound(f, job.me);
   p.timer = setTimeout(() => pump(p), f.ms);
@@ -49,7 +52,7 @@ export function useFrames(): {
 } {
   const [frame, setFrame] = useState<Frame | null>(null);
   const [busy, setBusy] = useState(false);
-  const player = useRef<Player>({ queue: [], running: false, timer: null, show: setFrame, setBusy });
+  const player = useRef<Player>({ queue: [], running: false, timer: null, shown: null, show: setFrame, setBusy });
 
   const play = useCallback((start: CallbreakView, events: readonly CallbreakEvent[], end: CallbreakView, onDone?: () => void) => {
     const p = player.current;
@@ -60,11 +63,20 @@ export function useFrames(): {
     pump(p);
   }, []);
 
+  // Pause on unmount, resume on (re)mount. StrictMode mounts twice in dev; dropping
+  // the queue there left `busy` stuck on, so the game never took input again.
   useEffect(() => {
     const p = player.current;
+    if (!p.running && p.queue.length > 0) {
+      p.running = true;
+      pump(p);
+    }
     return () => {
-      if (p.timer) clearTimeout(p.timer);
-      p.queue = [];
+      if (p.timer) {
+        clearTimeout(p.timer);
+        if (p.shown) p.queue[0]?.frames.unshift(p.shown);
+      }
+      p.timer = null;
       p.running = false;
     };
   }, []);

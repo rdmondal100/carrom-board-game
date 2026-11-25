@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LayoutGroup } from 'motion/react';
 import type { Card } from '@hub/cards';
 import { bidFor, legalCards, type CallbreakView } from '@hub/callbreak';
 import type { Frame } from '@/games/callbreak/playback';
@@ -30,14 +31,18 @@ export function CbPlayArea({ view, frame, me, names, bots, canAct, onBid, onPlay
   const hand = frame?.hand ?? view.hand;
   const bidding = canAct && !frame && view.phase === 'bid';
   const legal = canAct && !frame && view.phase === 'play' ? legalCards(view.hand, view.trick) : [];
+  const dealing = frame?.cue === 'deal';
+  // MOT-4 one layout group, so a card leaving the hand flies to its trick spot.
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center gap-2">
-      <CbTable me={me} names={names} bids={frame?.bids ?? view.bids} won={frame?.won ?? view.won} handSizes={view.handSizes}
-        trick={frame?.trick ?? view.trick} winner={frame?.winner ?? null} turnSeat={frame || view.winner !== null ? null : view.turnSeat}
-        dealer={view.dealer} bots={bots} points={frame?.points ?? null} back={look.back} table={look.table} />
-      <div className="flex min-h-10 flex-col items-center gap-1">{children}</div>
-      {bidding && <BidPicker suggested={bidFor(view.hand, 'medium', 0)} onBid={onBid} />}
-      <Hand cards={hand} legal={legal} onPlay={onPlay} label={t('callbreak.hand')} />
-    </div>
+    <LayoutGroup>
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-2">
+        <CbTable me={me} names={names} bids={frame?.bids ?? view.bids} won={frame?.won ?? view.won} handSizes={view.handSizes}
+          trick={frame?.trick ?? view.trick} winner={frame?.winner ?? null} turnSeat={frame || view.winner !== null ? null : view.turnSeat}
+          dealer={view.dealer} bots={bots} points={frame?.points ?? null} back={look.back} table={look.table} dealing={dealing} />
+        <div className="flex min-h-10 flex-col items-center gap-1">{children}</div>
+        {bidding && <BidPicker suggested={bidFor(view.hand, 'medium', 0)} onBid={onBid} />}
+        <Hand cards={hand} legal={legal} onPlay={onPlay} label={t('callbreak.hand')} dealing={dealing} />
+      </div>
+    </LayoutGroup>
   );
 }

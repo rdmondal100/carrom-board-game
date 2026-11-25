@@ -20,6 +20,8 @@ interface Job { frames: Frame[]; onDone?: () => void }
 interface Player {
   queue: Job[];
   timer: ReturnType<typeof setTimeout> | null;
+  /** The frame on screen now (put back if the hook pauses mid-frame). */
+  shown: Frame | null;
   running: boolean;
   show: (f: Frame | null) => void;
   setBusy: (b: boolean) => void;
@@ -29,6 +31,8 @@ function pump(p: Player): void {
   const job = p.queue[0];
   if (!job) {
     p.running = false;
+    p.timer = null;
+    p.shown = null;
     p.setBusy(false);
     p.show(null);
     return;
@@ -40,6 +44,7 @@ function pump(p: Player): void {
     pump(p);
     return;
   }
+  p.shown = f;
   p.show(f);
   cueSound(f.cue);
   p.timer = setTimeout(() => pump(p), f.ms);
@@ -57,7 +62,7 @@ export function usePlayback(): {
 } {
   const [frame, setFrame] = useState<Frame | null>(null);
   const [busy, setBusy] = useState(false);
-  const player = useRef<Player>({ queue: [], timer: null, running: false, show: setFrame, setBusy });
+  const player = useRef<Player>({ queue: [], timer: null, shown: null, running: false, show: setFrame, setBusy });
 
   const play = useCallback((start: readonly (readonly number[])[], events: readonly LudoEvent[], onDone?: () => void) => {
     const p = player.current;
@@ -68,11 +73,20 @@ export function usePlayback(): {
     pump(p);
   }, []);
 
+  // Pause on unmount, resume on (re)mount. StrictMode mounts twice in dev; dropping
+  // the queue there left `busy` stuck on, so the game never took input again.
   useEffect(() => {
     const p = player.current;
+    if (!p.running && p.queue.length > 0) {
+      p.running = true;
+      pump(p);
+    }
     return () => {
-      if (p.timer) clearTimeout(p.timer);
-      p.queue = [];
+      if (p.timer) {
+        clearTimeout(p.timer);
+        if (p.shown) p.queue[0]?.frames.unshift(p.shown);
+      }
+      p.timer = null;
       p.running = false;
     };
   }, []);

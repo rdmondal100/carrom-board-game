@@ -39,11 +39,11 @@ RUN pnpm -F @carrom/server exec node build.mjs \
  && cp -r apps/server/dist /out/dist
 
 FROM node:24-alpine AS server
-ENV NODE_ENV=production PORT=8080
+ENV NODE_ENV=production PORT=5000
 WORKDIR /app
 COPY --from=server-build --chown=node:node /out ./
 USER node
-EXPOSE 8080
+EXPOSE 5000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=5 \
   CMD wget -qO- http://127.0.0.1:${PORT}/health >/dev/null || exit 1
 CMD ["node", "dist/index.js"]
@@ -51,7 +51,7 @@ CMD ["node", "dist/index.js"]
 # ---- client: static Vite build served by nginx ----
 FROM source AS client-build
 # Vite bakes VITE_* in at build time.
-ARG VITE_API_BASE_URL=http://localhost:8080
+ARG VITE_API_BASE_URL=http://localhost:5000
 ARG VITE_GOOGLE_CLIENT_ID=
 ARG VITE_ADS_MENU_BANNER=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \

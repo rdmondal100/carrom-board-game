@@ -112,7 +112,7 @@ function Play({ initial }: { initial: LocalCallbreak }) {
       </div>
       <CbPlayArea view={view} frame={frame} me={ME} names={game.names} bots={bots} canAct={mine} look={look}
         onBid={(bid) => move({ bid })} onPlay={(card) => move({ card })}>
-        <p className="text-sm" role="status">{statusLine(state, game.names, state.turnSeat === ME && !game.takeover, busy, botTurn(game) !== null)}</p>
+        <p className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold empty:hidden" role="status">{statusLine(state, game.names, state.turnSeat === ME && !game.takeover, busy, botTurn(game) !== null)}</p>
         {clockRuns(game) && !busy && <CbClock key={state.turnId} running={!leaving} onExpire={() => apply(game, timeoutLocal(game))} />}
         {game.takeover && (
           <Button size="sm" variant="outline" onClick={() => { const g = takeBack(game); setGame(g); saveCallbreak(g); }}>{t('online.takeBack')}</Button>

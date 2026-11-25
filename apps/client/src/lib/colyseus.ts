@@ -6,6 +6,7 @@ import {
 } from '@carrom/protocol';
 import { API_BASE } from '@/constants/apiBase';
 import { getToken } from './auth';
+import { lobbyFromState } from './lobbyState';
 
 /** sessionStorage key: the reconnection token of the room this tab is in (survives a reload). */
 export const RECONNECT_KEY = 'carrom.room';
@@ -48,7 +49,11 @@ function attach(r: Room): Room {
     if (m.type !== 'hint' && m.type !== 'emote' && m.type !== 'error') log.push(m);
     messageListeners.forEach((l) => l(m));
   });
-  r.onStateChange((s: { toJSON(): unknown }) => emitLobby(s.toJSON() as LobbyView));
+  r.onStateChange((s: { toJSON(): unknown }) => {
+    // A half-synced state (e.g. just after a reconnect) waits for the next change.
+    const lobby = lobbyFromState(s.toJSON());
+    if (lobby) emitLobby(lobby);
+  });
   r.onReconnect(() => session('set', r.reconnectionToken));
   r.onLeave(() => {
     if (room !== r) return;
@@ -100,7 +105,7 @@ export const currentRoom = (): Room | null => room;
 export const mySessionId = (): string | null => room?.sessionId ?? null;
 export const gameLog = (): readonly ServerMessage[] => log;
 export const currentLobby = (): LobbyView | null =>
-  (room?.state as { toJSON?: () => unknown } | undefined)?.toJSON?.() as LobbyView | null ?? null;
+  lobbyFromState((room?.state as { toJSON?: () => unknown } | undefined)?.toJSON?.());
 
 export function onServerMessage(l: Listener<ServerMessage>): () => void {
   messageListeners.add(l);

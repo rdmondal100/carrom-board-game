@@ -1,4 +1,5 @@
-import { LUDO, SAFE_SQUARES } from '@hub/ludo';
+import { useId } from 'react';
+import { LUDO, LUDO_ANIM, SAFE_SQUARES } from '@hub/ludo';
 import { columnOf, GRID, pointOf, rotationFor, stackOffset, TRACK, turn, yardSpot, type Pt } from '@/games/ludo/geometry';
 import { seatColor, tokenColor, type BoardSkin, type TokenSkin } from '@/games/ludo/skins';
 import { cn } from '@/lib/utils';
@@ -75,8 +76,20 @@ export function LudoBoard({ seats, tokens, board, tokenSkinOf, viewSeat, turnSea
   for (const t of placed) stacks.set(key(t.at), (stacks.get(key(t.at)) ?? 0) + 1);
   const seen = new Map<string, number>();
   const c = GRID / 2;
+  const uid = useId().replace(/:/g, '');
+  const RIM = 0.45;
   return (
-    <svg viewBox={`0 0 ${GRID} ${GRID}`} className={cn('aspect-square w-full max-w-[min(100%,70vh)]', className)} role="img" aria-label={label}>
+    <svg viewBox={`${-RIM} ${-RIM} ${GRID + 2 * RIM} ${GRID + 2 * RIM}`} className={cn('aspect-square w-full max-w-[min(100%,70vh)]', className)} role="img" aria-label={label}>
+      <defs>
+        <linearGradient id={`rim${uid}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffe08a" /><stop offset="0.45" stopColor="#c98a1c" /><stop offset="1" stopColor="#6b3d07" />
+        </linearGradient>
+        <radialGradient id={`nest${uid}`} cx="0.5" cy="0.4" r="0.6">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.9" /><stop offset="1" stopColor="#fff" stopOpacity="0.25" />
+        </radialGradient>
+      </defs>
+      <rect x={-RIM} y={-RIM} width={GRID + 2 * RIM} height={GRID + 2 * RIM} rx={0.8} fill={`url(#rim${uid})`} />
+      <rect x={-0.12} y={-0.12} width={GRID + 0.24} height={GRID + 0.24} rx={0.45} fill="#3b1f05" opacity={0.55} />
       <g transform={`rotate(${rotationFor(viewSeat)} ${c} ${c})`}>
         <rect width={GRID} height={GRID} rx={0.3} fill={board.bg} />
         {[0, 1, 2, 3].map((s) => {
@@ -85,11 +98,13 @@ export function LudoBoard({ seats, tokens, board, tokenSkinOf, viewSeat, turnSea
           const y = Math.min(corner.y, turn({ x: 6, y: 6 }, s).y);
           return (
             <g key={`yard${s}`} opacity={seats.includes(s) ? 1 : 0.45}>
-              <rect x={x + 0.15} y={y + 0.15} width={5.7} height={5.7} rx={0.5} fill={board.tints[s]} stroke={seatColor(s)} strokeWidth={0.12} />
-              <rect x={x + 0.9} y={y + 0.9} width={4.2} height={4.2} rx={0.4} fill={board.cell} />
+              <rect x={x + 0.15} y={y + 0.15} width={5.7} height={5.7} rx={0.5} fill={seatColor(s)} />
+              <rect x={x + 0.15} y={y + 0.15} width={5.7} height={2.6} rx={0.5} fill="#fff" opacity={0.14} />
+              {turnSeat === s && <rect x={x + 0.15} y={y + 0.15} width={5.7} height={5.7} rx={0.5} fill="none" stroke="#fff" strokeWidth={0.16} className="animate-pulse" />}
+              <rect x={x + 0.9} y={y + 0.9} width={4.2} height={4.2} rx={0.6} fill={board.cell} stroke={board.tints[s]} strokeWidth={0.1} />
               {[0, 1, 2, 3].map((i) => {
                 const p = yardSpot(s, i);
-                return <circle key={i} cx={p.x} cy={p.y} r={0.42} fill="none" stroke={seatColor(s)} strokeWidth={0.06} opacity={0.6} />;
+                return <circle key={i} cx={p.x} cy={p.y} r={0.44} fill={board.tints[s]} stroke={seatColor(s)} strokeWidth={0.07} />;
               })}
             </g>
           );
@@ -120,14 +135,26 @@ export function LudoBoard({ seats, tokens, board, tokenSkinOf, viewSeat, turnSea
           const y = at.y + off.y;
           const can = seat === turnSeat && legal.includes(token);
           const skin = tokenSkinOf(seat);
+          // MOT-3 glide to the new cell; a token sent to its yard flies there in a high arc.
+          const back = p === LUDO.YARD;
+          const ms = back ? LUDO_ANIM.CAPTURE_MS : LUDO_ANIM.HOP_MS;
+          const lift = `${back ? 'token-fly' : 'token-hop'} ${ms}ms ${back ? 'ease-in-out' : 'ease-out'}`;
           return (
             <g key={`k${seat}-${token}`} data-testid={`token-${seat}-${token}`} data-progress={p}
               className={cn(can && onPick && 'cursor-pointer')} role={can && onPick ? 'button' : undefined}
               aria-label={can ? `token ${token + 1}` : undefined}
-              onClick={can && onPick ? () => onPick(token) : undefined}>
-              {can && <circle cx={x} cy={y} r={0.46} fill="none" stroke="#fff" strokeWidth={0.08} className="animate-pulse" />}
-              <g transform={`rotate(${-rotationFor(viewSeat)} ${x} ${y})`}>
-                <TokenShape x={x} y={y} color={tokenColor(skin, seat)} skin={skin} />
+              onClick={can && onPick ? () => onPick(token) : undefined}
+              style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${ms}ms ${back ? 'cubic-bezier(0.45, 0, 0.3, 1)' : 'cubic-bezier(0.3, 0.6, 0.4, 1)'}` }}>
+              {can && <circle r={0.5} fill={seatColor(seat)} opacity={0.35} stroke="#fff" strokeWidth={0.09} className="animate-pulse" />}
+              <g transform={`rotate(${-rotationFor(viewSeat)})`}>
+                <ellipse key={`s${p}`} cy={0.36} rx={0.27} ry={0.08} fill="#000" opacity={0.28} style={{ animation: `token-shadow ${ms}ms ease-out`, transformOrigin: '0px 0.36px' }} />
+                {p === LUDO.HOME && <circle key="burst" r={0.4} fill="none" stroke={seatColor(seat)} strokeWidth={0.12} style={{ animation: 'token-burst 700ms ease-out forwards' }} />}
+                <g className={cn(can && 'animate-hop')}>
+                  <g key={p} style={{ animation: lift, transformOrigin: back ? '0px 0px' : '0px 0.36px' }}>
+                    <TokenShape x={0} y={0} color={tokenColor(skin, seat)} skin={skin} />
+                    <ellipse cx={-0.07} cy={-0.2} rx={0.07} ry={0.045} fill="#fff" opacity={0.65} />
+                  </g>
+                </g>
               </g>
             </g>
           );

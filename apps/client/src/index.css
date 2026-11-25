@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* shadcn/ui tokens: one warm, dark "wooden" theme. */
+/* shadcn/ui tokens: "festive night" — a deep indigo adda night with marigold light. */
 :root {
   /* APP-4: safe-area insets (notch, gesture bar). The Android app sets --safe-area-inset-* itself
      (older WebViews report env() as 0); browsers use env(). */
@@ -8,29 +8,30 @@
   --inset-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   --inset-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --inset-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
-  --radius: 0.75rem;
-  --background: #1c1410;
-  --foreground: #f5ead8;
-  --card: #2a1c13;
-  --card-foreground: #f5ead8;
-  --popover: #2a1c13;
-  --popover-foreground: #f5ead8;
-  --primary: #b45309;
-  --primary-foreground: #fff7ed;
-  --secondary: #3b2718;
-  --secondary-foreground: #f5ead8;
-  --muted: #33231a;
-  --muted-foreground: #c9b79c;
-  --accent: #4a3020;
-  --accent-foreground: #fde68a;
-  --destructive: #b91c1c;
-  --border: #5a3b24;
-  --input: #4a3426;
-  --ring: #f59e0b;
+  --radius: 0.875rem;
+  --background: #0f0b2a;
+  --foreground: #f4f1ff;
+  --card: #1c1648;
+  --card-foreground: #f4f1ff;
+  --popover: #1f1850;
+  --popover-foreground: #f4f1ff;
+  --primary: #ffb020;
+  --primary-foreground: #2a1300;
+  --secondary: #2a2363;
+  --secondary-foreground: #f4f1ff;
+  --muted: #241d58;
+  --muted-foreground: #aaa3d9;
+  --accent: #30287a;
+  --accent-foreground: #ffd166;
+  --destructive: #e5484d;
+  --border: #3a3285;
+  --input: #2d2670;
+  --ring: #ffb020;
 }
 
 @theme inline {
   --font-sans: "Inter", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Baloo Da 2", "Hind Siliguri", "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -53,13 +54,79 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-float: float 5s ease-in-out infinite;
+  --animate-float-slow: float 8s ease-in-out infinite;
+  --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-shine: shine 3.5s ease-in-out infinite;
+  --animate-glow: glow 2s ease-in-out infinite;
+  --animate-dice: dice 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);
+  --animate-hop: hop 0.9s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.5s ease-in-out;
 }
+
+@keyframes float { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-8px) rotate(var(--r, 0deg)); } }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes shine { 0%, 60% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(220%) skewX(-20deg); } }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(255 176 32 / 0.55); } 50% { box-shadow: 0 0 0 8px rgb(255 176 32 / 0); } }
+@keyframes dice { 0% { transform: rotate(0) scale(0.7); } 60% { transform: rotate(400deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
+/* SVG tokens: px here are board cells' user units (1 cell = 1 unit). */
+@keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.2px); } }
+/* MOT-3 one cell hop: lift, then squash on landing. */
+@keyframes token-hop {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-0.45px) scale(0.96, 1.06); }
+  80% { transform: translateY(0) scale(1.12, 0.86); }
+  100% { transform: translateY(0) scale(1); }
+}
+/* MOT-3 a captured token flies home in a high arc with a spin. */
+@keyframes token-fly {
+  0% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-1.6px) rotate(200deg) scale(1.15); }
+  85% { transform: translateY(0) rotate(360deg) scale(1.1, 0.85); }
+  100% { transform: translateY(0) rotate(360deg) scale(1); }
+}
+@keyframes token-shadow { 0%, 100% { transform: scale(1); opacity: 0.28; } 45% { transform: scale(0.6); opacity: 0.14; } }
+@keyframes token-burst { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
 
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
+  background-color: var(--background);
+  /* A night sky: soft coloured glows plus a faint star field. */
+  background-image:
+    radial-gradient(60rem 40rem at 10% -10%, rgb(168 85 247 / 0.28), transparent 60%),
+    radial-gradient(50rem 35rem at 110% 10%, rgb(236 72 153 / 0.18), transparent 60%),
+    radial-gradient(60rem 40rem at 50% 120%, rgb(20 184 166 / 0.16), transparent 60%),
+    radial-gradient(1px 1px at 20px 30px, rgb(255 255 255 / 0.35), transparent 60%),
+    radial-gradient(1px 1px at 120px 80px, rgb(255 255 255 / 0.25), transparent 60%),
+    radial-gradient(1.5px 1.5px at 200px 160px, rgb(255 230 160 / 0.35), transparent 60%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 240px 240px, 240px 240px, 240px 240px;
+  background-attachment: fixed;
+}
+
+h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* A light sweep across a card or button (put on an absolutely placed child). */
+.shine-sweep {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  animation: var(--animate-shine);
+}
+
+/* Nakshi-kantha style stitch border, used on hero banners. */
+.nakshi {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgb(255 255 255 / 0.18) 1.2px, transparent 1.6px);
+  background-size: 14px 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

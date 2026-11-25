@@ -38,7 +38,8 @@ describe('callbreak pages', () => {
     const g = atMyCall();
     saveCallbreak(g);
     show('/g/callbreak/local/play');
-    expect(await screen.findByRole('region', { name: en['callbreak.table'] })).toBeTruthy();
+    // The page is lazy-loaded; under a full parallel run it can take over the default 1 s.
+    expect(await screen.findByRole('region', { name: en['callbreak.table'] }, { timeout: 3000 })).toBeTruthy();
     expect(screen.getAllByTestId(/^card-[2-9TJQKA][SHDC]$/)).toHaveLength(13);
     const picker = await screen.findByTestId('bid-picker', undefined, { timeout: 3000 });
     fireEvent.click(picker.querySelectorAll('button')[2]!);
