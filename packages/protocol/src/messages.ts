@@ -52,8 +52,11 @@ export type ServerMessage<V = unknown, E = unknown, M = unknown, H = unknown> =
   | { type: 'clock'; turnId: number; ms: number }
   /** RANK-4 a ranked game is over and ratings are saved (also on abandon). */
   | { type: 'rankedResult'; winner: string; abandoned: boolean; players: RatingChange[] }
-  /** COS-2 coins this player just earned for the finished game. */
-  | { type: 'reward'; coins: number }
+  /**
+   * COS-2 coins this player just earned for the finished game. PRG-7 the XP it gave; on a level-up,
+   * the new `level` and the coins it paid (`levelCoins`, on top of `coins`).
+   */
+  | { type: 'reward'; coins: number; xp?: number; level?: number; levelCoins?: number }
   /** VOICE-2 signalling from the session `from` (voice state itself is synced per seat in the lobby state). */
   | { type: 'voice'; from: string; signal: VoiceSignal }
   /** ADDA-4 the group moves on: leave this room and join `roomId` (invite `code`, game `gameId`). */

@@ -15,7 +15,7 @@ const patch = vi.mocked(axios.patch);
 
 const user = (over: Partial<PublicUser> = {}): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false,
-  avatar: 0, rating: 1000, ratings: {}, coins: 500,
+  avatar: 0, rating: 1000, ratings: {}, xp: 0, level: 1, coins: 500,
   cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: ['classic-striker', 'classic-coins', 'classic-board'] },
   blocked: [], createdAt: '2026-11-20T00:00:00.000Z',
   ...over,
@@ -64,13 +64,14 @@ describe('shopSlice', () => {
     expect(store.getState().auth.user?.cosmetics.equipped.carrom.striker).toBe('gold-striker');
   });
 
-  it('COS-2 daily bonus and bot reward resolve to the coins given', async () => {
+  it('COS-2 PRG-6 PRG-7 daily bonus and bot reward resolve to what was given', async () => {
     const store = makeStore();
-    post.mockResolvedValueOnce({ data: { reward: 20, user: user({ coins: 20 }) } });
-    expect((await store.dispatch(claimDailyBonus())).payload).toBe(20);
-    post.mockResolvedValueOnce({ data: { reward: 30, user: user({ coins: 50 }) } });
-    expect((await store.dispatch(claimBotReward(true))).payload).toBe(30);
-    expect(post.mock.calls[1]?.slice(0, 2)).toEqual([`${API_BASE}/me/bot-reward`, { won: true }]);
-    expect(store.getState().auth.user?.coins).toBe(50);
+    post.mockResolvedValueOnce({ data: { reward: 20, streak: 1, user: user({ coins: 20 }) } });
+    expect((await store.dispatch(claimDailyBonus())).payload).toEqual({ coins: 20, streak: 1 });
+    post.mockResolvedValueOnce({ data: { reward: 30, xp: 30, level: 2, levelCoins: 50, user: user({ coins: 100 }) } });
+    expect((await store.dispatch(claimBotReward({ won: true, game: 'ludo' }))).payload)
+      .toEqual({ coins: 30, xp: 30, level: 2, levelCoins: 50 });
+    expect(post.mock.calls[1]?.slice(0, 2)).toEqual([`${API_BASE}/me/bot-reward`, { won: true, game: 'ludo' }]);
+    expect(store.getState().auth.user?.coins).toBe(100);
   });
 });

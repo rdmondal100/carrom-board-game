@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import mongoose, { Schema, type HydratedDocument, type InferSchemaType } from 'mongoose';
-import { ownedItems, resolveEquippedMap } from '@carrom/protocol';
+import { levelOf, ownedItems, resolveEquippedMap } from '@carrom/protocol';
 import type { GameRating, PublicUser } from '@carrom/protocol/api';
 import { GAME_IDS } from '@hub/game-kit';
 
@@ -30,6 +30,22 @@ const gameRatingSchema = new Schema(
   { _id: false },
 );
 
+/** PRG-2 one of today's missions, with its progress (variety missions count distinct `seen` game ids). */
+const missionSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    kind: { type: String, required: true, enum: ['play', 'win', 'online', 'variety'] },
+    game: { type: String, default: null },
+    target: { type: Number, required: true, min: 1 },
+    coins: { type: Number, required: true, min: 0 },
+    xp: { type: Number, required: true, min: 0 },
+    progress: { type: Number, default: 0, min: 0 },
+    seen: { type: [String], default: [] },
+    claimed: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
 const userSchema = new Schema(
   {
     name: { type: String, required: true, trim: true, minlength: NAME_MIN, maxlength: NAME_MAX },
@@ -48,6 +64,16 @@ const userSchema = new Schema(
     },
     /** COS-2 UTC day (YYYY-MM-DD) the daily bonus was last given. */
     dailyBonusDay: { type: String, default: '' },
+    /** PRG-6 days in a row the daily bonus was claimed, ending on `dailyBonusDay`. */
+    streak: { type: Number, default: 0, min: 0 },
+    /** PRG-1 total XP; the level is levelOf(xp). */
+    xp: { type: Number, default: 0, min: 0 },
+    /** PRG-2 the missions of one UTC day and the swaps used that day (PRG-5). */
+    missions: {
+      day: { type: String, default: '' },
+      swaps: { type: Number, default: 0, min: 0 },
+      list: { type: [missionSchema], default: [] },
+    },
     /** COS-2 UTC day of the counted Vs-bot rewards, and how many were given that day. */
     botRewardDay: { type: String, default: '' },
     botRewards: { type: Number, default: 0, min: 0 },
@@ -103,6 +129,8 @@ export function toPublicUser(u: UserDoc): PublicUser {
     rating: ratingOf(u, 'carrom').rating,
     ratings: Object.fromEntries([...(u.ratings ?? new Map()).keys()].map((g) => [g, ratingOf(u, g)])),
     coins: u.coins,
+    xp: u.xp ?? 0,
+    level: levelOf(u.xp ?? 0),
     cosmetics: {
       equipped: resolveEquippedMap(u.cosmetics?.equipped ?? []),
       owned: ownedItems(u.cosmetics?.owned ?? []),

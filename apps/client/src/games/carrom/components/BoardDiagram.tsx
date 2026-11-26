@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 export type DiagramVariant = 'logo' | 'shoot' | 'colour' | 'point' | 'queen' | 'lastCoin';
 
 const C = {
-  frame: '#5a2e14', surface: '#ecd5a4', line: '#3a2412', accent: '#1f6b45', pocket: '#0b0b0b',
+  frame: '#5a2e14', surface: '#ecd5a4', line: '#8a3f10', accent: '#e0952e', pocket: '#0b0b0b',
   white: '#f2e7cf', black: '#2b2b2b', red: '#d3132f', striker: '#2f6fd6', arrow: '#b45309',
 };
 const COIN_R = 3;

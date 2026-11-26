@@ -2,6 +2,7 @@ import { BookOpen, ExternalLink, Play, Settings } from 'lucide-react';
 import { Link } from 'react-router';
 import { GameArt, themeOf } from '@/components/GameArt';
 import { AddaStrip, ContinueCard, DailyBonus, GameCard, Hero, WhyUs } from '@/components/HubParts';
+import { TodayPanel } from '@/components/ProgressParts';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_HUB_URL } from '@/constants/brand';
 import { useAppName } from '@/games/appName';
@@ -9,6 +10,7 @@ import { useGames } from '@/games/GamesContext';
 import { ALL_GAMES } from '@/games/registry';
 import { gamePath, type ClientGame } from '@/games/types';
 import { t, useLang } from '@/i18n/t';
+import { useAppSelector } from '@/store/store';
 
 /** Where "more games" points (the web hub). */
 const HUB_URL = ((import.meta.env.VITE_HUB_URL as string | undefined) ?? '').trim().replace(/\/+$/, '') || DEFAULT_HUB_URL;
@@ -21,9 +23,13 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-/** HAPP-2 the web / hub-app home: hero, saved games to continue, game posters, daily bonus, adda. */
+/**
+ * HAPP-2 the web / hub-app home: hero, saved games to continue, PRG-8 today's level, streak and
+ * missions (signed in), game posters, the sign-in bonus card (signed out), adda.
+ */
 function HubHome({ games }: { games: readonly ClientGame[] }) {
   const name = useAppName();
+  const signedIn = useAppSelector((s) => s.auth.user !== null);
   const saved = games.filter((g) => g.routes.localGame && g.hasSave?.());
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
@@ -31,11 +37,12 @@ function HubHome({ games }: { games: readonly ClientGame[] }) {
       {saved.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">{saved.map((g) => <ContinueCard key={g.id} game={g} />)}</div>
       )}
+      {signedIn && <TodayPanel />}
       <SectionTitle>{t('hub.games')}</SectionTitle>
       <div className="grid grid-cols-2 gap-3 sm:gap-4" data-testid="hub-games">
         {games.map((g, i) => <GameCard key={g.id} game={g} index={i} />)}
       </div>
-      <DailyBonus />
+      {!signedIn && <DailyBonus />}
       <AddaStrip />
       <WhyUs />
     </div>
@@ -101,6 +108,8 @@ export function GameHome({ game }: { game: ClientGame }) {
           </Button>
         </div>
       </div>
+      {/* PRG-8 a one-game app shows today's missions (one may be swapped away if it names another game). */}
+      <TodayPanel compact />
       <MoreGames game={game} />
     </div>
   );

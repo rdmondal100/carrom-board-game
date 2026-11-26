@@ -1,4 +1,4 @@
-import { rng } from './textures';
+import { rng } from '../rng';
 
 /** A smooth 2D value noise (0..1) from a seed: the base of every generated wood. */
 function valueNoise(seed: number): (x: number, y: number) => number {

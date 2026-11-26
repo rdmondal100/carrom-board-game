@@ -1,4 +1,5 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
+import { rng } from '../rng';
 
 /** T3D-9 textures stay at or under this size. */
 export const MAX_TEX = 1024;
@@ -16,14 +17,7 @@ export function shade(c: number | string, k: number): string {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-/** A small steady pseudo-random sequence, so generated art looks the same every time. */
-export function rng(seed: number): () => number {
-  let s = seed >>> 0 || 1;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
+export { rng };
 
 /** A canvas texture of `size` px drawn by `draw`. */
 export function canvasTexture(size: number, draw: (ctx: CanvasRenderingContext2D, size: number) => void, repeat = false): CanvasTexture {

@@ -96,7 +96,11 @@ export const ServerMessageSchema: z.ZodType<ServerMessage> = z.union([
       seat, userId: z.string(), ratingBefore: z.number().int(), ratingAfter: z.number().int(),
     })),
   }),
-  z.object({ type: z.literal('reward'), coins: z.number().int().min(0) }),
+  z.object({
+    type: z.literal('reward'), coins: z.number().int().min(0),
+    xp: z.number().int().min(0).optional(), level: z.number().int().min(1).optional(),
+    levelCoins: z.number().int().min(0).optional(),
+  }),
   z.object({ type: z.literal('voice'), from: SessionIdSchema, signal: VoiceSignalSchema }),
   z.object({
     type: z.literal('nextRoom'), roomId: z.string().min(1).max(64), code: z.string().max(16), gameId: z.string().min(1).max(32),

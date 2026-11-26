@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { rewardToast } from '@/lib/rewardToast';
 import type { LobbyView, ServerMessage } from '@carrom/protocol';
 import { SEATS, type CallbreakMove } from '@hub/callbreak';
 import { EmoteBar, EMOTE_ICONS } from '@/components/EmoteBar';
@@ -67,7 +68,7 @@ export function CbOnline() {
   useEffect(() => onServerMessage((m) => {
     if (m.type === 'clock') setClock({ turnId: m.turnId, ms: m.ms });
     if (m.type === 'reward') {
-      toast.success(t('reward.toast', { coins: m.coins }));
+      rewardToast(m);
       void dispatch(loadMe());
     }
     if (m.type === 'error') {

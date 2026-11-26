@@ -26,6 +26,8 @@ export const STRIKER_TOUCH_SCALE = 1.6;
 export const BASELINE_TOUCH_STRIKERS = 1.2;
 /** Upper limit on the whole canvas size (board + frames) on wide screens, px. */
 export const MAX_CANVAS_PX = 720;
+/** Largest painted 2D board texture (device px), so phones with DPR 3 stay light. */
+export const MAX_BOARD_TEX_PX = 2048;
 /** Smallest canvas we lay out, px. */
 export const MIN_CANVAS_PX = 200;
 /** PHY-7 runs per chunk on the determinism page before yielding to the browser. */
@@ -38,9 +40,9 @@ export const BOARD_COLOURS = {
   surface: 0xecd5a4,
   surfaceGlow: 0xf6e6c2,
   surfaceEdge: 0xd9b97f,
-  line: 0x3a2412,
-  /** Board markings (baseline end circles, centre ring). Green, so the red queen stands out. */
-  accent: 0x1f6b45,
+  line: 0x8a3f10,
+  /** Board markings (baseline end circles, centre spot). Amber, so the red queen stands out. */
+  accent: 0xe0952e,
   pocket: 0x0b0b0b,
   pocketRim: 0x3b1d0c,
   shadow: 0x000000,
@@ -64,7 +66,18 @@ export const PIECE_SHADOW_OFFSET = { x: 0.12, y: 0.18 };
 export const PIECE_SHADOW_ALPHA = 0.3;
 export const PIECE_RING_RADIUS = 0.62;
 export const PIECE_RING_ALPHA = 0.5;
-export const PIECE_SHINE = { x: -0.36, y: -0.42, r: 0.2, alpha: 0.45 };
+export const PIECE_SHINE = { x: -0.34, y: -0.44, r: 0.2, alpha: 0.4 };
+/** Rim bevel width, and the carved rings on a coin's face, as fractions of the radius. */
+export const PIECE_BEVEL = 0.12;
+export const PIECE_GROOVES: readonly number[] = [0.8, 0.6, 0.38];
+/** The striker's printed star: points, and inner radius as a fraction of the outer. */
+export const STRIKER_STAR_POINTS = 8;
+export const STRIKER_STAR_INNER = 0.5;
+
+/** Power pointer: ring dashes, guide dot spacing (board units) and the power colours. */
+export const AIM_RING_DASHES = 36;
+export const AIM_DOT_GAP = 0.022;
+export const POWER_COLOURS = { low: 0x3ddc84, mid: 0xffc233, high: 0xff2d2d } as const;
 
 /** Corner arrows: run along each diagonal between these distances from the centre, in board units. */
 export const ARROW_FROM = 0.36;
@@ -73,10 +86,6 @@ export const ARROW_TO = 0.17;
 export const ARROW_HEAD = 0.02;
 /** Frame bevel width, as a fraction of the frame width. */
 export const FRAME_BEVEL = 0.18;
-
-/** Alpha values for overlays. */
-export const GUIDE_ALPHA = 0.9;
-export const PULL_ALPHA = 0.35;
 
 /** Shot clock ring (LOC-5): radius in striker radii, width in board units. */
 export const CLOCK_RING_SCALE = 1.45;

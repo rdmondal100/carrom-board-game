@@ -26,6 +26,7 @@ import { onPauseRequest } from '@/lib/backButton';
 import { haptic } from '@/lib/native';
 import { playSound } from '@/lib/sound';
 import { claimBotReward } from '@/store/shopSlice';
+import { rewardToast } from '@/lib/rewardToast';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 import { useGameView } from '@/game3d/useGameView';
 
@@ -135,8 +136,8 @@ function Play({ initial }: { initial: Game }) {
     rewarded.current = game;
     const won = vsBotResult(game, gameEnd);
     if (won === null) return;
-    dispatch(claimBotReward(won)).unwrap()
-      .then((coins) => { if (coins > 0) toast.success(t('reward.toast', { coins })); })
+    dispatch(claimBotReward({ won, game: 'carrom' })).unwrap()
+      .then(rewardToast)
       .catch(() => { /* offline: no reward */ });
   }, [dispatch, game, gameEnd, signedIn]);
 

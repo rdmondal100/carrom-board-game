@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
+import { levelOf, PROGRESS } from '@carrom/protocol';
 import { createApp, type AppEnv } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
 import { ALREADY_OWNED, NOT_ENOUGH_COINS, NOT_OWNED, UNKNOWN_ITEM } from '../controllers/shop.controller.js';
@@ -150,7 +151,9 @@ describe('shop and wallet routes', () => {
       const tries = await Promise.all(Array.from({ length: 8 }, () =>
         request(app).post('/me/bot-reward').set(p.auth).send({ won: true })));
       expect(tries.filter((r) => r.body.reward === ECONOMY.win)).toHaveLength(ECONOMY.botGamesPerDay);
-      expect(await coinsOf(p.id)).toBe(ECONOMY.win * ECONOMY.botGamesPerDay);
+      // PRG-1 those games' XP also reached level 2, which pays its own coins.
+      const levelUps = levelOf(PROGRESS.gameXp.win * ECONOMY.botGamesPerDay) - 1;
+      expect(await coinsOf(p.id)).toBe(ECONOMY.win * ECONOMY.botGamesPerDay + levelUps * PROGRESS.levelUpCoins);
       await User.updateOne({ _id: p.id }, { botRewardDay: '2000-01-01' });
       expect((await request(app).post('/me/bot-reward').set(p.auth).send({ won: false })).body.reward).toBe(ECONOMY.loss);
     });

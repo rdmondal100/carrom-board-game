@@ -2,6 +2,7 @@ import { carromPath } from '../paths';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { rewardToast } from '@/lib/rewardToast';
 import { config, type BoardState, type Seat, type ShotEvent, type ShotInput } from '@carrom/engine';
 import type { AimHint, LobbyView, ServerMessage } from '@carrom/protocol';
 import type { RuleEvent } from '@carrom/rules';
@@ -98,7 +99,7 @@ export function OnlineGame() {
     }
     // COS-7: coins for this game; refresh the balance in the header.
     if (m.type === 'reward') {
-      toast.success(t('reward.toast', { coins: m.coins }));
+      rewardToast(m);
       void dispatch(loadMe());
     }
     if (m.type === 'error' && m.code === 'NO_OPPONENT') {

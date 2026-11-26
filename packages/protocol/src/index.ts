@@ -1,6 +1,12 @@
 export type {
   ClientMessage, ClientMessageType, RatingChange, ServerMessage, ServerMessageType,
 } from './messages';
+export type { GameOutcome, Mission, MissionKind, MissionView } from './progress';
+export {
+  dailyMissions, hash32, levelNeed, levelOf, levelStart, missionCounts, missionTiers, PROGRESS, streakDay, streakReward,
+  swapPick,
+} from './progress';
+export type { ProgressResponse, StreakView } from './api';
 export type { QueueMessage, SeatReservation } from './queue';
 export { parseQueueMessage, QUEUE_ROOM, QueueMessageSchema, RANKED_ROOM } from './queue';
 export {

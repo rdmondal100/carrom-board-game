@@ -3,12 +3,14 @@ import { BookOpen, Coins, Home, LogIn, Play, Settings, Sparkles, Store, Users, t
 import { Link, NavLink } from 'react-router';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/Avatar';
+import { LevelBadge } from '@/components/ProgressParts';
 import { Button } from '@/components/ui/button';
 import { useAppName } from '@/games/appName';
 import { useGames } from '@/games/GamesContext';
 import { gamePath, type ClientGame } from '@/games/types';
 import { setLang, t, useLang } from '@/i18n/t';
 import { cn } from '@/lib/utils';
+import { fetchProgress } from '@/store/progressSlice';
 import { claimDailyBonus } from '@/store/shopSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
@@ -38,12 +40,17 @@ export function Header() {
   const appName = useAppName();
   const links = navLinks(useGames().single);
   const userId = user?.id;
-  // COS-2: claim today's login bonus once per page load (the server gives it once per day).
+  // COS-2 / PRG-6: claim today's streak bonus once per page load (the server gives it once per day),
+  // then refresh the streak card if one is showing.
   useEffect(() => {
     if (!userId || bonusAsked.has(userId)) return;
     bonusAsked.add(userId);
     dispatch(claimDailyBonus()).unwrap()
-      .then((coins) => { if (coins > 0) toast.success(t('reward.daily', { coins })); })
+      .then(({ coins, streak }) => {
+        if (coins <= 0) return;
+        toast.success(streak > 0 ? t('reward.streak', { coins, day: streak }) : t('reward.daily', { coins }));
+        void dispatch(fetchProgress());
+      })
       .catch(() => { bonusAsked.delete(userId); });
   }, [dispatch, userId]);
   return (
@@ -89,11 +96,12 @@ export function Header() {
         title={account}
         data-testid="nav-account"
         className={({ isActive }) => cn(
-          'flex items-center rounded-full p-1 transition hover:bg-white/10',
+          'relative flex items-center rounded-full p-1 transition hover:bg-white/10',
           isActive && 'ring-2 ring-amber-300',
         )}
       >
         {user ? <Avatar index={user.avatar} name={user.name} size="sm" /> : <LogIn className="size-5" />}
+        {user && <LevelBadge level={user.level}className="absolute -right-0.5 -bottom-0.5" />}
       </NavLink>
       <Button variant="outline" size="sm" className="ml-1 rounded-full px-2.5" onClick={() => setLang(other)} lang={other} aria-label={t(`lang.${other}`)} title={t(`lang.${other}`)}>
         {t(`lang.short.${other}`)}

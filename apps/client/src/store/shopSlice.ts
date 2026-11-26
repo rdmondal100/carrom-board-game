@@ -56,28 +56,38 @@ export const equipItems = createAsyncThunk<PublicUser, EquipRequest, Cfg>('shop/
   }
 });
 
-/** COS-2: today's login bonus; resolves to the coins given (0 = already claimed today). */
-export const claimDailyBonus = createAsyncThunk<number, void, Cfg>('shop/dailyBonus', async (_, { dispatch, rejectWithValue }) => {
-  try {
-    const res = await axios.post<RewardResponse>(`${API_BASE}/me/daily-bonus`, {}, { headers: getAuthHeaders() });
-    dispatch(userUpdated(res.data.user));
-    return res.data.reward;
-  } catch (err) {
-    return rejectWithValue(failure('dailyBonus', err));
-  }
-});
+/** COS-2 / PRG-6: today's login bonus; resolves to the coins given (0 = already claimed today) and the streak. */
+export const claimDailyBonus = createAsyncThunk<{ coins: number; streak: number }, void, Cfg>(
+  'shop/dailyBonus', async (_, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await axios.post<RewardResponse>(`${API_BASE}/me/daily-bonus`, {}, { headers: getAuthHeaders() });
+      dispatch(userUpdated(res.data.user));
+      return { coins: res.data.reward, streak: res.data.streak ?? 0 };
+    } catch (err) {
+      return rejectWithValue(failure('dailyBonus', err));
+    }
+  },
+);
 
-/** COS-2: a finished Vs-bot game; resolves to the coins given (0 once today's cap is used). */
-export const claimBotReward = createAsyncThunk<number, boolean, Cfg>('shop/botReward', async (won, { dispatch, rejectWithValue }) => {
-  try {
-    const body: BotRewardRequest = { won };
-    const res = await axios.post<RewardResponse>(`${API_BASE}/me/bot-reward`, body, { headers: getAuthHeaders() });
-    dispatch(userUpdated(res.data.user));
-    return res.data.reward;
-  } catch (err) {
-    return rejectWithValue(failure('botReward', err));
-  }
-});
+/** COS-2 coins for a game; PRG-7 its XP, and the new level and its coins on a level-up. */
+export interface GameRewardInfo { coins: number; xp?: number; level?: number; levelCoins?: number }
+
+/**
+ * COS-2: a finished Vs-bot game of `game` (PRG-7: it moves that game's missions);
+ * resolves to what was given (coins 0 once today's cap is used).
+ */
+export const claimBotReward = createAsyncThunk<GameRewardInfo, BotRewardRequest, Cfg>(
+  'shop/botReward', async (body, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await axios.post<RewardResponse>(`${API_BASE}/me/bot-reward`, body, { headers: getAuthHeaders() });
+      dispatch(userUpdated(res.data.user));
+      const { reward, xp, level, levelCoins } = res.data;
+      return { coins: reward, xp, level, levelCoins };
+    } catch (err) {
+      return rejectWithValue(failure('botReward', err));
+    }
+  },
+);
 
 /** AD-3: how many rewarded ads still pay today. */
 export const fetchAdStatus = createAsyncThunk<AdStatusResponse, void, Cfg>('shop/adStatus', async (_, { rejectWithValue }) => {

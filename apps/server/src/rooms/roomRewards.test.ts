@@ -1,5 +1,5 @@
 import { boot, type ColyseusTestServer } from '@colyseus/testing';
-import type { LobbyView } from '@carrom/protocol';
+import { PROGRESS, type LobbyView } from '@carrom/protocol';
 import { afterAll, afterEach, beforeAll, describe, expect, inject, it } from 'vitest';
 import { createServer } from '../app.js';
 import { connectDb, disconnectDb } from '../connectDb.js';
@@ -70,6 +70,18 @@ describe('online rewards and skins', () => {
     expect([await coinsOf(a.id), await coinsOf(b.id)]).toEqual([ECONOMY.win, ECONOMY.loss]);
     expect((await ca.waitFor('reward')).coins).toBe(ECONOMY.win);
     expect((await cb.waitFor('reward')).coins).toBe(ECONOMY.loss);
+  });
+
+  it('PRG-7 the reward message carries the XP; PRG-3 the game moves carrom missions', async () => {
+    const { a, ca, room } = await started1v1();
+    await User.updateOne({ _id: a.id }, { xp: 90 });
+    (room as unknown as { onGameEnd(w: string): void }).onGameEnd(seatOf(colyseus, ca) === 0 ? 'A' : 'B');
+    await room.pendingRewards;
+    const msg = await ca.waitFor('reward');
+    expect(msg).toMatchObject({ coins: ECONOMY.win, xp: PROGRESS.gameXp.win, level: 2, levelCoins: PROGRESS.levelUpCoins });
+    const u = (await User.findById(a.id))!;
+    expect(u.xp).toBe(90 + PROGRESS.gameXp.win);
+    expect(u.missions?.list).toHaveLength(3);
   });
 
   it('COS-2 a player who left the game gets no reward', async () => {

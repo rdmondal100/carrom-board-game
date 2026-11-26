@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { rewardToast } from '@/lib/rewardToast';
 import type { LobbyView, ServerMessage } from '@carrom/protocol';
 import { LUDO, legalTokens, ludoResult, seatsOf, type LudoMove, type LudoState } from '@hub/ludo';
 import { EmoteBar, EMOTE_ICONS } from '@/components/EmoteBar';
@@ -77,7 +78,7 @@ export function LudoOnline() {
       void dispatch(loadMe());
     }
     if (m.type === 'reward') {
-      toast.success(t('reward.toast', { coins: m.coins }));
+      rewardToast(m);
       void dispatch(loadMe());
     }
     if (m.type === 'error' && m.code === 'NO_OPPONENT') {

@@ -16,7 +16,7 @@ const get = vi.mocked(axios.get);
 
 const user = (blocked: string[]): PublicUser => ({
   id: 'u1', name: 'Rina', email: null, isGuest: true, hasPassword: false, hasGoogle: false, avatar: 0, rating: 1000,
-  ratings: {}, coins: 0, cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [] }, blocked, createdAt: '2026-11-21T00:00:00.000Z',
+  ratings: {}, xp: 0, level: 1, coins: 0, cosmetics: { equipped: { ...DEFAULT_SLOTS }, owned: [] }, blocked, createdAt: '2026-11-21T00:00:00.000Z',
 });
 
 beforeEach(() => {

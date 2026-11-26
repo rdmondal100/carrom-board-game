@@ -11,6 +11,7 @@ export const PASSWORD_MIN = 8;
 export const AVATAR_COUNT = 12;
 
 import type { CosmeticGame, CosmeticType, EquippedMap } from './cosmetics';
+import type { MissionView } from './progress';
 import type { ReportReason } from './voice';
 
 /** COS-5: `owned` already includes the default items. HAPP-5 `equipped` = one item id per slot, per game. */
@@ -33,6 +34,9 @@ export interface PublicUser {
   /** HUB-7 rating per game id; a game not listed reads as START_RATING with 0 games. */
   ratings: Record<string, GameRating>;
   coins: number;
+  /** PRG-1 total XP and the level it makes (levelOf(xp)). */
+  xp: number;
+  level: number;
   cosmetics: Cosmetics;
   /** VOICE-6 user ids this player blocked (their voice is never played for them). */
   blocked: string[];
@@ -93,10 +97,38 @@ export interface MatchesResponse { matches: MatchView[] }
 export interface BuyRequest { itemId: string }
 /** COS-4 / HAPP-5 PATCH /me/equip: only owned items, for one game's slots (`game` defaults to carrom). */
 export type EquipRequest = { game?: CosmeticGame } & Partial<Record<CosmeticType, string>>;
-/** COS-2 POST /me/bot-reward: a finished Vs-bot game, reported by the client. */
-export interface BotRewardRequest { won: boolean }
-/** COS-2 daily bonus, bot and online rewards: coins given now (0 = none) and the updated user. */
-export interface RewardResponse { reward: number; user: PublicUser }
+/** COS-2 POST /me/bot-reward: a finished Vs-bot game, reported by the client. PRG-7 `game` defaults to carrom. */
+export interface BotRewardRequest { won: boolean; game?: string }
+/**
+ * COS-2 daily bonus, bot and online rewards: coins given now (0 = none) and the updated user.
+ * PRG-7 `xp` given by a game; on a level-up the new `level` and its coins (`levelCoins`, on top of
+ * `reward`). PRG-6 `streak` = days in a row (daily bonus only).
+ */
+export interface RewardResponse {
+  reward: number; user: PublicUser; xp?: number; level?: number; levelCoins?: number; streak?: number;
+}
+
+// ---- progress (spec 24) ----------------------------------------------------
+
+/** PRG-6 the login streak: days in a row (0 = broken), the week day lit today (1..7), claimed today or not. */
+export interface StreakView { count: number; day: number; claimedToday: boolean }
+
+/** PRG-7 GET /me/progress, and the answer to a mission claim or swap. */
+export interface ProgressResponse {
+  /** The UTC day the missions are for (YYYY-MM-DD). */
+  day: string;
+  xp: number;
+  level: number;
+  /** XP earned inside the current level, and the XP this level needs in all. */
+  levelXp: number;
+  levelNeed: number;
+  streak: StreakView;
+  missions: MissionView[];
+  swapsLeft: number;
+  /** Coins and XP given by this call (claim only); `level` and `levelCoins` on a level-up. */
+  reward?: { coins: number; xp: number; level?: number; levelCoins?: number };
+  user: PublicUser;
+}
 
 // ---- ads (spec 13) ---------------------------------------------------------
 

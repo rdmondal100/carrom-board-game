@@ -1,12 +1,9 @@
 import { Container, FillGradient, Graphics } from 'pixi.js';
+import type { BoardState, Kind, Piece, Seat, Vec } from '@carrom/engine';
 import {
-  config, seatToWorld, type BoardState, type Kind, type Piece, type Seat, type Vec,
-} from '@carrom/engine';
-import {
-  BOARD_COLOURS, GUIDE_ALPHA, GUIDE_MAX_LEN, LINE_WIDTH, PIECE_RING_ALPHA, PIECE_RING_RADIUS,
-  PIECE_SHADOW_ALPHA, PIECE_SHADOW_OFFSET, PIECE_SHINE, POCKET_ANIM_MS, PULL_ALPHA, type PieceStyle,
+  BOARD_COLOURS, LINE_WIDTH, PIECE_BEVEL, PIECE_GROOVES, PIECE_RING_ALPHA, PIECE_SHADOW_ALPHA, PIECE_SHADOW_OFFSET,
+  PIECE_SHINE, POCKET_ANIM_MS, STRIKER_STAR_INNER, STRIKER_STAR_POINTS, type PieceStyle,
 } from '@/constants/view';
-import type { Aim } from './aim';
 import { worldToPx, worldToScreen } from './view';
 
 // One shared radial gradient per style (COS-6 skins), lit from the top-left (local 0–1 space).
@@ -64,23 +61,55 @@ export interface PieceView {
   styleOf: (kind: Kind) => PieceStyle;
 }
 
+/** A thin ring drawn as two strokes: a dark groove and the light lip just inside it. */
+function groove(g: Graphics, r: number, line: number, st: PieceStyle): void {
+  g.circle(0, 0, r).stroke({ width: line, color: st.ring, alpha: PIECE_RING_ALPHA });
+  g.circle(0, 0, r - line * 0.9).stroke({ width: line * 0.7, color: st.ringLight, alpha: PIECE_RING_ALPHA * 0.55 });
+}
+
+/** The striker's printed star, points on the unit circle scaled to `r`. */
+function star(g: Graphics, r: number, st: PieceStyle): void {
+  const pts: number[] = [];
+  for (let i = 0; i < STRIKER_STAR_POINTS * 2; i++) {
+    const a = (i * Math.PI) / STRIKER_STAR_POINTS - Math.PI / 2;
+    const k = i % 2 === 0 ? r : r * STRIKER_STAR_INNER;
+    pts.push(Math.cos(a) * k, Math.sin(a) * k);
+  }
+  g.poly(pts).fill({ color: st.ring, alpha: 0.85 }).stroke({ width: r * 0.05, color: st.ringLight, alpha: 0.6 });
+  g.circle(0, 0, r * 0.28).fill({ color: st.ringLight, alpha: 0.9 });
+}
+
+/**
+ * A turned wooden coin (or the acrylic striker) seen from above: a soft contact
+ * shadow, a bevelled rim catching the light, carved rings (coins) or a printed
+ * star (striker), and the lacquer's highlight.
+ */
 function paint(s: Sprite, p: Piece, boardPx: number, blocked: boolean, st: PieceStyle): void {
   const r = worldToPx(p.r, boardPx);
   if (s.drawnPx === boardPx && s.blocked === blocked && s.style === st) return;
-  const line = worldToPx(LINE_WIDTH, boardPx);
+  const line = Math.max(0.6, worldToPx(LINE_WIDTH, boardPx) * 0.8);
+  const ox = PIECE_SHADOW_OFFSET.x * r;
+  const oy = PIECE_SHADOW_OFFSET.y * r;
   s.shadow.clear();
-  s.shadow.circle(PIECE_SHADOW_OFFSET.x * r, PIECE_SHADOW_OFFSET.y * r, r)
-    .fill({ color: BOARD_COLOURS.shadow, alpha: PIECE_SHADOW_ALPHA });
+  // Penumbra then umbra, so the shadow has a soft edge without a blur filter.
+  s.shadow.circle(ox * 1.3, oy * 1.3, r * 1.08).fill({ color: BOARD_COLOURS.shadow, alpha: PIECE_SHADOW_ALPHA * 0.45 });
+  s.shadow.circle(ox, oy, r * 0.98).fill({ color: BOARD_COLOURS.shadow, alpha: PIECE_SHADOW_ALPHA });
   s.g.clear();
   s.g.circle(0, 0, r).fill(bodyFill(st)).stroke({ width: line, color: st.edge });
-  // Engraved ring: a dark groove with a light lip just inside it.
-  s.g.circle(0, 0, r * PIECE_RING_RADIUS)
-    .stroke({ width: line, color: st.ring, alpha: PIECE_RING_ALPHA });
-  s.g.circle(0, 0, r * PIECE_RING_RADIUS - line)
-    .stroke({ width: line * 0.8, color: st.ringLight, alpha: PIECE_RING_ALPHA * 0.6 });
-  s.g.circle(PIECE_SHINE.x * r, PIECE_SHINE.y * r, PIECE_SHINE.r * r)
+  // Bevel: lit on the top-left of the rim, in shade on the bottom-right.
+  const bevel = r * PIECE_BEVEL;
+  s.g.arc(0, 0, r - bevel / 2, Math.PI * 0.95, Math.PI * 1.75).stroke({ width: bevel, color: 0xffffff, alpha: 0.22 });
+  s.g.arc(0, 0, r - bevel / 2, -Math.PI * 0.05, Math.PI * 0.75).stroke({ width: bevel, color: st.edge, alpha: 0.35 });
+  if (p.kind === 'striker') {
+    groove(s.g, r * 0.84, line, st);
+    star(s.g, r * 0.58, st);
+  } else {
+    PIECE_GROOVES.forEach((k) => groove(s.g, r * k, line, st));
+    s.g.circle(0, 0, r * 0.1).fill({ color: st.ring, alpha: PIECE_RING_ALPHA * 0.8 });
+  }
+  s.g.ellipse(PIECE_SHINE.x * r, PIECE_SHINE.y * r, PIECE_SHINE.r * r * 1.5, PIECE_SHINE.r * r * 0.8)
     .fill({ color: 0xffffff, alpha: PIECE_SHINE.alpha });
-  if (blocked) s.g.circle(0, 0, r + line * 2).stroke({ width: line * 2, color: BOARD_COLOURS.blocked });
+  if (blocked) s.g.circle(0, 0, r + line * 2).stroke({ width: line * 2.5, color: BOARD_COLOURS.blocked });
   s.drawnPx = boardPx;
   s.blocked = blocked;
   s.style = st;
@@ -126,24 +155,4 @@ export function syncPieces(layer: PieceLayer, view: PieceView): void {
     s.shadow.destroy();
     layer.sprites.delete(id);
   });
-}
-
-/** Draw the aim: a faint pull line to the finger and a guide line ∝ power. */
-export function drawAim(
-  g: Graphics, from: Vec, aim: Aim | null, pullPx: Vec | null, seat: Seat, viewSeat: Seat, boardPx: number,
-): void {
-  g.clear();
-  if (!aim || !pullPx) return;
-  const s = worldToScreen(from, viewSeat, boardPx);
-  const line = worldToPx(LINE_WIDTH, boardPx);
-  g.moveTo(s.x, s.y).lineTo(s.x + pullPx.x, s.y + pullPx.y)
-    .stroke({ width: line * 2, color: BOARD_COLOURS.pull, alpha: PULL_ALPHA });
-  if (aim.cancelled) return;
-  const dir = seatToWorld(seat, aim.dirX, aim.dirY);
-  const len = GUIDE_MAX_LEN * aim.power;
-  const end = worldToScreen({ x: from.x + dir.x * len, y: from.y + dir.y * len }, viewSeat, boardPx);
-  g.moveTo(s.x, s.y).lineTo(end.x, end.y)
-    .stroke({ width: line * 2, color: BOARD_COLOURS.guide, alpha: GUIDE_ALPHA });
-  g.circle(end.x, end.y, worldToPx(config.COIN_D / 4, boardPx))
-    .fill({ color: BOARD_COLOURS.guide, alpha: GUIDE_ALPHA });
 }

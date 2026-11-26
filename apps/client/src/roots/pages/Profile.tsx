@@ -3,11 +3,12 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, Navigate } from 'react-router';
 import { toast } from 'sonner';
-import type { PublicUser } from '@carrom/protocol';
+import { levelNeed, levelStart, type PublicUser } from '@carrom/protocol';
 import { AuthError, Field } from '@/components/AuthForm';
 import { Avatar, AVATAR_COLOURS } from '@/components/Avatar';
 import { GoogleButton } from '@/components/GoogleButton';
 import { MatchHistory } from '@/components/MatchHistory';
+import { LevelBar } from '@/components/ProgressParts';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { useGames } from '@/games/GamesContext';
@@ -140,6 +141,8 @@ export function Profile() {
       <div className="flex gap-3">
         <Stat label={t('profile.coins')} value={user.coins} />
       </div>
+      {/* PRG-8 level and XP to the next one. */}
+      <LevelBar level={user.level} levelXp={user.xp - levelStart(user.level)} levelNeed={levelNeed(user.level)} />
 
       {user.isGuest && (
         <Card>

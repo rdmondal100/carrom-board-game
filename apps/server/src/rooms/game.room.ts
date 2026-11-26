@@ -280,7 +280,7 @@ export class GameRoom extends RoomBase {
   protected rewardGame(winner: string, skip = ''): void {
     // CB-8 a game against the host's bots alone pays nothing online (Vs bot has its own daily cap).
     if ([...this.state.players.values()].filter((p) => !isFilledBot(p)).length < 2) return;
-    this.pendingRewards = rewardPlayers(this.state.players.values(), (seat) => this.teamOf(seat), winner, skip,
+    this.pendingRewards = rewardPlayers(this.state.players.values(), (seat) => this.teamOf(seat), winner, skip, this.game.id,
       (id, msg) => this.clients.getById(id)?.send(MSG, msg));
   }
 }

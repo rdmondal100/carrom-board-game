@@ -19,6 +19,7 @@ import { t, useLang } from '@/i18n/t';
 import { onPauseRequest } from '@/lib/backButton';
 import { playSound } from '@/lib/sound';
 import { claimBotReward } from '@/store/shopSlice';
+import { rewardToast } from '@/lib/rewardToast';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
 const BOT_THINK_MS = 600;
@@ -95,8 +96,8 @@ function Play({ initial }: { initial: LocalCallbreak }) {
     rewarded.current = game;
     const won = vsBotResult(game);
     if (won === null) return;
-    dispatch(claimBotReward(won)).unwrap()
-      .then((coins) => { if (coins > 0) toast.success(t('reward.toast', { coins })); })
+    dispatch(claimBotReward({ won, game: 'callbreak' })).unwrap()
+      .then(rewardToast)
       .catch(() => { /* offline: no reward */ });
   }, [busy, dispatch, game, signedIn, state.winner]);
 

@@ -5,6 +5,7 @@ import {
 } from '@carrom/engine';
 import { BASELINE_TOUCH_STRIKERS, STRIKER_TOUCH_SCALE } from '@/constants/view';
 import type { View } from '@/store/settingsSlice';
+import { playSound } from '@/lib/sound';
 import { createBoardApi, type BoardApi, type RemoteAim } from './boardApi';
 import { aimFor, botPreviewAt, newCtrl, pullFor, type Ctrl } from './boardCtrl';
 import type { BoardFit, BoardRenderer, RendererFactory } from './boardRenderer';
@@ -51,6 +52,7 @@ export function useBoardCanvas(
   /** Start playing a shot from the current board (a release, a bot preview's end, or a replay). */
   const shoot = (c: Ctrl, input: ShotInput, own: boolean) => {
     c.playback = createPlayback(c.board, input);
+    playSound('strike', input.power);
     if (own) cb.current.onShot?.(input);
     cb.current.onPlayingChange?.(true);
   };
