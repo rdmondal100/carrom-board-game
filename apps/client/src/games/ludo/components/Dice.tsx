@@ -46,8 +46,12 @@ function Face({ n, skin }: { n: number; skin: DiceSkin }) {
     <div className="absolute inset-0 rounded-[22%] [backface-visibility:hidden]"
       style={{
         transform: FACE_AT[n],
-        background: `radial-gradient(circle at 35% 30%, #fff 0%, ${skin.face} 55%, ${skin.edge} 140%)`,
-        boxShadow: `inset 0 0 0 2px ${skin.edge}, inset 0 -6px 10px rgb(0 0 0 / 0.12)`,
+        background: skin.glass
+          ? `radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.85) 0%, color-mix(in srgb, ${skin.face} 55%, transparent) 60%, color-mix(in srgb, ${skin.edge} 70%, transparent) 140%)`
+          : `radial-gradient(circle at 35% 30%, #fff 0%, ${skin.face} 55%, ${skin.edge} 140%)`,
+        boxShadow: skin.glass
+          ? `inset 0 0 0 2px ${skin.edge}, inset 0 0 14px rgb(255 255 255 / 0.7)`
+          : `inset 0 0 0 2px ${skin.edge}, inset 0 -6px 10px rgb(0 0 0 / 0.12)`,
       }}>
       <svg viewBox="0 0 1 1" className="size-full" aria-hidden>
         {PIPS[n]!.map(([x, y]) => (

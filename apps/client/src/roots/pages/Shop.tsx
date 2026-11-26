@@ -9,6 +9,7 @@ import { RewardedAdButton } from '@/components/AdParts';
 import { CoinPacks } from '@/components/CoinPacks';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { isShowcaseItem } from '@/game3d/itemFinish';
 import { useGames } from '@/games/GamesContext';
 import { isPlayable, type ClientGame } from '@/games/types';
 import { t, useLang } from '@/i18n/t';
@@ -19,6 +20,14 @@ import { useAppDispatch, useAppSelector } from '@/store/store';
 const RARITY_CLASS: Record<CosmeticItem['rarity'], string> = {
   common: 'text-muted-foreground', rare: 'text-sky-400', epic: 'text-fuchsia-400', legendary: 'text-amber-400',
 };
+
+/** T3D-8 this look has a special 3D finish (marble, metal, glass, pearl, glow). */
+function Badge3d() {
+  return (
+    <span className="shrink-0 rounded bg-linear-to-r from-amber-300 to-fuchsia-400 px-1 text-[10px] font-bold leading-4 text-slate-900"
+      title={t('shop.badge3dHint')} data-testid="badge-3d">{t('shop.badge3d')}</span>
+  );
+}
 
 /** COS-7 / HAPP-5: the shop. A tab per game (+ "All games"), tabs per slot, a preview, price, buy and equip. One wallet. */
 export function Shop() {
@@ -135,8 +144,10 @@ function ShopFor({ user }: { user: PublicUser }) {
       {item && (
         <Card className="flex items-center gap-3 p-3">
           <div className="min-w-0 flex-1">
-            <p className="font-semibold">{t(`item.${item.id}`)}</p>
-            <p className={cn('text-xs', RARITY_CLASS[item.rarity])}>{t(`shop.rarity.${item.rarity}`)}</p>
+            <p className="flex items-center gap-1.5 font-semibold">{t(`item.${item.id}`)}{isShowcaseItem(item) && <Badge3d />}</p>
+            <p className={cn('text-xs', RARITY_CLASS[item.rarity])}>
+              {t(`shop.rarity.${item.rarity}`)}{item.price === 0 && ` · ${t('shop.free')}`}
+            </p>
           </div>
           {isEquipped ? (
             <Button disabled variant="outline"><Check className="size-4" />{t('shop.equipped')}</Button>
@@ -163,7 +174,7 @@ function ShopFor({ user }: { user: PublicUser }) {
                 c.id === item?.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent')}
             >
               <Preview game={game} slots={{ ...equipped, [slot]: c.id }} className="w-20" />
-              <span className="truncate">{t(`item.${c.id}`)}</span>
+              <span className="flex max-w-full items-center gap-1"><span className="truncate">{t(`item.${c.id}`)}</span>{isShowcaseItem(c) && <Badge3d />}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {equipped[c.type] === c.id ? t('shop.equipped') : owned.includes(c.id) ? t('shop.owned') : `${c.price} ${t('shop.coins')}`}
               </span>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Row, ToggleRow } from '@/components/SettingsRows';
+import { ViewSettingsCard } from '@/components/ViewSettingsCard';
 import { useGames } from '@/games/GamesContext';
 import { LANGS, t, useLang, type Lang } from '@/i18n/t';
 import { playSound } from '@/lib/sound';
@@ -76,6 +77,8 @@ export function Settings() {
           />
         </CardContent>
       </Card>
+
+      <ViewSettingsCard />
 
       {games.map((g) => g.SettingsCard && <Suspense key={g.id}><g.SettingsCard /></Suspense>)}
 

@@ -35,14 +35,15 @@ export interface TableProps {
 /** A colour per seat for the avatar discs. */
 const SEAT_TINT = ['#fbbf24', '#f472b6', '#22d3ee', '#a3e635'] as const;
 
-function SeatBadge({ seat, p, spot }: { seat: number; p: TableProps; spot: Spot }) {
+/** A seat's name, call and tricks. `bare`: no grid place and no card thumbnail (the 3D table places it and shows the cards). */
+export function SeatBadge({ seat, p, spot, bare = false }: { seat: number; p: TableProps; spot: Spot; bare?: boolean }) {
   const turn = p.turnSeat === seat;
   const bid = p.bids[seat];
   return (
-    <div className={cn('flex min-w-0 flex-col items-center gap-1 rounded-2xl bg-black/25 px-2 py-1.5 text-xs backdrop-blur-sm transition', turn && 'bg-amber-400/25 ring-2 ring-amber-400 shadow-[0_0_20px_-2px_rgb(251_191_36/0.7)]', spot !== 'bottom' && SEAT_POS[spot])}
-      aria-current={turn ? 'true' : undefined} data-testid={`seat-${seat}`}>
-      {spot !== 'bottom' && (p.handSizes[seat] ?? 0) > 0 && <CardBack skin={p.back} size="sm" />}
-      <span className="grid size-8 place-items-center rounded-full font-display text-sm font-bold text-slate-900 ring-2 ring-white/60" style={{ background: SEAT_TINT[seat % 4] }} aria-hidden>
+    <div className={cn('flex min-w-0 flex-col items-center gap-1 rounded-2xl bg-black/25 px-2 py-1.5 text-xs backdrop-blur-sm transition', bare && 'gap-0.5 bg-black/45 px-1.5 py-1 text-[11px]', turn && 'bg-amber-400/25 ring-2 ring-amber-400 shadow-[0_0_20px_-2px_rgb(251_191_36/0.7)]', spot !== 'bottom' && !bare && SEAT_POS[spot])}
+      aria-current={turn ? 'true' : undefined} data-testid={`seat-${seat}`} style={bare ? { color: '#fff' } : undefined}>
+      {spot !== 'bottom' && !bare && (p.handSizes[seat] ?? 0) > 0 && <CardBack skin={p.back} size="sm" />}
+      <span className={cn('grid size-8 place-items-center rounded-full font-display text-sm font-bold text-slate-900 ring-2 ring-white/60', bare && 'size-6 text-xs')} style={{ background: SEAT_TINT[seat % 4] }} aria-hidden>
         {(p.names[seat] ?? '?').slice(0, 1).toUpperCase()}
       </span>
       <span className="flex max-w-28 items-center gap-1 truncate font-medium">
@@ -50,7 +51,7 @@ function SeatBadge({ seat, p, spot }: { seat: number; p: TableProps; spot: Spot 
         {p.dealer === seat && <span className="rounded bg-white/20 px-1" title={t('callbreak.dealer')}>D</span>}
       </span>
       <motion.span key={`${p.won[seat] ?? 0}/${bid ?? ''}`} className="tabular-nums opacity-90"
-        initial={{ scale: 1.5, color: '#fbbf24' }} animate={{ scale: 1, color: p.table.text }} transition={{ type: 'spring', stiffness: 400, damping: 18 }}>
+        initial={{ scale: 1.5, color: '#fbbf24' }} animate={{ scale: 1, color: bare ? '#ffffff' : p.table.text }} transition={{ type: 'spring', stiffness: 400, damping: 18 }}>
         {t('callbreak.wonOfBid', { won: p.won[seat] ?? 0, bid: bid ?? '–' })}
       </motion.span>
     </div>
@@ -73,15 +74,20 @@ export function CbTable(p: TableProps) {
       <div className="relative col-start-2 row-start-2 min-h-56 sm:min-h-64" data-testid="trick">
         {p.trick.map((play) => <TrickCard key={play.card} play={play} me={p.me} winner={p.winner} back={p.back} />)}
         {p.dealing && <DealFlight dealer={p.dealer} me={p.me} back={p.back} />}
-        {p.points && (
-          <div className="absolute inset-0 z-10 m-auto flex h-fit w-fit animate-pop flex-col gap-1 rounded-2xl bg-black/75 p-4 text-sm ring-1 ring-amber-300/40 backdrop-blur" role="status" data-testid="round-points">
-            {p.points.map((pt, seat) => (
-              <span key={seat} className="flex justify-between gap-4 tabular-nums"><span>{p.names[seat]}</span><span>{formatPoints(pt)}</span></span>
-            ))}
-          </div>
-        )}
+        {p.points && <RoundPoints points={p.points} names={p.names} />}
       </div>
       <div className="col-span-3 row-start-3 justify-self-center"><SeatBadge seat={p.me} p={p} spot="bottom" /></div>
+    </div>
+  );
+}
+
+/** CB-7 a round's points per seat, over the middle of the table. */
+export function RoundPoints({ points, names }: { points: readonly number[]; names: readonly string[] }) {
+  return (
+    <div className="absolute inset-0 z-10 m-auto flex h-fit w-fit animate-pop flex-col gap-1 rounded-2xl bg-black/75 p-4 text-sm text-white ring-1 ring-amber-300/40 backdrop-blur" role="status" data-testid="round-points">
+      {points.map((pt, seat) => (
+        <span key={seat} className="flex justify-between gap-4 tabular-nums"><span>{names[seat]}</span><span>{formatPoints(pt)}</span></span>
+      ))}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { callbreakView, type CallbreakEvent, type CallbreakMove } from '@hub/cal
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CbClock, CbEndDialog, ScoreDialog } from '@/games/callbreak/components/CbParts';
+import { ViewToggle } from '@/components/ViewToggle';
 import { CbPlayArea } from '@/games/callbreak/components/CbPlayArea';
 import {
   botMove, botTurn, clockRuns, ME, moveLocal, myView, newSeed, rematchLocal, takeBack, timeoutLocal, vsBotResult,
@@ -108,6 +109,7 @@ function Play({ initial }: { initial: LocalCallbreak }) {
       <div className="flex items-center gap-2">
         <span className="flex-1 text-sm font-medium">{t('callbreak.round', { n: state.round, total: state.config.rounds })}</span>
         <Button size="sm" variant="outline" onClick={() => setSheet(true)}>{t('callbreak.scores')}</Button>
+        <ViewToggle game="callbreak" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('pause.title')}</Button>
       </div>
       <CbPlayArea view={view} frame={frame} me={ME} names={game.names} bots={bots} canAct={mine} look={look}

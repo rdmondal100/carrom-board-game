@@ -1,16 +1,16 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { Application, Container, Graphics } from 'pixi.js';
 import {
   baselinePoint, config, placeStriker, seatForward, seatRight,
-  type BoardState, type Seat, type ShotEvent, type ShotInput, type Vec,
+  type BoardState, type ShotEvent, type ShotInput, type Seat, type Vec,
 } from '@carrom/engine';
 import { BASELINE_TOUCH_STRIKERS, STRIKER_TOUCH_SCALE } from '@/constants/view';
+import type { View } from '@/store/settingsSlice';
 import { createBoardApi, type BoardApi, type RemoteAim } from './boardApi';
-import { aimFor, botPreviewAt, drawClock, newCtrl, pullFor, type Ctrl } from './boardCtrl';
-import { drawBoard, layoutFor } from './drawBoard';
-import { createPieceLayer, drawAim, syncPieces } from './drawPieces';
+import { aimFor, botPreviewAt, newCtrl, pullFor, type Ctrl } from './boardCtrl';
+import type { BoardFit, BoardRenderer, RendererFactory } from './boardRenderer';
+import { createPixiBoard } from './pixiBoard';
 import { createPlayback } from './playback';
-import { boardPalette, coinSkin, strikerStyle } from './skins';
+import { coinSkin, strikerStyle } from './skins';
 import { screenToWorld, worldToPx, worldToScreen } from './view';
 
 export interface BoardCallbacks {
@@ -21,18 +21,23 @@ export interface BoardCallbacks {
   onPlacedChange?: (ok: boolean) => void;
   /** ROOM-6: the aim while this screen's player drags (striker spot + aim). */
   onAim?: (aim: RemoteAim) => void;
+  /** T3D-2 the 3D board could not start (the page shows 2D instead). */
+  onFail?: () => void;
 }
 
-/** `contain`: fit the host's width and height (UI-5 full-height board page); `width`: the host's width only. */
-export type BoardFit = 'width' | 'contain';
-export type { BoardApi, RemoteAim };
+export type { BoardApi, BoardFit, RemoteAim };
+
+/** T3D-2 three.js loads only when a 3D board is first shown. */
+const create3d: RendererFactory = (host, fit, onResize, onLost) =>
+  import('./three/board3d').then((m) => m.createBoard3d(host, fit, onResize, onLost));
 
 /**
- * Mounts a Pixi board in `host`. Board, aim and playback live in a plain
- * object; React only hears about shots, events and play start/stop.
+ * Mounts the board in `host`, drawn in 2D (Pixi) or T3D-4 3D (three.js). Board,
+ * aim and playback live in a plain object that outlives a 2D ↔ 3D switch; React
+ * only hears about shots, events and play start/stop.
  */
 export function useBoardCanvas(
-  host: RefObject<HTMLDivElement | null>, initialSeat: Seat, callbacks: BoardCallbacks, fit: BoardFit = 'width',
+  host: RefObject<HTMLDivElement | null>, initialSeat: Seat, callbacks: BoardCallbacks, fit: BoardFit = 'width', view: View = '2d',
 ): RefObject<BoardApi> {
   const cb = useRef(callbacks);
   useEffect(() => { cb.current = callbacks; });
@@ -57,52 +62,42 @@ export function useBoardCanvas(
     }));
   });
 
+  // A new starting seat is a new board; a new renderer (2D ↔ 3D) keeps this one.
+  useEffect(() => {
+    ctrlRef.current = newCtrl(initialSeat);
+    return () => { ctrlRef.current = null; };
+  }, [initialSeat]);
+
   useEffect(() => {
     const el = host.current;
-    if (!el) return;
-    const c = newCtrl(initialSeat);
-    ctrlRef.current = c;
-    const app = new Application();
+    const c0 = ctrlRef.current;
+    if (!el || !c0) return;
+    const c: Ctrl = c0;
+    c.drag = null;
     let alive = true;
-    let ready = false;
-    let observer: ResizeObserver | null = null;
+    let r: BoardRenderer | null = null;
 
-    const root = new Container();
-    const boardG = new Graphics();
-    const pieces = createPieceLayer();
-    const aimG = new Graphics();
-    const clockG = new Graphics();
-    root.addChild(boardG, clockG, pieces.container, aimG);
-
-    const avail = () => (fit === 'contain' ? Math.min(el.clientWidth, el.clientHeight) : el.clientWidth);
     const redraw = () => {
-      if (!ready) return;
-      const size = layoutFor(avail());
-      if (size.canvasPx !== c.layout.canvasPx) app.renderer.resize(size.canvasPx, size.canvasPx);
-      c.layout = size;
-      root.position.set(size.framePx, size.framePx);
-      drawBoard(boardG, size, c.view, boardPalette(c.skins.board));
+      if (!r) return;
+      r.redraw(c.view, c.skins);
+      c.layout = r.layout();
     };
     redrawRef.current = redraw;
 
-    // Pointer position in board px (origin at the inner board's top-left).
-    const local = (e: PointerEvent): Vec => {
-      const rect = app.canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left - c.layout.framePx, y: e.clientY - rect.top - c.layout.framePx };
-    };
     const alongOf = (p: Vec) => {
       const w = screenToWorld(p, c.view, c.layout.boardPx);
       const base = baselinePoint(c.seat, 0);
-      const r = seatRight(c.seat);
+      const right = seatRight(c.seat);
       const f = seatForward(c.seat);
       const dx = w.x - base.x;
       const dy = w.y - base.y;
-      return { along: dx * r.x + dy * r.y, across: dx * f.x + dy * f.y };
+      return { along: dx * right.x + dy * right.y, across: dx * f.x + dy * f.y };
     };
 
     const onDown = (e: PointerEvent) => {
-      if (c.playback || c.drag || c.locked || c.bot) return;
-      const p = local(e);
+      if (!r || c.playback || c.drag || c.locked || c.bot) return;
+      const p = r.local(e);
+      if (!p) return;
       const spot = worldToScreen(baselinePoint(c.seat, c.placed.x), c.view, c.layout.boardPx);
       const reach = worldToPx(config.STRIKER_D / 2, c.layout.boardPx) * STRIKER_TOUCH_SCALE;
       const dx = p.x - spot.x;
@@ -117,12 +112,13 @@ export function useBoardCanvas(
         c.along = b.along;
         replace(c);
       }
-      app.canvas.setPointerCapture(e.pointerId);
+      r.canvas.setPointerCapture(e.pointerId);
     };
     const onMove = (e: PointerEvent) => {
       const d = c.drag;
-      if (!d || d.pointerId !== e.pointerId) return;
-      const p = local(e);
+      if (!r || !d || d.pointerId !== e.pointerId) return;
+      const p = r.local(e);
+      if (!p) return;
       if (d.kind === 'place') {
         c.along = Math.max(-config.BASELINE_HALF, Math.min(config.BASELINE_HALF, alongOf(p).along));
         replace(c);
@@ -144,6 +140,7 @@ export function useBoardCanvas(
     };
 
     const tick = (deltaMs: number) => {
+      if (!r) return;
       const now = performance.now();
       if (c.playback) {
         const out = c.playback.advance(deltaMs);
@@ -171,55 +168,42 @@ export function useBoardCanvas(
       const remote = waiting && !c.drag && !c.bot ? c.remote : null;
       const along = preview && c.bot ? preview.along : remote ? remote.x : c.placed.ok ? c.placed.x : c.along;
       const spot = baselinePoint(c.seat, along);
-      syncPieces(pieces, {
-        state: c.board, viewSeat: c.view, boardPx: c.layout.boardPx, nowMs: now,
-        pocketedAt: c.pocketedAt, striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
-        // A carrom board has no boats (spec 20 kind); draw one as a white coin if it ever shows up.
-        styleOf: (kind) => (kind === 'striker' ? strikerStyle(c.skins.strikers[c.seat]) : coinSkin(c.skins.coins)[kind === 'boat' ? 'white' : kind]),
-      });
       const d = c.drag;
       // A bot's preview or ROOM-6 another player's aim is drawn like a drag.
       const shown = c.bot ? preview?.aim ?? null : remote ? { ...remote, cancelled: false } : null;
-      const aim = d?.kind === 'aim' ? d.aim : shown;
-      const pull = d?.kind === 'aim' ? d.pull : shown ? pullFor(shown, c.seat, c.view, c.layout.boardPx, spot) : null;
-      drawAim(aimG, spot, aim, pull, c.seat, c.view, c.layout.boardPx);
-      drawClock(clockG, waiting && !c.locked && !c.bot ? c.clock : null, spot, c.view, c.layout.boardPx);
+      r.draw({
+        board: c.board, view: c.view, seat: c.seat, nowMs: now, pocketedAt: c.pocketedAt, skins: c.skins, spot,
+        striker: waiting ? { pos: spot, ok: c.placed.ok || c.bot !== null } : null,
+        // A carrom board has no boats (spec 20 kind); draw one as a white coin if it ever shows up.
+        styleOf: (kind) => (kind === 'striker' ? strikerStyle(c.skins.strikers[c.seat]) : coinSkin(c.skins.coins)[kind === 'boat' ? 'white' : kind]),
+        aim: d?.kind === 'aim' ? d.aim : shown,
+        pull: d?.kind === 'aim' ? d.pull : shown ? pullFor(shown, c.seat, c.view, c.layout.boardPx, spot) : null,
+        clock: waiting && !c.locked && !c.bot ? c.clock : null,
+      });
     };
 
-    app.init({
-      width: layoutFor(el.clientWidth).canvasPx,
-      height: layoutFor(el.clientWidth).canvasPx,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-      antialias: true,
-      backgroundAlpha: 0,
-    }).then(() => {
-      if (!alive) { app.destroy(true, { children: true }); return; }
-      ready = true;
-      app.canvas.style.touchAction = 'none';
-      app.canvas.style.display = 'block';
-      el.appendChild(app.canvas);
-      app.stage.addChild(root);
-      c.layout = layoutFor(0);
+    const make = view === '3d' ? create3d : createPixiBoard;
+    make(el, fit, () => { if (r) c.layout = r.layout(); }, () => cb.current.onFail?.()).then((made) => {
+      if (!alive) { made.destroy(); return; }
+      r = made;
       redraw();
       replace(c);
-      app.canvas.addEventListener('pointerdown', onDown);
-      app.canvas.addEventListener('pointermove', onMove);
-      app.canvas.addEventListener('pointerup', onUp);
-      app.canvas.addEventListener('pointercancel', onCancel);
-      app.ticker.add((ticker) => tick(ticker.deltaMS));
-      observer = new ResizeObserver(redraw);
-      observer.observe(el);
+      r.canvas.addEventListener('pointerdown', onDown);
+      r.canvas.addEventListener('pointermove', onMove);
+      r.canvas.addEventListener('pointerup', onUp);
+      r.canvas.addEventListener('pointercancel', onCancel);
+      r.start(tick);
+    }).catch(() => {
+      if (alive && view === '3d') cb.current.onFail?.();
     });
 
     return () => {
       alive = false;
-      observer?.disconnect();
       redrawRef.current = () => {};
-      ctrlRef.current = null;
-      if (ready) app.destroy(true, { children: true });
+      r?.destroy();
+      r = null;
     };
-  }, [host, initialSeat, fit]);
+  }, [host, initialSeat, fit, view]);
 
   return api;
 }

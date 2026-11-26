@@ -9,6 +9,7 @@ import { VoiceBar } from '@/components/VoiceParts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CbClock, CbEndDialog, ScoreDialog } from '@/games/callbreak/components/CbParts';
+import { ViewToggle } from '@/components/ViewToggle';
 import { CbPlayArea } from '@/games/callbreak/components/CbPlayArea';
 import { advance, canAct, catchUp, nextChange, namesOf, playerAt, seatOf, type CbOnline as Online } from '@/games/callbreak/online';
 import { cbPath } from '@/games/callbreak/paths';
@@ -146,6 +147,7 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
       <div className="flex items-center gap-2">
         <span className="flex-1 text-sm font-medium">{t('callbreak.round', { n: shown.round, total: shown.config.rounds })}</span>
         <Button size="sm" variant="outline" onClick={() => setSheet(true)}>{t('callbreak.scores')}</Button>
+        <ViewToggle game="callbreak" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('online.leave')}</Button>
       </div>
       <VoiceBar />

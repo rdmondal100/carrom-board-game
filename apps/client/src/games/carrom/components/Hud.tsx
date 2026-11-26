@@ -3,6 +3,7 @@ import { teamOf, type Team } from '@carrom/rules';
 import { coinsDown, redStatus, scoreLine, sideColour, teamLabel } from '@/games/carrom/hud';
 import { seatName, type LocalGame } from '@/games/carrom/localGame';
 import { Button } from '@/components/ui/button';
+import { ViewToggle } from '@/components/ViewToggle';
 import { t } from '@/i18n/t';
 
 /** Swatch per side: the coin colour in the colour game, a team tint in the point game. */
@@ -49,6 +50,7 @@ export function Hud({ game, clock, onPause, canPause, pauseLabel }: Props) {
           {t('hud.turn', { name: seatName(game, state.turnSeat) })}
         </span>
         <span className="ml-auto">{clock}</span>
+        <ViewToggle game="carrom" />
         <Button size="sm" variant="secondary" onClick={onPause} disabled={!canPause}>
           {pauseLabel ?? t('hud.pause')}
         </Button>

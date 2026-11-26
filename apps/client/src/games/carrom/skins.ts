@@ -2,6 +2,7 @@
 // Looks only: nothing here reaches the engine or changes a shot.
 import { cosmeticById, DEFAULT_EQUIPPED, itemOrDefault, type Equipped, type SlotOf } from '@carrom/protocol';
 import { BOARD_COLOURS, PIECE_STYLES, type PieceStyle } from '@/constants/view';
+import type { Finish } from '@/game3d/finish';
 
 /** The board colours a board skin may change (shadow, guide lines etc. stay fixed). */
 export type BoardPalette = Record<
@@ -60,6 +61,60 @@ export const BOARD_SKINS: Record<string, BoardPalette> = {
   },
 };
 
+// T3D-8 sets made for the 3D view (their 2D colours below).
+Object.assign(STRIKER_SKINS, {
+  'striker.ivory': { hi: 0xffffff, base: 0xf3ead6, edge: 0xb8a988, ring: 0x9c8b66, ringLight: 0xffffff },
+  'striker.chrome': { hi: 0xffffff, base: 0xb8c2cc, edge: 0x4a5560, ring: 0x2d343b, ringLight: 0xf2f6fa },
+  'striker.crystal': { hi: 0xffffff, base: 0xbfe9ff, edge: 0x5aa9d6, ring: 0x2f7fb0, ringLight: 0xffffff },
+} satisfies Record<string, PieceStyle>);
+Object.assign(COIN_SKINS, {
+  'coins.rosewood': {
+    white: { hi: 0xffe8c8, base: 0xd9a46a, edge: 0x7a4a1c, ring: 0x6b3d12, ringLight: 0xffe3bf },
+    black: { hi: 0x9a5a3a, base: 0x5a2416, edge: 0x240b05, ring: 0x240b05, ringLight: 0xb86a4a },
+    red: PIECE_STYLES.red,
+  },
+  'coins.marble': {
+    white: { hi: 0xffffff, base: 0xeeeae2, edge: 0xa8a090, ring: 0x8a8070, ringLight: 0xffffff },
+    black: { hi: 0x6a6a72, base: 0x23232a, edge: 0x050507, ring: 0xc9a227, ringLight: 0x8a8a92 },
+    red: { hi: 0xffb3a8, base: 0xb3261e, edge: 0x4a0a06, ring: 0xc9a227, ringLight: 0xffd0c8 },
+  },
+  'coins.goldSilver': {
+    white: { hi: 0xffffff, base: 0xc9ced6, edge: 0x5d646d, ring: 0x3f454d, ringLight: 0xf4f6f9 },
+    black: { hi: 0xfff1b0, base: 0xc99a1e, edge: 0x5e4306, ring: 0x5e4306, ringLight: 0xfff0b8 },
+    red: { hi: 0xffc2a8, base: 0xc2410c, edge: 0x5a1a02, ring: 0xf5cf5a, ringLight: 0xffe0cc },
+  },
+} satisfies Record<string, CoinSkin>);
+Object.assign(BOARD_SKINS, {
+  'board.birch': {
+    ...CLASSIC_BOARD, frame: 0xa8794a, frameLight: 0xc89a66, frameEdge: 0x5a3a1c,
+    surface: 0xf2dfbc, surfaceGlow: 0xfbeed2, surfaceEdge: 0xdcc39a, line: 0x5a3a1c,
+  },
+  'board.neon': {
+    ...CLASSIC_BOARD, frame: 0x14102a, frameLight: 0x2a1f55, frameEdge: 0x05030f,
+    surface: 0x1c1838, surfaceGlow: 0x2a2552, surfaceEdge: 0x120f26, line: 0x4ff0ff, accent: 0xff4fd8, pocketRim: 0xff4fd8,
+  },
+  'board.marble': {
+    ...CLASSIC_BOARD, frame: 0x2b2b30, frameLight: 0x45454c, frameEdge: 0x0d0d10,
+    surface: 0xeeeae2, surfaceGlow: 0xffffff, surfaceEdge: 0xd8d2c4, line: 0x3a3a40, accent: 0xc9a227, pocketRim: 0xc9a227,
+  },
+} satisfies Record<string, BoardPalette>);
+
+/** T3D-8 how each piece set looks in 3D, by asset key (unknown → gloss). */
+const PIECE_FINISH: Record<string, Finish> = {
+  'striker.classic': 'gloss', 'striker.ruby': 'gloss', 'striker.emerald': 'gloss', 'striker.gold': 'metal',
+  'striker.galaxy': 'pearl', 'striker.ivory': 'satin', 'striker.chrome': 'metal', 'striker.crystal': 'glass',
+  'coins.classic': 'gloss', 'coins.jade': 'gloss', 'coins.pearl': 'pearl', 'coins.neon': 'glow',
+  'coins.rosewood': 'wood', 'coins.marble': 'marble', 'coins.goldSilver': 'metal',
+};
+/** T3D-8 a board's frame and playing surface in 3D. */
+export interface BoardFinish { frame: Finish; surface: Finish }
+const BOARD_FINISH: Record<string, BoardFinish> = {
+  'board.classic': { frame: 'wood', surface: 'wood' }, 'board.teak': { frame: 'wood', surface: 'wood' },
+  'board.midnight': { frame: 'satin', surface: 'satin' }, 'board.royal': { frame: 'wood', surface: 'gloss' },
+  'board.birch': { frame: 'wood', surface: 'wood' }, 'board.neon': { frame: 'glow', surface: 'gloss' },
+  'board.marble': { frame: 'marble', surface: 'marble' },
+};
+
 /** The asset key of a known item of `type`, else that slot's default key. */
 function keyOf(id: string | undefined, type: SlotOf<'carrom'>): string {
   return cosmeticById(itemOrDefault(id, type))!.assetKey;
@@ -76,6 +131,10 @@ export function coinSkin(itemId: string | undefined): CoinSkin {
 export function boardPalette(itemId: string | undefined): BoardPalette {
   return BOARD_SKINS[keyOf(itemId, 'board')] ?? CLASSIC_BOARD;
 }
+
+/** T3D-8 the 3D finish of a striker or coin set item. */
+export const pieceFinish = (itemId: string | undefined, type: 'striker' | 'coins'): Finish => PIECE_FINISH[keyOf(itemId, type)] ?? 'gloss';
+export const boardFinish = (itemId: string | undefined): BoardFinish => BOARD_FINISH[keyOf(itemId, 'board')] ?? BOARD_FINISH['board.classic']!;
 
 /** What one board shows: a striker per seat (0..3), one coin set, one board. Item ids. */
 export interface BoardSkins { strikers: readonly string[]; coins: string; board: string }
@@ -111,3 +170,6 @@ export function onlineSkins(
 export function hex(n: number): string {
   return `#${n.toString(16).padStart(6, '0')}`;
 }
+
+/** T3D-8 known asset keys (tests check every catalogue item has a look). */
+export const CARROM_ASSET_KEYS: readonly string[] = [...Object.keys(STRIKER_SKINS), ...Object.keys(COIN_SKINS), ...Object.keys(BOARD_SKINS)];

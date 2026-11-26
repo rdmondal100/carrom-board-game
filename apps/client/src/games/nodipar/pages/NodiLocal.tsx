@@ -6,6 +6,7 @@ import { seatsOf, type NodiMove } from '@hub/nodipar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { announce, NodiClock, NodiEndDialog, ScoreStrip, shotSounds } from '@/games/nodipar/components/NodiParts';
+import { ViewToggle } from '@/components/ViewToggle';
 import { RiverBoard } from '@/games/nodipar/components/RiverBoard';
 import {
   botMove, botTurn, clockRuns, humanSeats, moveLocal, newSeed, rematchLocal, seatName, takeBack, timeoutLocal, vsBotResult,
@@ -113,6 +114,7 @@ function Play({ initial }: { initial: LocalNodi }) {
     <div className="mx-auto flex w-full max-w-xl min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-start gap-2">
         <div className="flex-1"><ScoreStrip view={state} names={game.names} bots={seatsOf(state.config).filter((s) => game.takeover.includes(s) || game.players[s] !== 'human')} /></div>
+        <ViewToggle game="nodipar" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('pause.title')}</Button>
       </div>
       <RiverBoard ref={river} label={t('nodi.board')} className="self-center" onMove={onMove} onEvents={shotSounds} />

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COSMETIC_GAMES, COSMETIC_TYPES, COSMETICS, cosmeticById, DEFAULT_EQUIPPED, DEFAULT_SLOTS, equippedEntries, fitsSlot,
   GAME_SLOTS, isSlotOf, itemOrDefault, itemsForGame, ownedItems, ownsItem, resolveEquipped, resolveEquippedMap,
-  resolveGameSlots,
+  resolveGameSlots, type CosmeticGame,
 } from './cosmetics';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -47,13 +47,14 @@ describe('COS-1 catalogue', () => {
 });
 
 describe('COS-5 defaults', () => {
-  it('COS-5 HAPP-5 each game slot has exactly one free default item, and it is the default equip', () => {
+  it('COS-5 HAPP-5 T3D-8 each game slot has its free classic default; other free items are owned by everyone too', () => {
     for (const game of COSMETIC_GAMES) {
       for (const slot of GAME_SLOTS[game]) {
         const free = COSMETICS.filter((c) => c.game === game && c.type === slot && c.price === 0);
         const def = (DEFAULT_SLOTS[game] as Record<string, string>)[slot];
-        expect(free.map((c) => c.id)).toEqual([def]);
         expect(def).toMatch(/^classic-/);
+        expect(free.map((c) => c.id)).toContain(def);
+        for (const c of free) expect(ownsItem([], c.id), c.id).toBe(true);
       }
     }
     expect(DEFAULT_EQUIPPED).toEqual(DEFAULT_SLOTS.carrom);
@@ -74,11 +75,14 @@ describe('COS-5 defaults', () => {
     // A carrom board never fits ludo's board slot.
     expect(fitsSlot(cosmeticById('teak-board'), 'ludo', 'board')).toBe(false);
     // CB-9 callbreak's items: card backs and tables, for callbreak only.
-    expect(itemsForGame('callbreak').filter((c) => c.price > 0).map((c) => c.type).sort()).toEqual(['cardBack', 'cardBack', 'cardBack', 'table', 'table', 'table']);
+    const paid = (g: CosmeticGame, type: string) => itemsForGame(g).filter((c) => c.price > 0 && c.type === type).length;
+    expect(paid('callbreak', 'cardBack')).toBeGreaterThanOrEqual(3);
+    expect(paid('callbreak', 'table')).toBeGreaterThanOrEqual(3);
     expect(itemsForGame('callbreak').every((c) => c.game === 'callbreak')).toBe(true);
     expect(fitsSlot(cosmeticById('night-ludo-board'), 'callbreak', 'table')).toBe(false);
     // NODI-6 nodi par's items: boat skins and river themes, for nodi par only.
-    expect(itemsForGame('nodipar').filter((c) => c.price > 0).map((c) => c.type).sort()).toEqual(['boat', 'boat', 'boat', 'river', 'river', 'river']);
+    expect(paid('nodipar', 'boat')).toBeGreaterThanOrEqual(3);
+    expect(paid('nodipar', 'river')).toBeGreaterThanOrEqual(3);
     expect(itemsForGame('nodipar').every((c) => c.game === 'nodipar')).toBe(true);
   });
 

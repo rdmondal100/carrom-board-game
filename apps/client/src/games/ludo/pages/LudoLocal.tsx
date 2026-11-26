@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dice } from '@/games/ludo/components/Dice';
 import { DiceDock } from '@/games/ludo/components/DiceDock';
-import { LudoBoard } from '@/games/ludo/components/LudoBoard';
+import { LudoBoardView } from '@/games/ludo/components/LudoBoardView';
+import { ViewToggle } from '@/components/ViewToggle';
 import { LudoClock, LudoEndDialog, PlayerStrip, standingsOf } from '@/games/ludo/components/LudoParts';
 import {
   botMove, botTurn, clockRuns, humanSeats, moveLocal, newSeed, rematchLocal, seatName, takeBack, timeoutLocal, vsBotResult,
@@ -108,11 +109,12 @@ function Play({ initial }: { initial: LocalLudo }) {
     <div className="mx-auto flex w-full max-w-xl min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-center gap-2">
         <div className="flex-1"><PlayerStrip view={state} seats={seats} names={game.names} bots={seats.filter((s) => game.takeover.includes(s) || game.players[s] !== 'human')} /></div>
+        <ViewToggle game="ludo" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('pause.title')}</Button>
       </div>
       <DiceDock seat={busy && frame?.dice ? frame.dice.seat : state.turnSeat} viewSeat={viewSeat} face={humanSeats(game).length >= 2}
         board={(
-          <LudoBoard seats={seats} tokens={frame?.tokens ?? state.tokens} board={look.board} tokenSkinOf={() => look.tokens}
+          <LudoBoardView seats={seats} tokens={frame?.tokens ?? state.tokens} board={look.board} tokenSkinOf={() => look.tokens}
             viewSeat={viewSeat} turnSeat={state.turnSeat} legal={legal} onPick={(token) => move({ token })} label={t('ludo.board')} />
         )}
         die={(

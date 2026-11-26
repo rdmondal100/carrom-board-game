@@ -1,4 +1,5 @@
 import { cosmeticById, DEFAULT_SLOTS, itemOrDefault } from '@carrom/protocol';
+import type { Finish } from '@/game3d/finish';
 
 /** NODI-6 looks only: nothing here changes play. Unknown keys draw the classic look. */
 
@@ -9,6 +10,8 @@ export interface BoatSkin {
   edge: number;
   mark: number;
   shape: 'disc' | 'nouka' | 'lotus';
+  /** T3D-8 the hull's 3D surface. */
+  finish: Finish;
 }
 
 export interface RiverSkin {
@@ -27,10 +30,13 @@ export interface RiverSkin {
 const SEAT = [0xd9463b, 0x2f9e5b, 0xe8b52c, 0x2f6fc4] as const;
 
 const BOATS: Record<string, BoatSkin> = {
-  'nodipar.boat.classic': { colors: SEAT, edge: 0xffffff, mark: 0xfff4e0, shape: 'disc' },
-  'nodipar.boat.nouka': { colors: [0xb5452f, 0x3f8f4f, 0xd49b2a, 0x335f9e], edge: 0x3b2412, mark: 0xf3e3c3, shape: 'nouka' },
-  'nodipar.boat.lotus': { colors: [0xe0457b, 0x2fb58f, 0xf2c14e, 0x6a6cf0], edge: 0xffe9f2, mark: 0xffffff, shape: 'lotus' },
-  'nodipar.boat.golden': { colors: [0xc8553d, 0x4a9e6a, 0xf5cf5a, 0x4a78c8], edge: 0xf5cf5a, mark: 0x5a3b00, shape: 'nouka' },
+  'nodipar.boat.classic': { colors: SEAT, edge: 0xffffff, mark: 0xfff4e0, shape: 'disc', finish: 'gloss' },
+  'nodipar.boat.nouka': { colors: [0xb5452f, 0x3f8f4f, 0xd49b2a, 0x335f9e], edge: 0x3b2412, mark: 0xf3e3c3, shape: 'nouka', finish: 'satin' },
+  'nodipar.boat.lotus': { colors: [0xe0457b, 0x2fb58f, 0xf2c14e, 0x6a6cf0], edge: 0xffe9f2, mark: 0xffffff, shape: 'lotus', finish: 'pearl' },
+  'nodipar.boat.golden': { colors: [0xc8553d, 0x4a9e6a, 0xf5cf5a, 0x4a78c8], edge: 0xf5cf5a, mark: 0x5a3b00, shape: 'nouka', finish: 'metal' },
+  // T3D-8 3D sets.
+  'nodipar.boat.teak': { colors: [0xa8442e, 0x4f7f3a, 0xc9922e, 0x3f5f8f], edge: 0x5a3418, mark: 0xf3e3c3, shape: 'nouka', finish: 'wood' },
+  'nodipar.boat.crystal': { colors: [0xff7a8a, 0x5ae0a8, 0xffdd77, 0x7ab4ff], edge: 0xffffff, mark: 0xffffff, shape: 'lotus', finish: 'glass' },
 };
 
 const RIVERS: Record<string, RiverSkin> = {
@@ -50,7 +56,19 @@ const RIVERS: Record<string, RiverSkin> = {
     water: 0x1d2a4a, waterDeep: 0x111a33, bank: 0x3a3f5a, bankEdge: 0x22263a, ring: 0xd8e2ff, island: 0x34507a,
     rock: 0x6e7590, whirl: 0x0a1022, line: 0xd8e2ff,
   },
+  // T3D-8 3D sets.
+  'nodipar.river.monsoon': {
+    water: 0x5a7f8c, waterDeep: 0x3a5a66, bank: 0x7a8a4a, bankEdge: 0x4a5a2a, ring: 0xeef3e0, island: 0x6a9a4a,
+    rock: 0x5a5a5a, whirl: 0x24414a, line: 0xf0f6f8,
+  },
+  'nodipar.river.goldenHour': {
+    water: 0xe08a4a, waterDeep: 0xa8552a, bank: 0xe8c07a, bankEdge: 0x9a6a2a, ring: 0xfff1d0, island: 0xb8a24a,
+    rock: 0x6a4a3a, whirl: 0x6a2a14, line: 0xfff6e0,
+  },
 };
+
+/** T3D-8 known asset keys (tests check every catalogue item has a look). */
+export const NODI_ASSET_KEYS: readonly string[] = [...Object.keys(BOATS), ...Object.keys(RIVERS)];
 
 const keyOf = (id: string): string => cosmeticById(id)?.assetKey ?? '';
 

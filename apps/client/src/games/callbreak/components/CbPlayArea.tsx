@@ -6,7 +6,7 @@ import type { Frame } from '@/games/callbreak/playback';
 import type { CbLook } from '@/games/callbreak/skins';
 import { t } from '@/i18n/t';
 import { BidPicker } from './CbParts';
-import { CbTable } from './CbTable';
+import { CbTableView } from './CbTableView';
 import { Hand } from './Hand';
 
 interface Props {
@@ -36,7 +36,7 @@ export function CbPlayArea({ view, frame, me, names, bots, canAct, onBid, onPlay
   return (
     <LayoutGroup>
       <div className="flex min-h-0 flex-1 flex-col items-center gap-2">
-        <CbTable me={me} names={names} bids={frame?.bids ?? view.bids} won={frame?.won ?? view.won} handSizes={view.handSizes}
+        <CbTableView me={me} names={names} bids={frame?.bids ?? view.bids} won={frame?.won ?? view.won} handSizes={view.handSizes}
           trick={frame?.trick ?? view.trick} winner={frame?.winner ?? null} turnSeat={frame || view.winner !== null ? null : view.turnSeat}
           dealer={view.dealer} bots={bots} points={frame?.points ?? null} back={look.back} table={look.table} dealing={dealing} />
         <div className="flex min-h-10 flex-col items-center gap-1">{children}</div>

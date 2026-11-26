@@ -62,7 +62,7 @@ function Demo() {
       if (timer) clearTimeout(timer);
     };
   }, []);
-  return <RiverBoard ref={river} label={t('nodi.howto.demo')} className="mx-auto max-w-72" />;
+  return <RiverBoard ref={river} flat label={t('nodi.howto.demo')} className="mx-auto max-w-72" />;
 }
 
 /** NODI-6 how to play Nodi Par (bn + en), with an animated example. */

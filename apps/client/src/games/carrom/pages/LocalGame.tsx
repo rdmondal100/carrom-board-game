@@ -27,6 +27,7 @@ import { haptic } from '@/lib/native';
 import { playSound } from '@/lib/sound';
 import { claimBotReward } from '@/store/shopSlice';
 import { useAppDispatch, useAppSelector } from '@/store/store';
+import { useGameView } from '@/game3d/useGameView';
 
 type BoardEnd = { next: Game; boardNo: number; winner: Team; points: number };
 
@@ -101,6 +102,7 @@ function Play({ initial }: { initial: Game }) {
     }
   };
 
+  const gfx = useGameView('carrom');
   const board = useBoardCanvas(host, initialSeat, {
     onShot: (input: ShotInput) => {
       haptic('strike');
@@ -113,7 +115,8 @@ function Play({ initial }: { initial: Game }) {
       if (!p) finishShot();
     },
     onPlacedChange: setPlacedOk,
-  }, 'contain');
+    onFail: gfx.failed,
+  }, 'contain', gfx.view);
 
   // LOC-3: show the current board from a person's seat; Vs bot it never turns.
   useEffect(() => {

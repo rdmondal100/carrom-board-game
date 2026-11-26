@@ -10,6 +10,7 @@ import { VoiceBar } from '@/components/VoiceParts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { announce, NodiClock, NodiEndDialog, ScoreStrip, shotSounds } from '@/games/nodipar/components/NodiParts';
+import { ViewToggle } from '@/components/ViewToggle';
 import { RiverBoard } from '@/games/nodipar/components/RiverBoard';
 import { seatName } from '@/games/nodipar/localNodi';
 import { advance, canAct, catchUp, namesOf, nextChange, playerAt, seatOf, type NodiOnline as Online } from '@/games/nodipar/online';
@@ -135,6 +136,7 @@ function Play({ lobby, sessionId, online, setOnline, clock }: PlayProps) {
     <div className="mx-auto flex w-full max-w-xl min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-start gap-2">
         <div className="flex-1"><ScoreStrip view={shown} names={names} bots={bots} me={me} /></div>
+        <ViewToggle game="nodipar" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('online.leave')}</Button>
       </div>
       <VoiceBar />

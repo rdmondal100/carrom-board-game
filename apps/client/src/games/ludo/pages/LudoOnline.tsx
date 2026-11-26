@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Dice } from '@/games/ludo/components/Dice';
 import { DiceDock } from '@/games/ludo/components/DiceDock';
-import { LudoBoard } from '@/games/ludo/components/LudoBoard';
+import { LudoBoardView } from '@/games/ludo/components/LudoBoardView';
+import { ViewToggle } from '@/components/ViewToggle';
 import { LudoClock, LudoEndDialog, LudoRankedResult, PlayerStrip, standingsOf } from '@/games/ludo/components/LudoParts';
 import { seatName, winnerLabel } from '@/games/ludo/localLudo';
 import { advance, canAct, catchUp, ludoConfigOf, namesOf, nextChange, playerAt, seatOf, type LudoOnline as Online } from '@/games/ludo/online';
@@ -168,12 +169,13 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
     <div className="mx-auto flex w-full max-w-xl min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-center gap-2">
         <div className="flex-1"><PlayerStrip view={shown} seats={seats} names={names} bots={bots} me={me} /></div>
+        <ViewToggle game="ludo" />
         <Button size="sm" variant="ghost" onClick={() => setLeaving(true)}>{t('online.leave')}</Button>
       </div>
       <VoiceBar />
       <DiceDock seat={busy && frame?.dice ? frame.dice.seat : shown.turnSeat} viewSeat={me ?? seats[0]!} face={false}
         board={(
-          <LudoBoard seats={seats} tokens={frame?.tokens ?? shown.tokens} board={look.board}
+          <LudoBoardView seats={seats} tokens={frame?.tokens ?? shown.tokens} board={look.board}
             tokenSkinOf={(s) => (s === me ? look.tokens : classic)} viewSeat={me ?? seats[0]!} turnSeat={shown.turnSeat}
             legal={legal} onPick={(token) => send({ token })} label={t('ludo.board')} />
         )}

@@ -30,6 +30,7 @@ import { haptic } from '@/lib/native';
 import { playSound } from '@/lib/sound';
 import { loadMe } from '@/store/authSlice';
 import { leaveRoom } from '@/store/roomSlice';
+import { useGameView } from '@/game3d/useGameView';
 import { useAppDispatch, useAppSelector } from '@/store/store';
 
 type Clock = { turnId: number; ms: number };
@@ -146,6 +147,7 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
   const mine = sessionId ? lobby.players[sessionId] : undefined;
   const userId = useAppSelector((s) => s.auth.user?.id ?? null);
 
+  const gfx = useGameView('carrom');
   const board = useBoardCanvas(host, view, {
     onShot: (input: ShotInput) => {
       haptic('strike');
@@ -160,7 +162,8 @@ function Play({ lobby, sessionId, online, setOnline, clock, result }: PlayProps)
       lastAim.current = now;
       sendToRoom({ type: 'hint', data: aim satisfies AimHint });
     },
-  }, 'contain');
+    onFail: gfx.failed,
+  }, 'contain', gfx.view);
 
   // COS-6: each seat's striker, the breaker's coin set, our own board.
   const ownBoard = useAppSelector((s) => s.auth.user?.cosmetics.equipped.carrom.board);
